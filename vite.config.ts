@@ -18,7 +18,9 @@ const appConfig = defineConfig({
       alias: [
         { find: "entities/lib/decode.js", replacement: new URL('./node_modules/entities/lib/decode.js', import.meta.url).pathname },
         { find: "entities/lib/encode.js", replacement: new URL('./node_modules/entities/lib/encode.js', import.meta.url).pathname },
-        { find: "entities", replacement: new URL('./node_modules/entities', import.meta.url).pathname },
+        // Match only the legacy root; modern entities/decode resolves through
+        // htmlparser2's own dependency instead of a nonexistent v4 subpath.
+        { find: /^entities$/, replacement: new URL('./node_modules/entities/lib/index.js', import.meta.url).pathname },
         {
         find: /^@\/integrations\/supabase\/auth-middleware$/,
         replacement: new URL('./src/lib/verified-auth.ts', import.meta.url).pathname,

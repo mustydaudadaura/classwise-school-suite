@@ -51,6 +51,8 @@ Parent security decision: real-family phone-only access conflicts with the secur
 - [x] Attendance tracking upgrade: kiosk with live clock, PIN boxes, live on-site badge, Sign In/Sign Out, Today/Yesterday boards with late minutes and penalties; multiple geofence sites; per-minute late penalty. Unit tests pass; kiosk not yet clicked through in the browser.
 
 ## Open tasks
+- [x] Separate subjects by registered class in both score-entry modes and class registry selector; unassigned subjects remain preserved separately. Class-isolation tests pass.
+- [x] Add individual/general score entry and changed-score saving; signed-in phone-sized mode switching verified. Saving real scores remains unverified because the school currently has no students.
 - [x] Add administrator form-master class assignment and default assigned-class score entry; administrator assignment/reload/removal verified and original state restored; three assignment-rule tests pass and restrictive score-write policies applied. Full teacher score submission still requires a teacher-session test.
 - [x] Scaffold managed app email support for notify.alegacyng.com.ng; install rendering packages and preserve authenticated preview access. Sending awaits domain verification; no feature-specific email triggers were requested.
 - [x] Add administrator editing and rejection with reasons for pending classes, subjects and students; signed-in edits/rejections persist after reload, rejected entries stay inactive.

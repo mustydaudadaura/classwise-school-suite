@@ -12,30 +12,6 @@
     "isPermanentSuperAdmin": false
   },
   {
-    "userId": "usr-accountant-1793201350767-qct",
-    "email": "accountant.bello@atqacademy.edu.ng",
-    "fullName": "Bursar Bello Salisu",
-    "schoolId": "school-assalam-tahfizul-001",
-    "schoolName": "Assalam Tahfizul Qur'an Academy Limited",
-    "role": "accountant",
-    "status": "active",
-    "createdAt": "2026-10-28T15:29:10.767Z",
-    "lastActiveAt": "2026-10-28T15:29:10.767Z",
-    "isPermanentSuperAdmin": false
-  },
-  {
-    "userId": "usr-teacher-1793201350767-k89",
-    "email": "teacher.aisha@atqacademy.edu.ng",
-    "fullName": "Malama Aisha Daura",
-    "schoolId": "school-assalam-tahfizul-001",
-    "schoolName": "Assalam Tahfizul Qur'an Academy Limited",
-    "role": "teacher",
-    "status": "active",
-    "createdAt": "2026-10-28T15:29:10.767Z",
-    "lastActiveAt": "2026-10-28T15:29:10.767Z",
-    "isPermanentSuperAdmin": false
-  },
-  {
     "userId": "usr-form_master-1793201350767-us0",
     "email": "formmaster.hamza@atqacademy.edu.ng",
     "fullName": "Ustaz Hamza Lawal",

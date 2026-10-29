@@ -51,7 +51,7 @@ Parent security decision: real-family phone-only access conflicts with the secur
 - [x] Attendance tracking upgrade: kiosk with live clock, PIN boxes, live on-site badge, Sign In/Sign Out, Today/Yesterday boards with late minutes and penalties; multiple geofence sites; per-minute late penalty. Unit tests pass; kiosk not yet clicked through in the browser.
 
 ## Open tasks
-- [ ] Require complete class/subject creation details, enforce class-first subject registration, and align import validation and class selection.
+- [x] Require complete class/subject creation details, enforce class-first subject registration, and align import validation and class selection; 22 tests pass, signed-in phone-sized class/subject saves persist after reload, temporary records removed, and automatic build passes.
 - [x] Separate subjects by registered class in both score-entry modes and class registry selector; unassigned subjects remain preserved separately. Class-isolation tests pass.
 - [x] Add individual/general score entry and changed-score saving; signed-in phone-sized mode switching verified. Saving real scores remains unverified because the school currently has no students.
 - [x] Add administrator form-master class assignment and default assigned-class score entry; administrator assignment/reload/removal verified and original state restored; three assignment-rule tests pass and restrictive score-write policies applied. Full teacher score submission still requires a teacher-session test.

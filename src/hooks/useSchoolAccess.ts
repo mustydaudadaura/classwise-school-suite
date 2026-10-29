@@ -28,7 +28,7 @@ export function useSchoolAccess() {
   const { user, schoolId, roles } = useAuth();
   const isAdmin = hasRole(roles, 'super_admin', 'school_admin');
   const isTeacher = hasRole(roles, 'teacher');
-  const isFormMaster = hasRole(roles, 'form_master');
+  const isFormMaster = roles.some((role: string) => role === 'form_master');
   const isAccountant = hasRole(roles, 'accountant');
 
   const query = useQuery({

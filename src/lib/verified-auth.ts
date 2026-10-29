@@ -1,8 +1,15 @@
 import { createMiddleware } from '@tanstack/react-start';
 import { getRequest } from '@tanstack/react-start/server';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
 import { supabase as clientSupabase } from '@/integrations/supabase/client';
+import { requireAuthInputs } from '@/lib/auth-inputs';
+
+type VerifiedAuthContext = {
+  supabase: SupabaseClient<Database>;
+  userId: string;
+  claims: { sub: string; email?: string; role?: string; [key: string]: unknown };
+};
 
 export const requireSupabaseAuth = createMiddleware({ type: 'function' })
   .client(async ({ next }) => {
@@ -33,59 +40,21 @@ export const requireSupabaseAuth = createMiddleware({ type: 'function' })
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
   })
-  .server(async ({ next }) => {
+  .server<VerifiedAuthContext>(async ({ next }) => {
     const url =
       process.env.SUPABASE_URL ||
       process.env.VITE_SUPABASE_URL ||
-      (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_SUPABASE_URL);
+      import.meta.env.VITE_SUPABASE_URL;
     const key =
       process.env.SUPABASE_PUBLISHABLE_KEY ||
       process.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
-      (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_SUPABASE_PUBLISHABLE_KEY);
+      import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
     const header = getRequest().headers.get('authorization') ?? '';
-    const token = header.startsWith('Bearer ') ? header.slice(7).trim() : '';
+    const auth = requireAuthInputs(url, key, header);
+    const { token } = auth;
 
-    if (!url || !key) {
-      let sub = 'super-admin-musty-daura';
-      let email = 'mustydawuddaura@gmail.com';
-      let roles = ['super_admin'];
-
-      if (token) {
-        try {
-          const parts = token.split('.');
-          if (parts.length === 3) {
-            let b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-            while (b64.length % 4) b64 += '=';
-            const payload = JSON.parse(Buffer.from(b64, 'base64').toString('utf8'));
-            if (payload.sub) sub = payload.sub;
-            if (payload.email) email = payload.email;
-            if (payload.app_metadata?.roles) roles = payload.app_metadata.roles;
-          }
-        } catch {
-          void 0;
-        }
-      }
-
-      const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
-      return next({
-        context: {
-          supabase: supabaseAdmin as any,
-          userId: sub,
-          claims: { sub, email, role: 'authenticated', roles } as any,
-        },
-      });
-    }
-
-    if (!header.startsWith('Bearer ')) {
-      throw new Error('Unauthorized: Please sign in to continue.');
-    }
-
-    if (!token) {
-      throw new Error('Unauthorized: Session token is missing.');
-    }
-
-    const supabase = createClient<Database>(url, key, {
+    const supabase = createClient<Database>(auth.url, auth.key, {
       global: { headers: { Authorization: `Bearer ${token}` } },
       auth: { persistSession: false, autoRefreshToken: false },
     });
@@ -98,14 +67,14 @@ export const requireSupabaseAuth = createMiddleware({ type: 'function' })
         throw new Error('Unauthorized: Session has expired. Please sign in again.');
       }
       const user = userRes.data.user;
-      return next({
+      return next<VerifiedAuthContext>({
         context: {
           supabase,
           userId: user.id,
-          claims: { sub: user.id, email: user.email, role: 'authenticated' } as any,
+          claims: { sub: user.id, email: user.email, role: 'authenticated' },
         },
       });
     }
 
-    return next({ context: { supabase, userId: data.claims.sub, claims: data.claims } });
+    return next<VerifiedAuthContext>({ context: { supabase, userId: data.claims.sub, claims: data.claims } });
   });

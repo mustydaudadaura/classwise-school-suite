@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { PauseCircle, RotateCcw, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { RegistrationReview } from '@/components/RegistrationReview';
 
 type RegistryTable = 'schools' | 'classes' | 'subjects' | 'students' | 'user_roles' | 'school_custom_roles' | 'school_role_assignments';
 export function RegistryActions({ table, id, name, active = true }: { table: RegistryTable; id: string; name: string; active?: boolean }) {
@@ -27,6 +28,7 @@ export function RegistryActions({ table, id, name, active = true }: { table: Reg
     finally { setBusy(false); }
   };
   return <div className="inline-flex items-center gap-1">
+    {(table === 'classes' || table === 'subjects' || table === 'students') && <RegistrationReview kind={table} id={id} name={name} editOnly />}
     <span className="text-xs text-muted-foreground">{active ? 'Active' : 'Inactive'}</span>
     <Button size="icon" variant="ghost" title={active ? 'Deactivate' : 'Reactivate'} aria-label={`${active ? 'Deactivate' : 'Reactivate'} ${name}`} onClick={() => { setError(''); setAction(active ? 'deactivate' : 'reactivate'); }}>{active ? <PauseCircle className="h-4 w-4" /> : <RotateCcw className="h-4 w-4" />}</Button>
     <Button size="icon" variant="ghost" className="text-destructive" title="Delete" aria-label={`Delete ${name}`} onClick={() => { setError(''); setAction('delete'); }}><Trash2 className="h-4 w-4" /></Button>

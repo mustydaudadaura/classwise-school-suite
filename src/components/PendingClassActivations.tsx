@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
+import { RegistrationReview } from '@/components/RegistrationReview';
 
 export function PendingClassActivations({ classes, kind = 'classes' }: { classes: { id: string; name: string }[]; kind?: 'classes' | 'subjects' }) {
   const [selected, setSelected] = useState<string[]>([]);
@@ -30,6 +31,6 @@ export function PendingClassActivations({ classes, kind = 'classes' }: { classes
       <label className="flex items-center gap-2 text-sm"><Checkbox aria-label={`Select all pending ${kind}`} checked={ids.length === classes.length} onCheckedChange={checked => setSelected(checked ? classes.map(c => c.id) : [])} />Select all</label>
       <Button size="sm" onClick={activate} disabled={busy || !ids.length}>{busy ? 'Activating…' : `Approve & activate selected (${ids.length})`}</Button>
     </div>
-    <ul className="divide-y divide-border">{classes.map(c => <li key={c.id} className="flex items-center gap-3 py-2"><Checkbox aria-label={`Select ${kind === 'classes' ? 'class' : 'subject'} ${c.name}`} checked={ids.includes(c.id)} onCheckedChange={checked => setSelected(current => checked ? Array.from(new Set([...current, c.id])) : current.filter(id => id !== c.id))} /><span>{c.name}</span></li>)}</ul>
+    <ul className="divide-y divide-border">{classes.map(c => <li key={c.id} className="flex items-center gap-3 py-2"><Checkbox aria-label={`Select ${kind === 'classes' ? 'class' : 'subject'} ${c.name}`} checked={ids.includes(c.id)} onCheckedChange={checked => setSelected(current => checked ? Array.from(new Set([...current, c.id])) : current.filter(id => id !== c.id))} /><span className="min-w-0 break-words">{c.name}</span><RegistrationReview kind={kind} id={c.id} name={c.name} /></li>)}</ul>
   </section>;
 }

@@ -2687,6 +2687,7 @@ export type Database = {
           address: string | null
           admission_date: string | null
           admission_no: string
+          admitted_by: string | null
           allergies: string | null
           blood_group: string | null
           campus_id: string | null
@@ -2705,6 +2706,7 @@ export type Database = {
           medical_notes: string | null
           middle_name: string | null
           next_resumption_date: string | null
+          pending_activation: boolean
           photo_url: string | null
           previous_school: string | null
           religion: string | null
@@ -2719,6 +2721,7 @@ export type Database = {
           address?: string | null
           admission_date?: string | null
           admission_no: string
+          admitted_by?: string | null
           allergies?: string | null
           blood_group?: string | null
           campus_id?: string | null
@@ -2737,6 +2740,7 @@ export type Database = {
           medical_notes?: string | null
           middle_name?: string | null
           next_resumption_date?: string | null
+          pending_activation?: boolean
           photo_url?: string | null
           previous_school?: string | null
           religion?: string | null
@@ -2751,6 +2755,7 @@ export type Database = {
           address?: string | null
           admission_date?: string | null
           admission_no?: string
+          admitted_by?: string | null
           allergies?: string | null
           blood_group?: string | null
           campus_id?: string | null
@@ -2769,6 +2774,7 @@ export type Database = {
           medical_notes?: string | null
           middle_name?: string | null
           next_resumption_date?: string | null
+          pending_activation?: boolean
           photo_url?: string | null
           previous_school?: string | null
           religion?: string | null
@@ -3075,6 +3081,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      activate_pending_students: { Args: { _ids: string[] }; Returns: number }
       can_manage_school: {
         Args: { _school_id: string; _user_id: string }
         Returns: boolean
@@ -3087,6 +3094,21 @@ export type Database = {
           school_id: string
         }[]
       }
+      form_master_admit_student: {
+        Args: {
+          _admission_no: string
+          _class_id: string
+          _dob: string
+          _first_name: string
+          _gender: Database["public"]["Enums"]["gender_type"]
+          _last_name: string
+          _middle_name: string
+          _parent_email: string
+          _parent_name: string
+          _parent_phone: string
+        }
+        Returns: string
+      }
       get_user_school: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
@@ -3097,6 +3119,10 @@ export type Database = {
       }
       in_same_school: {
         Args: { _school_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_form_master: {
+        Args: { _class_id: string; _user_id: string }
         Returns: boolean
       }
       is_parent_link_owner: {

@@ -3,6 +3,7 @@ import { getRequest } from '@tanstack/react-start/server';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
 import { supabase as clientSupabase } from '@/integrations/supabase/client';
+import { requireAuthInputs } from '@/lib/auth-inputs';
 
 type VerifiedAuthContext = {
   supabase: SupabaseClient<Database>;
@@ -50,21 +51,10 @@ export const requireSupabaseAuth = createMiddleware({ type: 'function' })
       import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
     const header = getRequest().headers.get('authorization') ?? '';
-    const token = header.startsWith('Bearer ') ? header.slice(7).trim() : '';
+    const auth = requireAuthInputs(url, key, header);
+    const { token } = auth;
 
-    if (!url || !key) {
-      throw new Error('Sign-in service is not configured.');
-    }
-
-    if (!header.startsWith('Bearer ')) {
-      throw new Error('Unauthorized: Please sign in to continue.');
-    }
-
-    if (!token) {
-      throw new Error('Unauthorized: Session token is missing.');
-    }
-
-    const supabase = createClient<Database>(url, key, {
+    const supabase = createClient<Database>(auth.url, auth.key, {
       global: { headers: { Authorization: `Bearer ${token}` } },
       auth: { persistSession: false, autoRefreshToken: false },
     });

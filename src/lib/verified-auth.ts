@@ -77,7 +77,7 @@ export const requireSupabaseAuth = createMiddleware({ type: 'function' })
         throw new Error('Unauthorized: Session has expired. Please sign in again.');
       }
       const user = userRes.data.user;
-      return next({
+      return next<VerifiedAuthContext>({
         context: {
           supabase,
           userId: user.id,
@@ -86,5 +86,5 @@ export const requireSupabaseAuth = createMiddleware({ type: 'function' })
       });
     }
 
-    return next({ context: { supabase, userId: data.claims.sub, claims: data.claims } });
+    return next<VerifiedAuthContext>({ context: { supabase, userId: data.claims.sub, claims: data.claims } });
   });

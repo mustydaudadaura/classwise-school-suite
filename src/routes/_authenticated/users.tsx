@@ -215,7 +215,7 @@ function UsersPage() {
 
   const deleteUserMut = useMutation({
     mutationFn: async () => {
-      if (!deleteModalUser) return;
+      if (!deleteModalUser) throw new Error("Select a user to delete.");
       return deleteUserFn({
         data: {
           userId: deleteModalUser.userId,
@@ -1365,7 +1365,7 @@ function UsersPage() {
                 <div className="flex justify-between py-1">
                   <span>Expires:</span>
                   <span className="font-semibold text-foreground">
-                    {new Date(codeSuccessDialog.expiresAt).toLocaleDateString()}
+                    {codeSuccessDialog.expiresAt ? new Date(codeSuccessDialog.expiresAt).toLocaleDateString() : "No expiry"}
                   </span>
                 </div>
               </div>

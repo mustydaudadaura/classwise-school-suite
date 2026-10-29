@@ -1,5 +1,7 @@
 # School ERP upgrade roadmap
 
+- [ ] Fix inherited preview type errors and verify the sign-in screen.
+
 - [x] Compare uploaded master brief with current pages, server functions and live table/policy inventory.
 - [x] Smoke-check public homepage and sign-in page (no browser page errors).
 - [x] Replace the default typeface with a clear, professional font across public, staff and parent pages.

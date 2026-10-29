@@ -12,7 +12,6 @@ import { GraduationCap, Phone, School, Users } from "lucide-react";
 import { startDemo } from "@/lib/api/demo.functions";
 
 import { useServerFn } from "@tanstack/react-start";
-import { loginStaffUser } from "@/lib/api/rbac.functions";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({ meta: [{ title: "Sign in — Alegacy" }, { name: "description", content: "Sign in for authorized school accounts and families in Alegacy." }, { property: "og:title", content: "Sign in — Alegacy" }, { property: "og:description", content: "Sign in for authorized school accounts and families in Alegacy." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
@@ -21,7 +20,6 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
-  const loginStaff = useServerFn(loginStaffUser);
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -42,27 +40,6 @@ function AuthPage() {
     setLoading(true);
     const trimmedEmail = email.trim().toLowerCase();
     try {
-      const res = await loginStaff({
-        data: {
-          email: trimmedEmail,
-          password,
-        },
-      });
-
-      if (res?.session) {
-        const sessionJson = JSON.stringify(res.session);
-        localStorage.setItem("sb-placeholder-auth-token", sessionJson);
-        localStorage.setItem("sb-placeholder-key-auth-token", sessionJson);
-        if (res.user?.schoolId) {
-          localStorage.setItem("eduerp_active_school_id", res.user.schoolId);
-        }
-        window.dispatchEvent(new Event("eduerp-auth-change"));
-        toast.success(`Welcome back, ${res.user?.fullName || "User"}!`);
-        navigate({ to: "/dashboard", replace: true });
-        return;
-      }
-
-      // Supabase fallback if configured
       const { error } = await supabase.auth.signInWithPassword({ email: trimmedEmail, password });
       if (error) toast.error(error.message);
       else {

@@ -37,44 +37,17 @@ export const requireSupabaseAuth = createMiddleware({ type: 'function' })
     const url =
       process.env.SUPABASE_URL ||
       process.env.VITE_SUPABASE_URL ||
-      (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_SUPABASE_URL);
+      import.meta.env.VITE_SUPABASE_URL;
     const key =
       process.env.SUPABASE_PUBLISHABLE_KEY ||
       process.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
-      (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_SUPABASE_PUBLISHABLE_KEY);
+      import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
     const header = getRequest().headers.get('authorization') ?? '';
     const token = header.startsWith('Bearer ') ? header.slice(7).trim() : '';
 
     if (!url || !key) {
-      let sub = 'super-admin-musty-daura';
-      let email = 'mustydawuddaura@gmail.com';
-      let roles = ['super_admin'];
-
-      if (token) {
-        try {
-          const parts = token.split('.');
-          if (parts.length === 3) {
-            let b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-            while (b64.length % 4) b64 += '=';
-            const payload = JSON.parse(Buffer.from(b64, 'base64').toString('utf8'));
-            if (payload.sub) sub = payload.sub;
-            if (payload.email) email = payload.email;
-            if (payload.app_metadata?.roles) roles = payload.app_metadata.roles;
-          }
-        } catch {
-          void 0;
-        }
-      }
-
-      const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
-      return next({
-        context: {
-          supabase: supabaseAdmin as any,
-          userId: sub,
-          claims: { sub, email, role: 'authenticated', roles } as any,
-        },
-      });
+      throw new Error('Sign-in service is not configured.');
     }
 
     if (!header.startsWith('Bearer ')) {
@@ -102,7 +75,7 @@ export const requireSupabaseAuth = createMiddleware({ type: 'function' })
         context: {
           supabase,
           userId: user.id,
-          claims: { sub: user.id, email: user.email, role: 'authenticated' } as any,
+          claims: { sub: user.id, email: user.email, role: 'authenticated' },
         },
       });
     }

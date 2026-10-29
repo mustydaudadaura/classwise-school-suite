@@ -13,3 +13,8 @@ test('rejection requires a saved reason and leaves registration inactive outside
   assert.throws(() => verifyRegistrationReview({ ...row, rejection_reason: null }, 's1', 'reject'));
   assert.throws(() => verifyRegistrationReview({ ...row, pending_activation: true }, 's1', 'reject'));
 });
+test('editing existing registrations preserves active status', () => {
+  const row = { id: 'c2', active: true, pending_activation: false, name: 'Primary 2' };
+  assert.equal(verifyRegistrationReview(row, 'c2', 'edit', { name: 'Primary 2' }, { active: true, pending_activation: false }).active, true);
+  assert.throws(() => verifyRegistrationReview({ ...row, active: false }, 'c2', 'edit', {}, { active: true, pending_activation: false }));
+});

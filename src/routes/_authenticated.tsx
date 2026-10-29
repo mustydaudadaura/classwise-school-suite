@@ -114,7 +114,7 @@ function AuthedLayout() {
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 w-64 -translate-x-full transform bg-sidebar text-sidebar-foreground transition-transform lg:static lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-40 flex h-dvh w-64 -translate-x-full flex-col bg-sidebar text-sidebar-foreground transition-transform lg:static lg:h-auto lg:translate-x-0",
           open && "translate-x-0"
         )}
       >

@@ -1,5 +1,7 @@
 # School ERP upgrade roadmap
 
+- [x] Add bulk class creation using an existing class's settings and copy subjects to multiple classes; nine tests pass and owner-session checks confirm two imported classes persist after reload, subject copies appear in both, and retries skip duplicates. Verification records remain in Registration Verification School.
+
 - [x] Add confirmed deactivate/reactivate and safe delete controls for schools, classes, subjects, students, staff and roles; verified class status persistence, linked-delete rejection, unused-subject deletion, and protected owner access. Six regression tests pass. Staff removal deletes assigned roles, not auth accounts.
 
 - [x] Repair password-reset email destination and provide a public new-password form; legacy routing and expired-link handling verified, six auth/recovery tests pass.

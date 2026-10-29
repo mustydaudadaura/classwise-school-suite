@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { RegistryActions } from "@/components/RegistryActions";
 import { hasRole } from "@/hooks/useAuth";
 import { requireSavedRecord } from "@/lib/registry-save";
+import { ClassImport } from "@/components/ClassImport";
 
 export const Route = createFileRoute("/_authenticated/classes")({
   head: () => ({ meta: [{ title: "Classes & Subjects — Alegacy" }, { name: "description", content: "Classes & Subjects for authorized school accounts and families in Alegacy." }, { property: "og:title", content: "Classes & Subjects — Alegacy" }, { property: "og:description", content: "Classes & Subjects for authorized school accounts and families in Alegacy." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
@@ -107,6 +108,7 @@ function ClassesPage() {
         </TabsList>
 
         <TabsContent value="classes" className="space-y-4">
+          {canManage && schoolId && !classesLoading && !classesError && <ClassImport kind="classes" schoolId={schoolId} classes={classes ?? []} subjects={subjects ?? []} />}
           <Card>
             <CardHeader><CardTitle>Add class</CardTitle></CardHeader>
             <CardContent>
@@ -144,6 +146,7 @@ function ClassesPage() {
         </TabsContent>
 
         <TabsContent value="subjects" className="space-y-4">
+          {canManage && schoolId && !classesLoading && !subjectsLoading && !classesError && !subjectsError && <ClassImport kind="subjects" schoolId={schoolId} classes={classes ?? []} subjects={subjects ?? []} />}
           <Card>
             <CardHeader><CardTitle>Add subject</CardTitle></CardHeader>
             <CardContent>

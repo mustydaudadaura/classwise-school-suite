@@ -29,6 +29,13 @@
       "when": 1793277571381,
       "tag": "0003_form_master_admissions",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793277596460,
+      "tag": "0004_allow_form_master_pending_insert",
+      "breakpoints": true
     }
   ]
 }

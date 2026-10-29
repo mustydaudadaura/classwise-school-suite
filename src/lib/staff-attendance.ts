@@ -1,6 +1,6 @@
 // Shared, browser-safe staff attendance rules. Used by server functions, screens and reports.
 
-export type Penalties = { late: number; late_extra: number; absence: number; early: number; missing_checkout: number };
+export type Penalties = { late: number; late_per_minute: number; late_extra: number; absence: number; early: number; missing_checkout: number };
 export type AttSettings = {
   report_time: string; grace_minutes: number; closing_time: string; min_hours: number;
   late_threshold_minutes: number; early_departure_minutes: number; working_days: number[];
@@ -16,7 +16,7 @@ export const DEFAULT_SETTINGS: AttSettings = {
   report_time: "07:30", grace_minutes: 15, closing_time: "14:00", min_hours: 6,
   late_threshold_minutes: 30, early_departure_minutes: 15, working_days: [1, 2, 3, 4, 5],
   latitude: null, longitude: null, radius_m: 150, gps_phone: true, gps_kiosk: false,
-  penalties: { late: 0, late_extra: 0, absence: 0, early: 0, missing_checkout: 0 },
+  penalties: { late: 0, late_per_minute: 0, late_extra: 0, absence: 0, early: 0, missing_checkout: 0 },
   apply_penalties_in_payroll: false, leave_requires_approval: true,
 };
 
@@ -126,7 +126,8 @@ export type PenaltyLine = { kind: keyof Penalties; amount: number; minutes?: num
 export function penaltiesForDay(r: DayResult, s: AttSettings): PenaltyLine[] {
   const p = s.penalties, out: PenaltyLine[] = [];
   if (r.status === "absent" && p.absence > 0) out.push({ kind: "absence", amount: p.absence });
-  if (r.late && p.late > 0) out.push({ kind: "late", amount: p.late, minutes: r.lateMinutes });
+  const lateAmt = r.late ? (p.late || 0) + (p.late_per_minute || 0) * r.lateMinutes : 0;
+  if (lateAmt > 0) out.push({ kind: "late", amount: lateAmt, minutes: r.lateMinutes });
   if (r.late && p.late_extra > 0 && r.lateMinutes > s.late_threshold_minutes) out.push({ kind: "late_extra", amount: p.late_extra, minutes: r.lateMinutes });
   if (r.early && p.early > 0) out.push({ kind: "early", amount: p.early, minutes: r.earlyMinutes });
   if (r.missingCheckout && p.missing_checkout > 0) out.push({ kind: "missing_checkout", amount: p.missing_checkout });
@@ -189,4 +190,16 @@ export function fmtHours(min: number) {
 export function fmtTime(iso: string | null | undefined) {
   if (!iso) return "—";
   return new Date(iso).toLocaleTimeString("en-NG", { timeZone: SCHOOL_TZ, hour: "2-digit", minute: "2-digit" });
+}
+
+export type Site = { name: string; latitude: number; longitude: number; radius_m: number };
+/** Nearest site and whether the point lies inside any site's radius. */
+export function checkSites(p: { lat: number; lng: number }, sites: Site[]) {
+  let best: { site: Site; distance: number; inside: boolean } | null = null;
+  for (const site of sites) {
+    const distance = Math.round(haversineMeters(p, { lat: site.latitude, lng: site.longitude }));
+    const inside = distance <= site.radius_m;
+    if (!best || (inside && !best.inside) || (inside === best.inside && distance < best.distance)) best = { site, distance, inside };
+  }
+  return best;
 }

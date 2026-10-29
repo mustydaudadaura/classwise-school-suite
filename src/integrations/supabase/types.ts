@@ -496,6 +496,47 @@ export type Database = {
           },
         ]
       }
+      attendance_sites: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          latitude: number
+          longitude: number
+          name: string
+          radius_m: number
+          school_id: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          latitude: number
+          longitude: number
+          name: string
+          radius_m?: number
+          school_id: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          latitude?: number
+          longitude?: number
+          name?: string
+          radius_m?: number
+          school_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_sites_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campuses: {
         Row: {
           active: boolean

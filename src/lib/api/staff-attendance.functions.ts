@@ -5,7 +5,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Database } from "@/integrations/supabase/types";
 import {
   SCHOOL_TZ_OFFSET, arrival, departure, eachDate, evaluateRange, haversineMeters, localParts,
-  normaliseSettings, penaltiesForDay, type AttSettings,
+  normaliseSettings, penaltiesForDay, checkSites, evaluateDay, type AttSettings, type Site,
 } from "@/lib/staff-attendance";
 import { canMoveTo, computePay, type PayrollStatus } from "@/lib/payroll-calc";
 
@@ -25,6 +25,11 @@ async function admin() {
 async function loadSettings(db: SupabaseClient<Database>, school_id: string): Promise<AttSettings> {
   const { data } = await db.from("attendance_settings").select("*").eq("school_id", school_id).maybeSingle();
   return normaliseSettings(data as never);
+}
+async function loadSites(db: SupabaseClient<Database>, school_id: string, s: AttSettings): Promise<Site[]> {
+  const { data } = await db.from("attendance_sites").select("name,latitude,longitude,radius_m").eq("school_id", school_id).eq("active", true);
+  if (data?.length) return data as Site[];
+  return s.latitude != null && s.longitude != null ? [{ name: "School", latitude: s.latitude, longitude: s.longitude, radius_m: s.radius_m }] : [];
 }
 async function sha(text: string) {
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
@@ -46,15 +51,13 @@ async function punch(school_id: string, user_id: string, action: "in" | "out", m
   const log = (result: string) => db.from("attendance_attempts").insert({
     school_id, user_id, device_user_id, action, method, result, lat: geo.lat ?? null, lng: geo.lng ?? null, accuracy: geo.accuracy ?? null, distance_m: distance,
   });
+  const sites = await loadSites(db, school_id, s);
+  const hit = geo.lat != null && geo.lng != null ? checkSites({ lat: geo.lat, lng: geo.lng }, sites) : null;
+  if (hit) { distance = hit.distance; verified = hit.inside; }
   if (needGps) {
-    if (s.latitude == null || s.longitude == null) { await log("no_school_location"); throw new Error("The school location has not been set yet. Ask the administrator to set it in Attendance settings."); }
+    if (!sites.length) { await log("no_school_location"); throw new Error("The school location has not been set yet. Ask the administrator to add a site in Attendance settings."); }
     if (geo.lat == null || geo.lng == null) { await log("no_gps"); throw new Error("Location is required. Turn on location (GPS) and allow this site to use it, then try again."); }
-    distance = Math.round(haversineMeters({ lat: geo.lat, lng: geo.lng }, { lat: s.latitude, lng: s.longitude }));
-    verified = distance <= s.radius_m;
-    if (!verified) { await log("outside"); throw new Error(`${DENIED} (about ${distance} m away; allowed ${s.radius_m} m)`); }
-  } else if (geo.lat != null && geo.lng != null && s.latitude != null && s.longitude != null) {
-    distance = Math.round(haversineMeters({ lat: geo.lat, lng: geo.lng }, { lat: s.latitude, lng: s.longitude }));
-    verified = distance <= s.radius_m;
+    if (!verified) { await log("outside"); throw new Error(`${DENIED} (about ${distance} m from ${hit!.site.name}; allowed ${hit!.site.radius_m} m)`); }
   }
   const { data: existing } = await db.from("staff_attendance").select("*").eq("school_id", school_id).eq("user_id", user_id).eq("date", date).maybeSingle();
   const g = { lat: geo.lat ?? null, lng: geo.lng ?? null, accuracy: geo.accuracy ?? null, distance_m: distance, verified, method };
@@ -351,4 +354,44 @@ export const setPayrollStatus = createServerFn({ method: "POST" })
       }
     }
     return { ok: true };
+  });
+
+/** Kiosk wall board: today's and yesterday's attendance with late minutes and penalty, plus active sites for the live location badge. */
+export const kioskBoard = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(z.object({ school_id: z.string().uuid() }))
+  .handler(async ({ data, context }) => {
+    if (!(await can(context, data.school_id, "staffatt.kiosk")) && !(await can(context, data.school_id, "staffatt.view"))) throw new Error("This device is not authorized as an attendance kiosk");
+    const db = await admin();
+    const s = await loadSettings(db, data.school_id);
+    const now = localParts(new Date());
+    const y = new Date(`${now.date}T12:00:00Z`); y.setUTCDate(y.getUTCDate() - 1);
+    const yesterday = y.toISOString().slice(0, 10);
+    const [{ data: staff }, { data: recs }, { data: hols }, sites] = await Promise.all([
+      db.from("staff_profiles").select("user_id,attendance_exempt").eq("school_id", data.school_id).eq("active", true),
+      db.from("staff_attendance").select("user_id,date,check_in_at,check_out_at").eq("school_id", data.school_id).in("date", [now.date, yesterday]),
+      db.from("staff_holidays").select("title,start_date,end_date").eq("school_id", data.school_id).lte("start_date", now.date).gte("end_date", yesterday),
+      loadSites(db, data.school_id, s),
+    ]);
+    const ids = (staff ?? []).map((x) => x.user_id);
+    const { data: profs } = ids.length ? await db.from("profiles").select("user_id,full_name").in("user_id", ids) : { data: [] };
+    const nameOf = new Map((profs ?? []).map((p) => [p.user_id, p.full_name ?? "Staff"]));
+    const day = (date: string) => {
+      const hol = (hols ?? []).find((h) => h.start_date <= date && h.end_date >= date)?.title ?? null;
+      const rows = (staff ?? []).map((st) => {
+        const rec = (recs ?? []).find((r) => r.user_id === st.user_id && r.date === date) ?? null;
+        const r = evaluateDay({ date, today: now.date, nowMinutes: now.minutes, holiday: hol, staffExempt: st.attendance_exempt, record: rec }, s);
+        const penalty = penaltiesForDay(r, s).reduce((a, p) => a + p.amount, 0);
+        const stillIn = !!rec?.check_in_at && !rec.check_out_at && !r.missingCheckout;
+        return { name: nameOf.get(st.user_id) ?? "Staff", status: r.status, late: r.late, lateMinutes: r.lateMinutes, stillIn, missedOut: r.missingCheckout, penalty };
+      }).sort((a, b) => a.name.localeCompare(b.name));
+      return {
+        date, holiday: hol, rows,
+        counts: {
+          onTime: rows.filter((r) => r.status === "present").length, late: rows.filter((r) => r.late).length,
+          stillIn: rows.filter((r) => r.stillIn).length, missedOut: rows.filter((r) => r.missedOut).length, absent: rows.filter((r) => r.status === "absent").length,
+        },
+      };
+    };
+    return { today: day(now.date), yesterday: day(yesterday), sites, gps_kiosk: s.gps_kiosk };
   });

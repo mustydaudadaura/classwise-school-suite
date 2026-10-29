@@ -468,16 +468,14 @@ function Settings({ schoolId }: P) {
         <div className="col-span-2"><Label>Working days</Label><div className="mt-1 flex flex-wrap gap-1">{DAYS.map((d, i) => <Button key={d} size="sm" variant={v.working_days.includes(i) ? "default" : "outline"} onClick={() => up({ working_days: v.working_days.includes(i) ? v.working_days.filter((x) => x !== i) : [...v.working_days, i].sort() })}>{d}</Button>)}</div></div>
         <p className="col-span-2 text-xs text-muted-foreground">Example: {v.report_time} + {v.grace_minutes} min grace — arrivals up to then are on time, later is late.</p>
       </CardContent></Card>
-      <Card><CardHeader><CardTitle>School location</CardTitle></CardHeader><CardContent className="grid grid-cols-2 gap-3">
-        {num("la", "Latitude", v.latitude ?? 0, (n) => up({ latitude: n }), 0.000001)}
-        {num("lo", "Longitude", v.longitude ?? 0, (n) => up({ longitude: n }), 0.000001)}
-        {num("rd", "Allowed radius (metres)", v.radius_m, (n) => up({ radius_m: n }))}
-        <div className="flex items-end"><Button variant="outline" onClick={async () => { const r = await getLocation(); if (!r.fix) return toast.error(r.error ?? "No location"); up({ latitude: Number(r.fix.lat.toFixed(6)), longitude: Number(r.fix.lng.toFixed(6)) }); toast.success(`Location captured (±${Math.round(r.fix.accuracy)} m). Press Save.`); }}>Use my current location</Button></div>
+      <Card><CardHeader><CardTitle>GPS rules</CardTitle></CardHeader><CardContent className="grid grid-cols-2 gap-3">
+        <p className="col-span-2 text-xs text-muted-foreground">Staff can sign in/out when they are within the radius of any active site below.</p>
         <div className="col-span-2 flex items-center justify-between"><Label htmlFor="gp">Require GPS on phones</Label><Switch id="gp" checked={v.gps_phone} onCheckedChange={(c) => up({ gps_phone: c })} /></div>
         <div className="col-span-2 flex items-center justify-between"><Label htmlFor="gk">Require GPS on kiosk/tablet</Label><Switch id="gk" checked={v.gps_kiosk} onCheckedChange={(c) => up({ gps_kiosk: c })} /></div>
       </CardContent></Card>
       <Card><CardHeader><CardTitle>Penalties (₦ per occurrence)</CardTitle></CardHeader><CardContent className="grid grid-cols-2 gap-3">
         {num("pl", "Late", v.penalties.late, (n) => up({ penalties: { ...v.penalties, late: n } }))}
+        {num("ppm", "Late, per minute", v.penalties.late_per_minute ?? 0, (n) => up({ penalties: { ...v.penalties, late_per_minute: n } }))}
         {num("px", "Extra when very late", v.penalties.late_extra, (n) => up({ penalties: { ...v.penalties, late_extra: n } }))}
         {num("pa", "Absence", v.penalties.absence, (n) => up({ penalties: { ...v.penalties, absence: n } }))}
         {num("pe", "Early departure", v.penalties.early, (n) => up({ penalties: { ...v.penalties, early: n } }))}
@@ -489,6 +487,54 @@ function Settings({ schoolId }: P) {
         <p className="text-xs text-muted-foreground">Monthly salaries are paid in full for monthly periods and per working day (÷22) otherwise. Weekly salaries are paid in full for weekly periods and per working day (÷5) otherwise. Allowances and deductions per staff are set in Payroll → Staff salaries. Leave types are managed under Leave & Exemptions.</p>
       </CardContent></Card>
       <div className="lg:col-span-2"><Button onClick={save} size="lg">Save settings</Button></div>
+      <div className="lg:col-span-2"><Sites schoolId={schoolId} /></div>
     </div>
+  );
+}
+
+type SiteRow = { id?: string; name: string; latitude: number; longitude: number; radius_m: number; active: boolean };
+function Sites({ schoolId }: { schoolId: string }) {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ["sa-sites", schoolId], queryFn: async () => {
+    const { data, error } = await supabase.from("attendance_sites").select("id,name,latitude,longitude,radius_m,active").eq("school_id", schoolId).order("created_at");
+    if (error) throw error; return data as SiteRow[];
+  } });
+  const [draft, setDraft] = useState<Record<string, SiteRow>>({});
+  const rows: SiteRow[] = [...(q.data ?? []), ...(draft.new ? [] : [])];
+  const get = (r: SiteRow) => draft[r.id ?? "new"] ?? r;
+  const set = (key: string, r: SiteRow) => setDraft({ ...draft, [key]: r });
+  const refresh = () => qc.invalidateQueries({ queryKey: ["sa-sites", schoolId] });
+  const save = async (key: string, r: SiteRow) => {
+    if (!r.name.trim()) return toast.error("Site name is required");
+    const row = { school_id: schoolId, name: r.name.trim(), latitude: r.latitude, longitude: r.longitude, radius_m: r.radius_m, active: r.active };
+    const res = r.id ? await supabase.from("attendance_sites").update(row).eq("id", r.id).select("id") : await supabase.from("attendance_sites").insert(row).select("id");
+    if (res.error || !res.data?.length) return toast.error(res.error?.message ?? "Site was not saved");
+    toast.success("Site saved"); const d = { ...draft }; delete d[key]; setDraft(d); refresh();
+  };
+  const remove = async (id: string) => {
+    if (!confirm("Remove this site?")) return;
+    const { error } = await supabase.from("attendance_sites").delete().eq("id", id);
+    if (error) return toast.error(error.message); toast.success("Site removed"); refresh();
+  };
+  const here = async (key: string, r: SiteRow) => { const g = await getLocation(); if (!g.fix) return toast.error(g.error ?? "No location"); set(key, { ...r, latitude: Number(g.fix.lat.toFixed(6)), longitude: Number(g.fix.lng.toFixed(6)) }); toast.success(`Location captured (±${Math.round(g.fix.accuracy)} m). Press Save.`); };
+  const form = (key: string, r: SiteRow) => (
+    <div key={key} className="grid gap-3 rounded-lg border p-4 sm:grid-cols-2">
+      <div className="sm:col-span-2"><Label>Site name</Label><Input value={r.name} onChange={(e) => set(key, { ...r, name: e.target.value })} /></div>
+      <div><Label>Latitude</Label><Input type="number" step="0.000001" value={r.latitude} onChange={(e) => set(key, { ...r, latitude: Number(e.target.value) })} /></div>
+      <div><Label>Longitude</Label><Input type="number" step="0.000001" value={r.longitude} onChange={(e) => set(key, { ...r, longitude: Number(e.target.value) })} /></div>
+      <div><Label>Allowed radius (metres)</Label><Input type="number" min={20} max={50000} value={r.radius_m} onChange={(e) => set(key, { ...r, radius_m: Number(e.target.value) })} /></div>
+      <div className="flex items-end justify-between gap-2"><Button variant="outline" onClick={() => here(key, r)}>Use my current location</Button>
+        <a className="text-sm underline" target="_blank" rel="noreferrer" href={`https://www.google.com/maps?q=${r.latitude},${r.longitude}`}>Preview</a>
+        <label className="flex items-center gap-2 text-sm"><Switch checked={r.active} onCheckedChange={(c) => set(key, { ...r, active: c })} />Active</label></div>
+      <div className="flex justify-between sm:col-span-2">{r.id ? <Button variant="destructive" onClick={() => remove(r.id!)}>Remove</Button> : <Button variant="ghost" onClick={() => { const d = { ...draft }; delete d.new; setDraft(d); }}>Cancel</Button>}<Button onClick={() => save(key, r)}>Save</Button></div>
+    </div>
+  );
+  return (
+    <Card><CardHeader><CardTitle>Sites & geofence</CardTitle><p className="text-sm text-muted-foreground">Add every school location. Staff can clock in/out when they are within the radius of <b>any</b> active site.</p></CardHeader>
+      <CardContent className="space-y-3">
+        {q.error && <p className="text-sm text-destructive">{(q.error as Error).message}</p>}
+        {rows.map((r) => form(r.id!, get(r)))}
+        {draft.new ? form("new", draft.new) : <Button variant="outline" onClick={() => set("new", { name: "", latitude: 0, longitude: 0, radius_m: 150, active: true })}>Add site</Button>}
+      </CardContent></Card>
   );
 }

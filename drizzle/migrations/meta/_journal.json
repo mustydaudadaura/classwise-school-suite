@@ -64,6 +64,13 @@
       "when": 1793282115742,
       "tag": "0008_tighten_schools_read_and_school_assets",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1793295652556,
+      "tag": "0009_attendance_sites",
+      "breakpoints": true
     }
   ]
 }

@@ -130,7 +130,7 @@ function AuthedLayout() {
           </Link>
           <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Close menu" onClick={() => setOpen(false)}><X className="h-5 w-5" /></Button>
         </div>
-        <nav className="space-y-1 p-3">
+        <nav className="flex-1 space-y-1 overflow-y-auto p-3">
           {visibleNav.map((n) => {
             const active = location.pathname.startsWith(n.to) && ("search" in n ? (location.search as { tab?: string }).tab === "reports" : (location.search as { tab?: string }).tab !== "reports");
             const Icon = n.icon;
@@ -153,7 +153,7 @@ function AuthedLayout() {
             );
           })}
         </nav>
-        <div className="absolute inset-x-0 bottom-0 border-t border-sidebar-border p-3">
+        <div className="shrink-0 border-t border-sidebar-border p-3">
           <div className="mb-2 px-2 text-xs text-sidebar-foreground/70">
             <div className="truncate font-medium text-sidebar-foreground">{fullName || user.email}</div>
             <div className="truncate">{roles.length ? roles.join(", ") : "No role assigned"}</div>

@@ -24,6 +24,8 @@ import {
 } from "recharts";
 import { StudentPerformanceAnalytics } from "@/components/StudentPerformanceAnalytics";
 import { AdminAIAssistantWidget } from "@/components/AdminAIAssistantWidget";
+import { useDashboardMetrics } from "@/hooks/useDashboardMetrics";
+import type { DashboardMetrics } from "@/lib/dashboard-metrics";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard — Alegacy" }, { name: "description", content: "Dashboard for authorized school accounts and families in Alegacy." }, { property: "og:title", content: "Dashboard — Alegacy" }, { property: "og:description", content: "Dashboard for authorized school accounts and families in Alegacy." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
@@ -99,20 +101,6 @@ function ProgressRow({ label, value, sub, color }: { label: string; value: numbe
     </div>
   );
 }
-
-// ---------- mock-trend generator (deterministic) ----------
-const trend = (seed: number, n = 12) =>
-  Array.from({ length: n }, (_, i) => ({
-    name: ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][i],
-    a: Math.round(40 + Math.abs(Math.sin((i + seed) * 0.7)) * 200 + (i * 5)),
-    b: Math.round(20 + Math.abs(Math.cos((i + seed) * 0.5)) * 150 + (i * 3)),
-  }));
-
-const bars = (seed: number) =>
-  ["Math","Eng","Sci","Soc","ICT","Arts"].map((s, i) => ({
-    name: s,
-    score: Math.round(45 + Math.abs(Math.sin((i + seed) * 1.1)) * 50),
-  }));
 
 // ---------- main ----------
 
@@ -252,28 +240,24 @@ function SuperAdminView({ stats, schoolId }: { stats: any; schoolId?: string | n
           icon={Building2}
           label="Registered Schools"
           value={superData?.totalSchools ?? stats?.schools ?? "—"}
-          delta={12}
           gradient="var(--gradient-analytic-1)"
         />
         <GradientStat
           icon={Users}
           label="Platform Users"
           value={superData?.totalUsers ?? stats?.staff ?? "—"}
-          delta={8}
           gradient="var(--gradient-analytic-2)"
         />
         <GradientStat
           icon={KeyRound}
           label="Active Registration Codes"
           value={superData?.registrationCodes?.active ?? "—"}
-          delta={25}
           gradient="var(--gradient-analytic-3)"
         />
         <GradientStat
           icon={HardDrive}
           label="Platform Storage Used"
-          value={`${superData?.storageMetrics?.totalUsedMb ?? 142.8} MB`}
-          delta={2}
+          value={superData?.storageMetrics?.totalUsedMb != null ? `${superData.storageMetrics.totalUsedMb} MB` : "—"}
           gradient="var(--gradient-analytic-1)"
         />
       </div>
@@ -425,45 +409,26 @@ function SuperAdminView({ stats, schoolId }: { stats: any; schoolId?: string | n
       {/* Platform Analytics & Assistant */}
       <AdminAIAssistantWidget schoolId={schoolId} />
       <StudentPerformanceAnalytics schoolId={schoolId} />
-      <ChartsRow seed={3} title="Platform Activity Trends" subtitle="Active users and school performance metrics" />
+      <SuperAdminCharts schoolId={schoolId} />
     </div>
   );
 }
 
-function SchoolAdminView({ stats, schoolId }: { stats: any; schoolId?: string | null }) {
+function fmtMoney(n: number) {
+  if (n >= 1_000_000) return `₦${(n / 1_000_000).toFixed(2)}M`;
+  return `₦${Math.round(n).toLocaleString("en-NG")}`;
+}
+
+function SchoolAdminView({ schoolId }: { stats?: any; schoolId?: string | null }) {
+  const { data: m } = useDashboardMetrics({ schoolId });
   return (
     <>
       <div className="grid gap-3 grid-cols-2 sm:gap-4 lg:grid-cols-4">
-        <GradientStat
-          icon={Users}
-          label="Total Students"
-          value={stats?.students ?? "—"}
-          delta={6}
-          gradient="linear-gradient(135deg, oklch(0.58 0.24 355), oklch(0.48 0.22 355))"
-        />
-        <GradientStat
-          icon={Award}
-          label="Results Published"
-          value={stats?.assessments ? `${stats.assessments}` : "—"}
-          delta={100}
-          gradient="linear-gradient(135deg, oklch(0.56 0.22 305), oklch(0.46 0.20 290))"
-        />
-        <GradientStat
-          icon={Wallet}
-          label="Total Fees Collected"
-          value="₦1,250,000"
-          delta={18}
-          gradient="linear-gradient(135deg, oklch(0.58 0.18 150), oklch(0.48 0.16 160))"
-        />
-        <GradientStat
-          icon={BookOpen}
-          label="Active Classes"
-          value={stats?.classes ?? "—"}
-          delta={2}
-          gradient="linear-gradient(135deg, oklch(0.62 0.16 230), oklch(0.50 0.16 250))"
-        />
+        <GradientStat icon={Users} label="Active Students" value={m ? m.totalStudents : "—"} gradient="linear-gradient(135deg, oklch(0.58 0.24 355), oklch(0.48 0.22 355))" />
+        <GradientStat icon={Award} label="Report Cards Published" value={m ? m.reportsPublished : "—"} gradient="linear-gradient(135deg, oklch(0.56 0.22 305), oklch(0.46 0.20 290))" />
+        <GradientStat icon={Wallet} label="Total Fees Collected" value={m ? fmtMoney(m.fees.collected) : "—"} gradient="linear-gradient(135deg, oklch(0.58 0.18 150), oklch(0.48 0.16 160))" />
+        <GradientStat icon={BookOpen} label="Active Classes" value={m ? m.classes : "—"} gradient="linear-gradient(135deg, oklch(0.62 0.16 230), oklch(0.50 0.16 250))" />
       </div>
-
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2 overflow-hidden border border-primary/20 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent shadow-sm">
           <CardContent className="p-5 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -537,107 +502,97 @@ function SchoolAdminView({ stats, schoolId }: { stats: any; schoolId?: string | 
       </div>
 
       <div className="grid gap-3 grid-cols-2 sm:gap-4 sm:grid-cols-4">
-        <DonutStat label="Attendance" value={92} color={PINK} />
-        <DonutStat label="Pass Rate" value={81} color={PURPLE} />
-        <DonutStat label="Fees Paid" value={67} color={EMERALD} />
-        <DonutStat label="Reports Published" value={58} color={ROSE} />
+        <DonutStat label="Attendance (30 days)" value={m?.attendanceRate ?? 0} color={PINK} />
+        <DonutStat label="Pass Rate" value={m?.passRate ?? 0} color={PURPLE} />
+        <DonutStat label="Fees Paid" value={m?.fees.collectionRate ?? 0} color={EMERALD} />
+        <DonutStat label="Reports Published" value={m?.reportsRate ?? 0} color={ROSE} />
       </div>
 
       <AdminAIAssistantWidget schoolId={schoolId} />
       <StudentPerformanceAnalytics schoolId={schoolId} />
-      <ChartsRow seed={5} title="School Performance" subtitle="Enrolment trend vs assessment volume" />
-      <ProgressCard />
+      <ChartsRow metrics={m} title="School Activity" subtitle="Scores recorded (purple) and students admitted (pink) per month" />
+      <ProgressCard m={m} />
     </>
   );
 }
 
 function TeacherView({ schoolId }: { schoolId?: string | null }) {
+  const { user } = useAuth();
+  const { data: m } = useDashboardMetrics({ schoolId, teacherId: user?.id ?? null });
   return (
     <>
       <div className="grid gap-3 grid-cols-2 sm:gap-4 lg:grid-cols-4">
-        <GradientStat icon={BookOpen} label="My Classes" value={6} delta={0} gradient="var(--gradient-analytic-1)" />
-        <GradientStat icon={Users} label="My Students" value={184} delta={5} gradient="var(--gradient-analytic-2)" />
-        <GradientStat icon={ClipboardList} label="Pending Results" value={12} delta={-3} gradient="var(--gradient-analytic-3)" />
-        <GradientStat icon={Award} label="Avg Class Score" value="74%" delta={4} gradient="var(--gradient-analytic-1)" />
+        <GradientStat icon={BookOpen} label="My Classes" value={m ? m.classes : "—"} gradient="var(--gradient-analytic-1)" />
+        <GradientStat icon={Users} label="My Students" value={m ? m.totalStudents : "—"} gradient="var(--gradient-analytic-2)" />
+        <GradientStat icon={ClipboardList} label="Awaiting Approval" value={m ? m.submitted : "—"} gradient="var(--gradient-analytic-3)" />
+        <GradientStat icon={Award} label="Avg Class Score" value={m ? `${m.avgScore}%` : "—"} gradient="var(--gradient-analytic-1)" />
       </div>
       <AdminAIAssistantWidget schoolId={schoolId} />
       <div className="grid gap-3 grid-cols-2 sm:gap-4 sm:grid-cols-4">
-        <DonutStat label="Submissions" value={78} color={PINK} />
-        <DonutStat label="Attendance" value={89} color={PURPLE} />
-        <DonutStat label="Graded" value={64} color={INDIGO} />
-        <DonutStat label="Approved" value={52} color={ROSE} />
+        <DonutStat label="Submitted" value={m?.submissionRate ?? 0} color={PINK} />
+        <DonutStat label="Attendance (30 days)" value={m?.attendanceRate ?? 0} color={PURPLE} />
+        <DonutStat label="Graded" value={m?.gradedRate ?? 0} color={INDIGO} />
+        <DonutStat label="Approved" value={m?.approvalRate ?? 0} color={ROSE} />
       </div>
       <StudentPerformanceAnalytics schoolId={schoolId} />
-      <ChartsRow seed={7} title="Class Performance" subtitle="Average score across subjects" />
+      <ChartsRow metrics={m} title="My Class Activity" subtitle="Scores recorded (purple) and students admitted (pink) per month" />
     </>
   );
 }
 
 function AccountantView() {
+  const { schoolId } = useAuth();
+  const { data: m } = useDashboardMetrics({ schoolId });
   return (
     <>
       <div className="grid gap-3 grid-cols-2 sm:gap-4 lg:grid-cols-4">
-        <GradientStat icon={Wallet} label="Collected (NGN)" value="₦3.67M" delta={12} gradient="var(--gradient-analytic-1)" />
-        <GradientStat icon={TrendingUp} label="Outstanding" value="₦1.24M" delta={-5} gradient="var(--gradient-analytic-2)" />
-        <GradientStat icon={Users} label="Paid Students" value={345} delta={9} gradient="var(--gradient-analytic-3)" />
-        <GradientStat icon={FileText} label="Invoices" value={246} delta={3} gradient="var(--gradient-analytic-1)" />
+        <GradientStat icon={Wallet} label="Collected (NGN)" value={m ? fmtMoney(m.fees.collected) : "—"} gradient="var(--gradient-analytic-1)" />
+        <GradientStat icon={TrendingUp} label="Outstanding" value={m ? fmtMoney(m.fees.outstanding) : "—"} gradient="var(--gradient-analytic-2)" />
+        <GradientStat icon={Users} label="Fully Paid Students" value={m ? m.paidStudents : "—"} gradient="var(--gradient-analytic-3)" />
+        <GradientStat icon={FileText} label="Invoices" value={m ? m.invoices : "—"} gradient="var(--gradient-analytic-1)" />
       </div>
       <div className="grid gap-3 grid-cols-2 sm:gap-4 sm:grid-cols-4">
-        <DonutStat label="Collection" value={87} color={PINK} />
-        <DonutStat label="Reconciled" value={64} color={PURPLE} />
-        <DonutStat label="Scholarships" value={28} color={INDIGO} />
-        <DonutStat label="Overdue" value={19} color={ROSE} />
+        <DonutStat label="Collection" value={m?.fees.collectionRate ?? 0} color={PINK} />
+        <DonutStat label="Discount share" value={m ? Math.round(m.fees.billed ? (m.fees.discounts / m.fees.billed) * 100 : 0) : 0} color={PURPLE} />
+        <DonutStat label="Scholarships" value={m?.scholarshipRate ?? 0} color={INDIGO} />
+        <DonutStat label="Overdue" value={m?.overdueRate ?? 0} color={ROSE} />
       </div>
-      <ChartsRow seed={2} title="Revenue Analytics" subtitle="Fee collection trend" />
+      <ChartsRow metrics={m} fees title="Revenue Analytics" subtitle="Fees collected per month (₦)" />
     </>
   );
 }
 
-function ParentView() {
+function FamilyView({ parent }: { parent: boolean }) {
+  const { schoolId } = useAuth();
+  const { data: m } = useDashboardMetrics({ schoolId });
   return (
     <>
       <div className="grid gap-3 grid-cols-2 sm:gap-4 lg:grid-cols-4">
-        <GradientStat icon={GraduationCap} label="Children" value={2} gradient="var(--gradient-analytic-1)" />
-        <GradientStat icon={Award} label="Avg Score" value="76%" delta={3} gradient="var(--gradient-analytic-2)" />
-        <GradientStat icon={UserCheck} label="Attendance" value="94%" delta={1} gradient="var(--gradient-analytic-3)" />
-        <GradientStat icon={Wallet} label="Fees Due" value="₦45,000" gradient="var(--gradient-analytic-1)" />
+        {parent
+          ? <GradientStat icon={GraduationCap} label="Children" value={m ? m.totalStudents : "—"} gradient="var(--gradient-analytic-1)" />
+          : <GradientStat icon={BookOpen} label="Subjects Scored" value={m ? m.subjectScores.length : "—"} gradient="var(--gradient-analytic-1)" />}
+        <GradientStat icon={Award} label="Avg Score" value={m ? `${m.avgScore}%` : "—"} gradient="var(--gradient-analytic-2)" />
+        <GradientStat icon={UserCheck} label="Attendance (30 days)" value={m ? `${m.attendanceRate}%` : "—"} gradient="var(--gradient-analytic-3)" />
+        <GradientStat icon={Wallet} label="Fees Due" value={m ? fmtMoney(m.fees.outstanding) : "—"} gradient="var(--gradient-analytic-1)" />
       </div>
       <div className="grid gap-3 grid-cols-2 sm:gap-4 sm:grid-cols-4">
-        <DonutStat label="Term Progress" value={68} color={PINK} />
-        <DonutStat label="Assignments" value={82} color={PURPLE} />
-        <DonutStat label="Fee Paid" value={55} color={INDIGO} />
-        <DonutStat label="Reports Read" value={40} color={ROSE} />
+        <DonutStat label="Pass Rate" value={m?.passRate ?? 0} color={PINK} />
+        <DonutStat label="Attendance" value={m?.attendanceRate ?? 0} color={PURPLE} />
+        <DonutStat label="Fees Paid" value={m?.fees.collectionRate ?? 0} color={INDIGO} />
+        <DonutStat label="Reports Published" value={m?.reportsRate ?? 0} color={ROSE} />
       </div>
-      <ChartsRow seed={9} title="Children Performance" subtitle="Termly average per child" />
+      <ChartsRow metrics={m} title={parent ? "Children Performance" : "My Performance"} subtitle="Scores recorded per month" />
     </>
   );
 }
-
-function StudentView() {
-  return (
-    <>
-      <div className="grid gap-3 grid-cols-2 sm:gap-4 lg:grid-cols-4">
-        <GradientStat icon={Award} label="Avg Score" value="78%" delta={6} gradient="var(--gradient-analytic-1)" />
-        <GradientStat icon={BookOpen} label="Subjects" value={9} gradient="var(--gradient-analytic-2)" />
-        <GradientStat icon={UserCheck} label="Attendance" value="96%" delta={2} gradient="var(--gradient-analytic-3)" />
-        <GradientStat icon={ClipboardList} label="Position" value="4th" delta={3} gradient="var(--gradient-analytic-1)" />
-      </div>
-      <div className="grid gap-3 grid-cols-2 sm:gap-4 sm:grid-cols-4">
-        <DonutStat label="Term Progress" value={72} color={PINK} />
-        <DonutStat label="Assignments" value={88} color={PURPLE} />
-        <DonutStat label="Quizzes" value={65} color={INDIGO} />
-        <DonutStat label="Projects" value={45} color={ROSE} />
-      </div>
-      <ChartsRow seed={11} title="My Performance" subtitle="Score progression by subject" />
-    </>
-  );
-}
+function ParentView() { return <FamilyView parent />; }
+function StudentView() { return <FamilyView parent={false} />; }
 
 // ---------- charts row (reusable) ----------
 
-function ChartsRow({ seed, title, subtitle }: { seed: number; title: string; subtitle: string }) {
-  const areaData = trend(seed);
-  const barData = bars(seed);
+function ChartsRow({ metrics, fees, title, subtitle }: { metrics?: DashboardMetrics; fees?: boolean; title: string; subtitle: string }) {
+  const areaData = (fees ? metrics?.feeTrend : metrics?.trend) ?? [];
+  const barData = metrics?.subjectScores ?? [];
   return (
     <div className="grid gap-4 lg:grid-cols-3">
       <Card className="lg:col-span-2 border-0 shadow-[var(--shadow-analytic)]">
@@ -663,7 +618,7 @@ function ChartsRow({ seed, title, subtitle }: { seed: number; title: string; sub
               <YAxis tick={{ fontSize: 11 }} stroke="oklch(0.6 0.02 280)" />
               <Tooltip contentStyle={{ borderRadius: 12, border: "none", boxShadow: "var(--shadow-analytic)" }} />
               <Area type="monotone" dataKey="a" stroke={PURPLE} strokeWidth={2.5} fill="url(#gPurple)" />
-              <Area type="monotone" dataKey="b" stroke={PINK} strokeWidth={2.5} fill="url(#gPink)" />
+              {!fees && <Area type="monotone" dataKey="b" stroke={PINK} strokeWidth={2.5} fill="url(#gPink)" />}
             </AreaChart>
           </ResponsiveContainer>
         </CardContent>
@@ -672,7 +627,7 @@ function ChartsRow({ seed, title, subtitle }: { seed: number; title: string; sub
       <Card className="border-0 shadow-[var(--shadow-analytic)]">
         <CardHeader className="pb-2">
           <CardTitle className="text-base">Subject Breakdown</CardTitle>
-          <p className="text-xs text-muted-foreground">Average performance</p>
+          <p className="text-xs text-muted-foreground">{barData.length ? "Average score per subject" : "No scores recorded yet"}</p>
         </CardHeader>
         <CardContent className="h-56 sm:h-72 px-2 sm:px-6">
           <ResponsiveContainer width="100%" height="100%">
@@ -696,18 +651,23 @@ function ChartsRow({ seed, title, subtitle }: { seed: number; title: string; sub
   );
 }
 
-function ProgressCard() {
+function ProgressCard({ m }: { m?: DashboardMetrics }) {
   return (
     <Card className="border-0 shadow-[var(--shadow-analytic)]">
       <CardHeader className="pb-2">
         <CardTitle className="text-base">Operational Health</CardTitle>
       </CardHeader>
       <CardContent className="grid gap-5 sm:grid-cols-2">
-        <ProgressRow label="Result Approval Rate" value={51} sub="246 of 482 results approved" color={PINK} />
-        <ProgressRow label="Fee Collection" value={78} sub="₦12.4M of ₦15.9M collected" color={PURPLE} />
-        <ProgressRow label="Attendance Compliance" value={87} sub="Above national avg" color={INDIGO} />
-        <ProgressRow label="Parent Engagement" value={64} sub="65% of parents active" color={ROSE} />
+        <ProgressRow label="Result Approval Rate" value={m?.approvalRate ?? 0} sub={`${m?.approved ?? 0} of ${m?.assessments ?? 0} results approved`} color={PINK} />
+        <ProgressRow label="Fee Collection" value={m?.fees.collectionRate ?? 0} sub={`${fmtMoney(m?.fees.collected ?? 0)} of ${fmtMoney(m?.fees.netPayable ?? 0)} collected`} color={PURPLE} />
+        <ProgressRow label="Attendance (last 30 days)" value={m?.attendanceRate ?? 0} sub={`${m?.attendanceMarked ?? 0} attendance marks recorded`} color={INDIGO} />
+        <ProgressRow label="Parent Engagement" value={m?.parentEngagement ?? 0} sub={`${m?.linkedParents ?? 0} of ${m?.parents ?? 0} parents have portal access`} color={ROSE} />
       </CardContent>
     </Card>
   );
+}
+
+function SuperAdminCharts({ schoolId }: { schoolId?: string | null }) {
+  const { data: m } = useDashboardMetrics({ schoolId });
+  return <ChartsRow metrics={m} title="School Activity Trends" subtitle="Scores recorded (purple) and students admitted (pink) per month" />;
 }

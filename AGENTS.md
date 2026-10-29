@@ -20,3 +20,4 @@
 - Class, subject and student registries filter by the selected school and verify returned saved rows through the shared registry-save helper; this prevents false success and cross-school list mixing.
 - Registry lifecycle actions use one authenticated database RPC that checks school administration, protects own/Super Admin access, and blocks deletion across foreign-key references; active role flags control operational permissions while audit history and auth accounts remain intact.
 - SECURITY DEFINER execution is limited by purpose: trigger functions and parent phone lookup are server-only, policy helpers remain authenticated-callable, and published-report verification stays public.
+- Bulk class and subject copying uses school-scoped RLS writes and shared tested preparation helpers; re-read before importing, skip existing names, and verify every returned row without cloning students, teachers or historical records.

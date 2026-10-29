@@ -28,3 +28,9 @@ test('teacher admissions always use pending submission even with student edit pe
   assert.equal(admissionMode(true, [], 'class-one', true), 'teacher');
   assert.throws(() => admissionMode(true, [], '', true));
 });
+test('staff subjects remain inactive pending administrator activation', () => {
+  const state = classSubmissionState(false, true, 'accountant-1');
+  assert.equal(state.active, false);
+  assert.equal(state.pending_activation, true);
+  assert.equal(state.submitted_by, 'accountant-1');
+});

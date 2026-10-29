@@ -2,7 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import { publicKioskPunch, publicKioskSchools } from "@/lib/api/staff-attendance.functions";
+import { DayBoard } from "@/components/AttendanceDayBoard";
+import { publicKioskBoard, publicKioskPunch, publicKioskSchools } from "@/lib/api/staff-attendance.functions";
 import { getLocation } from "@/lib/geo-client";
 import { fmtTime, SCHOOL_TZ } from "@/lib/staff-attendance";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,7 @@ const KEY = "alegacy-kiosk-school";
 function PublicKiosk() {
   const listFn = useServerFn(publicKioskSchools);
   const punch = useServerFn(publicKioskPunch);
+  const boardFn = useServerFn(publicKioskBoard);
   const schools = useQuery({ queryKey: ["public-kiosk-schools"], queryFn: () => listFn() });
   const [schoolId, setSchoolId] = useState<string>("");
   const [now, setNow] = useState<Date | null>(null);
@@ -33,6 +35,7 @@ function PublicKiosk() {
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [geo, setGeo] = useState<{ lat: number; lng: number; accuracy: number } | null>(null);
   const [geoErr, setGeoErr] = useState<string | null>(null);
+  const board = useQuery({ queryKey: ["public-kiosk-board", schoolId], enabled: !!schoolId, queryFn: () => boardFn({ data: { school_id: schoolId } }), refetchInterval: 60000 });
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => { setSchoolId(localStorage.getItem(KEY) ?? ""); setNow(new Date()); const t = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(t); }, []);
@@ -62,7 +65,7 @@ function PublicKiosk() {
       setMsg({ ok: true, text: `${r.name}: ${r.already ? "already " : ""}signed ${action} at ${fmtTime(r.time)}${extra}` });
     } catch (e) { setMsg({ ok: false, text: (e as Error).message }); }
     finally {
-      setPin(""); setBusy(false);
+      setPin(""); setBusy(false); board.refetch();
       if (timer.current) clearTimeout(timer.current);
       timer.current = setTimeout(() => setMsg(null), 8000);
     }
@@ -76,7 +79,7 @@ function PublicKiosk() {
         <GraduationCap aria-hidden className="pointer-events-none absolute left-1/2 top-1/2 h-[80vmin] w-[80vmin] -translate-x-1/2 -translate-y-1/2 text-primary opacity-[0.05]" />
       )}
 
-      <div className="relative mx-auto flex min-h-screen max-w-md flex-col gap-5 px-4 py-6">
+      <div className="relative mx-auto flex max-w-md flex-col gap-5 px-4 py-6">
         <div className="flex items-center justify-between">
           <Button asChild variant="ghost" size="sm"><Link to="/auth"><ArrowLeft className="h-4 w-4" /> Back to sign in</Link></Button>
           <span className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Staff Kiosk</span>
@@ -126,6 +129,13 @@ function PublicKiosk() {
 
         <p className="flex items-center justify-center gap-1 text-xs text-muted-foreground"><MapPin className="h-3.5 w-3.5" />{geo ? `Location ready (±${Math.round(geo.accuracy)} m)` : geoErr ?? "Getting location…"}</p>
       </div>
+      {schoolId && (
+        <div className="relative mx-auto max-w-3xl space-y-4 px-4 pb-10">
+          {board.error && <p className="text-center text-sm text-destructive">Could not load attendance history.</p>}
+          {board.isLoading && <p className="text-center text-sm text-muted-foreground">Loading attendance history…</p>}
+          {board.data && <><DayBoard title="Today" day={board.data.today} /><DayBoard title="Yesterday" day={board.data.yesterday} /></>}
+        </div>
+      )}
     </div>
   );
 }

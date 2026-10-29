@@ -357,46 +357,59 @@ export const setPayrollStatus = createServerFn({ method: "POST" })
   });
 
 /** Kiosk wall board: today's and yesterday's attendance with late minutes and penalty, plus active sites for the live location badge. */
+async function buildBoard(db: Awaited<ReturnType<typeof admin>>, schoolId: string) {
+  const s = await loadSettings(db, schoolId);
+  const now = localParts(new Date());
+  const y = new Date(`${now.date}T12:00:00Z`); y.setUTCDate(y.getUTCDate() - 1);
+  const yesterday = y.toISOString().slice(0, 10);
+  const [{ data: staff }, { data: recs }, { data: hols }, sites] = await Promise.all([
+    db.from("staff_profiles").select("user_id,attendance_exempt").eq("school_id", schoolId).eq("active", true),
+    db.from("staff_attendance").select("user_id,date,check_in_at,check_out_at").eq("school_id", schoolId).in("date", [now.date, yesterday]),
+    db.from("staff_holidays").select("title,start_date,end_date").eq("school_id", schoolId).lte("start_date", now.date).gte("end_date", yesterday),
+    loadSites(db, schoolId, s),
+  ]);
+  const ids = (staff ?? []).map((x) => x.user_id);
+  const { data: profs } = ids.length ? await db.from("profiles").select("user_id,full_name").in("user_id", ids) : { data: [] };
+  const nameOf = new Map((profs ?? []).map((p) => [p.user_id, p.full_name ?? "Staff"]));
+  const day = (date: string) => {
+    const hol = (hols ?? []).find((h) => h.start_date <= date && h.end_date >= date)?.title ?? null;
+    const rows = (staff ?? []).map((st) => {
+      const rec = (recs ?? []).find((r) => r.user_id === st.user_id && r.date === date) ?? null;
+      const r = evaluateDay({ date, today: now.date, nowMinutes: now.minutes, holiday: hol, staffExempt: st.attendance_exempt, record: rec }, s);
+      const penalty = penaltiesForDay(r, s).reduce((a, p) => a + p.amount, 0);
+      const stillIn = !!rec?.check_in_at && !rec.check_out_at && !r.missingCheckout;
+      return { name: nameOf.get(st.user_id) ?? "Staff", status: r.status, late: r.late, lateMinutes: r.lateMinutes, stillIn, missedOut: r.missingCheckout, penalty };
+    }).sort((a, b) => a.name.localeCompare(b.name));
+    return {
+      date, holiday: hol, rows,
+      counts: {
+        onTime: rows.filter((r) => r.status === "present").length, late: rows.filter((r) => r.late).length,
+        stillIn: rows.filter((r) => r.stillIn).length, missedOut: rows.filter((r) => r.missedOut).length, absent: rows.filter((r) => r.status === "absent").length,
+      },
+    };
+  };
+  return { today: day(now.date), yesterday: day(yesterday), sites, gps_kiosk: s.gps_kiosk };
+}
+
 export const kioskBoard = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(z.object({ school_id: z.string().uuid() }))
   .handler(async ({ data, context }) => {
     if (!(await can(context, data.school_id, "staffatt.kiosk")) && !(await can(context, data.school_id, "staffatt.view"))) throw new Error("This device is not authorized as an attendance kiosk");
-    const db = await admin();
-    const s = await loadSettings(db, data.school_id);
-    const now = localParts(new Date());
-    const y = new Date(`${now.date}T12:00:00Z`); y.setUTCDate(y.getUTCDate() - 1);
-    const yesterday = y.toISOString().slice(0, 10);
-    const [{ data: staff }, { data: recs }, { data: hols }, sites] = await Promise.all([
-      db.from("staff_profiles").select("user_id,attendance_exempt").eq("school_id", data.school_id).eq("active", true),
-      db.from("staff_attendance").select("user_id,date,check_in_at,check_out_at").eq("school_id", data.school_id).in("date", [now.date, yesterday]),
-      db.from("staff_holidays").select("title,start_date,end_date").eq("school_id", data.school_id).lte("start_date", now.date).gte("end_date", yesterday),
-      loadSites(db, data.school_id, s),
-    ]);
-    const ids = (staff ?? []).map((x) => x.user_id);
-    const { data: profs } = ids.length ? await db.from("profiles").select("user_id,full_name").in("user_id", ids) : { data: [] };
-    const nameOf = new Map((profs ?? []).map((p) => [p.user_id, p.full_name ?? "Staff"]));
-    const day = (date: string) => {
-      const hol = (hols ?? []).find((h) => h.start_date <= date && h.end_date >= date)?.title ?? null;
-      const rows = (staff ?? []).map((st) => {
-        const rec = (recs ?? []).find((r) => r.user_id === st.user_id && r.date === date) ?? null;
-        const r = evaluateDay({ date, today: now.date, nowMinutes: now.minutes, holiday: hol, staffExempt: st.attendance_exempt, record: rec }, s);
-        const penalty = penaltiesForDay(r, s).reduce((a, p) => a + p.amount, 0);
-        const stillIn = !!rec?.check_in_at && !rec.check_out_at && !r.missingCheckout;
-        return { name: nameOf.get(st.user_id) ?? "Staff", status: r.status, late: r.late, lateMinutes: r.lateMinutes, stillIn, missedOut: r.missingCheckout, penalty };
-      }).sort((a, b) => a.name.localeCompare(b.name));
-      return {
-        date, holiday: hol, rows,
-        counts: {
-          onTime: rows.filter((r) => r.status === "present").length, late: rows.filter((r) => r.late).length,
-          stillIn: rows.filter((r) => r.stillIn).length, missedOut: rows.filter((r) => r.missedOut).length, absent: rows.filter((r) => r.status === "absent").length,
-        },
-      };
-    };
-    return { today: day(now.date), yesterday: day(yesterday), sites, gps_kiosk: s.gps_kiosk };
+    return buildBoard(await admin(), data.school_id);
   });
 
-// ---------- Public kiosk (no sign-in). Staff identify only by PIN; no attendance board or personal data is returned. ----------
+export const publicKioskBoard = createServerFn({ method: "POST" })
+  .inputValidator(z.object({ school_id: z.string().uuid() }))
+  .handler(async ({ data }) => {
+    const db = await admin();
+    const { data: school } = await db.from("schools").select("id").eq("id", data.school_id).eq("active", true).maybeSingle();
+    if (!school) throw new Error("School not found");
+    const b = await buildBoard(db, data.school_id);
+    return { today: b.today, yesterday: b.yesterday };
+  });
+
+// ---------- Public kiosk (no sign-in). Staff identify only by PIN; the school chose to show today/yesterday boards publicly. ----------
 export const publicKioskSchools = createServerFn({ method: "GET" }).handler(async () => {
   const db = await admin();
   const { data, error } = await db.from("schools").select("id,name,logo_url,motto").eq("active", true).order("name");

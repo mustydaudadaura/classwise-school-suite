@@ -22,11 +22,11 @@ export function ClassImport({ kind, schoolId, classes, subjects }: {
   const [filter, setFilter] = useState('');
   const [saving, setSaving] = useState(false);
   useEffect(() => { setSourceId(''); setNames(''); setTargets([]); setFilter(''); }, [schoolId]);
-  const active = classes.filter(c => c.active);
+  const active = classes.filter(c => c.active && !c.pending_activation);
   const destinations = active.filter(c => c.id !== sourceId);
   const visibleDestinations = destinations.filter(c => c.name.toLocaleLowerCase().includes(filter.toLocaleLowerCase()));
   const source = active.find(c => c.id === sourceId);
-  const subjectCount = subjects.filter(s => s.active && s.class_id === sourceId).length;
+  const subjectCount = subjects.filter(s => s.active && !s.pending_activation && s.class_id === sourceId).length;
   let preview: { rows: unknown[]; skipped: number } | undefined;
   try {
     preview = kind === 'classes' ? prepareClassImport(names, schoolId, classes, sourceId) : prepareSubjectCopy(schoolId, sourceId, targets, classes, subjects);

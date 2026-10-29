@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -21,6 +21,7 @@ import { useRegistrationSubmission } from "@/hooks/useRegistrationSubmission";
 import { PendingClassActivations } from "@/components/PendingClassActivations";
 import { RegistrationReview } from "@/components/RegistrationReview";
 import { FormMasterAssignment } from "@/components/FormMasterAssignment";
+import { validateClassCreation, validateSubjectCreation } from "@/lib/academic-registration";
 
 export const Route = createFileRoute("/_authenticated/classes")({
   head: () => ({ meta: [{ title: "Classes & Subjects — Alegacy" }, { name: "description", content: "Classes & Subjects for authorized school accounts and families in Alegacy." }, { property: "og:title", content: "Classes & Subjects — Alegacy" }, { property: "og:description", content: "Classes & Subjects for authorized school accounts and families in Alegacy." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
@@ -40,7 +41,7 @@ function ClassesPage() {
   const [cls, setCls] = useState<{ name: string; level: string; arm: string; section: "nursery" | "primary" | "secondary" | "" }>({ name: "", level: "", arm: "", section: "" });
   const [saving, setSaving] = useState(false);
   const [sub, setSub] = useState({ name: "", code: "", class_id: "" });
-  const [subjectClass, setSubjectClass] = useState('unassigned');
+  const [subjectClass, setSubjectClass] = useState('');
 
   const { data: classes, error: classesError, isLoading: classesLoading } = useQuery({
     queryKey: ["classes", schoolId],
@@ -62,18 +63,31 @@ function ClassesPage() {
     },
   });
 
+  const availableClasses = (classes ?? []).filter(c => c.active && !c.pending_activation);
+  useEffect(() => {
+    setSub({ name: "", code: "", class_id: "" });
+    setSubjectClass("");
+  }, [schoolId]);
+  useEffect(() => {
+    if (classes?.length && !classes.some(c => c.id === subjectClass) && subjectClass !== 'unassigned') {
+      setSubjectClass(classes.find(c => c.active && !c.pending_activation)?.id ?? classes[0]?.id ?? 'unassigned');
+    }
+  }, [classes, subjectClass]);
+
   const addClass = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!schoolId) return toast.error("Select a school first");
     if (saving) return;
-    if (!cls.name.trim()) return toast.error("Enter a class name");
+    let fields;
+    try { fields = validateClassCreation(cls); }
+    catch (error) { return toast.error(error instanceof Error ? error.message : "Complete every class field"); }
+    if (classes?.some(c => c.name.trim().toLowerCase() === fields.name.toLowerCase())) return toast.error("A class with this name already exists in this school");
     setSaving(true);
     try {
       if (!user) throw new Error("Sign in before registering a class");
       const state = classSubmissionState(isAdministrator, submission.allowed, user.id);
       const { data, error } = await supabase.from("classes").insert({
-        name: cls.name.trim(), level: cls.level.trim() || null, arm: cls.arm.trim() || null,
-        section: cls.section || null, school_id: schoolId, ...state,
+        ...fields, school_id: schoolId, ...state,
       }).select("id, school_id, active, pending_activation").single();
       if (error) throw error;
       requireSavedRecord(data, schoolId);
@@ -91,22 +105,24 @@ function ClassesPage() {
     e.preventDefault();
     if (!schoolId) return toast.error("Select a school first");
     if (saving) return;
-    if (!sub.name.trim()) return toast.error("Enter a subject name");
-    if (!sub.class_id || !classes?.some(c => c.id === sub.class_id)) return toast.error("Choose a class in this school");
+    let fields;
+    try { fields = validateSubjectCreation(sub, schoolId, classes ?? []); }
+    catch (error) { return toast.error(error instanceof Error ? error.message : "Complete every subject field"); }
+    if (subjects?.some(s => s.class_id === fields.class_id && s.name.trim().toLowerCase() === fields.name.toLowerCase())) return toast.error("This subject already exists in the selected class");
     setSaving(true);
     try {
       if (!user) throw new Error("Sign in before registering a subject");
       const state = classSubmissionState(isAdministrator, subjectSubmission.allowed, user.id);
       const { data, error } = await supabase.from("subjects").insert({
-        school_id: schoolId, name: sub.name.trim(), code: sub.code.trim() || null,
-        class_id: sub.class_id || null, ...state,
+        school_id: schoolId, ...fields, ...state,
       }).select("id, school_id, active, pending_activation").single();
       if (error) throw error;
       requireSavedRecord(data, schoolId);
       if (data.active !== state.active || data.pending_activation !== state.pending_activation) throw new Error("Subject approval status could not be confirmed");
       await qc.invalidateQueries({ queryKey: ["subjects"] });
       toast.success(isAdministrator ? "Subject added" : "Subject submitted — awaiting administrator approval");
-      setSub({ name: "", code: "", class_id: "" });
+      setSubjectClass(fields.class_id);
+      setSub({ name: "", code: "", class_id: fields.class_id });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : (error as { message?: string }).message ?? "Subject could not be saved");
     } finally { setSaving(false); }
@@ -116,7 +132,6 @@ function ClassesPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Classes & Subjects</h1>
-        <p className="text-sm text-muted-foreground">Organize your school structure.</p>
       </div>
 
       {!schoolId && <p role="alert" className="text-destructive">Select a school from the school switcher before adding records.</p>}
@@ -134,13 +149,13 @@ function ClassesPage() {
             <CardHeader><CardTitle>Add class</CardTitle></CardHeader>
             <CardContent>
               <form onSubmit={addClass} className="grid grid-cols-1 gap-3 sm:grid-cols-5">
-                <div><Label>Name</Label><Input required placeholder="JSS 1A" value={cls.name} onChange={(e) => setCls({ ...cls, name: e.target.value })} /></div>
-                <div><Label>Level</Label><Input placeholder="JSS" value={cls.level} onChange={(e) => setCls({ ...cls, level: e.target.value })} /></div>
-                <div><Label>Arm</Label><Input placeholder="A" value={cls.arm} onChange={(e) => setCls({ ...cls, arm: e.target.value })} /></div>
+                <div><Label htmlFor="class-name">Name *</Label><Input id="class-name" required placeholder="JSS 1A" value={cls.name} onChange={(e) => setCls({ ...cls, name: e.target.value })} /></div>
+                <div><Label htmlFor="class-level">Level *</Label><Input id="class-level" required placeholder="JSS 1" value={cls.level} onChange={(e) => setCls({ ...cls, level: e.target.value })} /></div>
+                <div><Label htmlFor="class-arm">Arm *</Label><Input id="class-arm" required placeholder="A" value={cls.arm} onChange={(e) => setCls({ ...cls, arm: e.target.value })} /></div>
                 <div>
-                  <Label>Section</Label>
-                  <Select value={cls.section} onValueChange={(v) => setCls({ ...cls, section: v as "nursery" | "primary" | "secondary" })}>
-                    <SelectTrigger><SelectValue placeholder="Select section" /></SelectTrigger>
+                  <Label htmlFor="class-section">Section *</Label>
+                  <Select required value={cls.section} onValueChange={(v) => setCls({ ...cls, section: v as "nursery" | "primary" | "secondary" })}>
+                    <SelectTrigger id="class-section"><SelectValue placeholder="Select section" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="nursery">Nursery</SelectItem>
                       <SelectItem value="primary">Primary</SelectItem>
@@ -148,7 +163,7 @@ function ClassesPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="flex items-end"><Button type="submit" disabled={saving || !schoolId} className="w-full">{saving ? "Saving…" : isAdministrator ? "Add" : "Submit class"}</Button></div>
+                <div className="flex items-end"><Button type="submit" disabled={saving || !schoolId || classesLoading || Boolean(classesError)} className="w-full">{saving ? "Saving…" : isAdministrator ? "Add" : "Submit class"}</Button></div>
               </form>
             </CardContent>
           </Card>}
@@ -172,23 +187,24 @@ function ClassesPage() {
           {canAddSubject && <Card>
             <CardHeader><CardTitle>Add subject</CardTitle></CardHeader>
             <CardContent>
+              {!classesLoading && !classesError && !availableClasses.length && <p role="status" className="mb-3 text-sm text-muted-foreground">No approved classes available. Create a class first; administrator activation is required before adding subjects.</p>}
               <form onSubmit={addSubject} className="grid grid-cols-1 gap-3 sm:grid-cols-4">
-                <div><Label>Name</Label><Input required placeholder="Mathematics" value={sub.name} onChange={(e) => setSub({ ...sub, name: e.target.value })} /></div>
-                <div><Label>Code</Label><Input placeholder="MTH" value={sub.code} onChange={(e) => setSub({ ...sub, code: e.target.value })} /></div>
+                <div><Label htmlFor="subject-name">Name *</Label><Input id="subject-name" required placeholder="Mathematics" value={sub.name} onChange={(e) => setSub({ ...sub, name: e.target.value })} /></div>
+                <div><Label htmlFor="subject-code">Code *</Label><Input id="subject-code" required placeholder="MTH" value={sub.code} onChange={(e) => setSub({ ...sub, code: e.target.value })} /></div>
                 <div>
-                  <Label>Class</Label>
-                  <Select value={sub.class_id} onValueChange={(v) => setSub({ ...sub, class_id: v })}>
-                    <SelectTrigger><SelectValue placeholder="Choose class" /></SelectTrigger>
+                  <Label htmlFor="subject-class">Class *</Label>
+                  <Select required disabled={!availableClasses.length || classesLoading || Boolean(classesError)} value={sub.class_id} onValueChange={(v) => { setSub({ ...sub, class_id: v }); setSubjectClass(v); }}>
+                    <SelectTrigger id="subject-class"><SelectValue placeholder="Choose class" /></SelectTrigger>
                     <SelectContent>
-                      {classes?.filter(c => c.active).map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                      {availableClasses.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="flex items-end"><Button type="submit" disabled={saving || !schoolId} className="w-full">{saving ? "Saving…" : isAdministrator ? "Add" : "Submit subject"}</Button></div>
+                <div className="flex items-end"><Button type="submit" disabled={saving || !schoolId || !availableClasses.length || classesLoading || subjectsLoading || Boolean(classesError || subjectsError)} className="w-full">{saving ? "Saving…" : isAdministrator ? "Add" : "Submit subject"}</Button></div>
               </form>
             </CardContent>
           </Card>}
-          <div className="max-w-sm"><Label>Subjects for class</Label><Select value={subjectClass} onValueChange={setSubjectClass}><SelectTrigger aria-label="Subjects for class"><SelectValue /></SelectTrigger><SelectContent>{classes?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}<SelectItem value="unassigned">Unassigned subjects</SelectItem></SelectContent></Select></div>
+          <div className="max-w-sm"><Label htmlFor="subject-list-class">Subjects for class</Label><Select value={subjectClass} onValueChange={setSubjectClass}><SelectTrigger id="subject-list-class" aria-label="Subjects for class"><SelectValue placeholder="Choose class" /></SelectTrigger><SelectContent>{classes?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}<SelectItem value="unassigned">Unassigned subjects (needs class assignment)</SelectItem></SelectContent></Select></div>
           <Card>
             <CardContent className="pt-6">
               <Table>

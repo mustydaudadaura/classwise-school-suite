@@ -15,6 +15,13 @@
       "when": 1793252895767,
       "tag": "0001_registry_lifecycle_controls",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793253213925,
+      "tag": "0002_registry_status_trigger_fields",
+      "breakpoints": true
     }
   ]
 }

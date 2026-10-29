@@ -103,7 +103,7 @@ function ResultsPage() {
         q = q.eq("school_id", schoolId);
       }
       if (filters.class_id) {
-        q = q.or(`class_id.eq.${filters.class_id},class_id.is.null`);
+        q = q.eq('class_id', filters.class_id);
       }
       const { data, error } = await q.order("name");
       if (error) throw error;

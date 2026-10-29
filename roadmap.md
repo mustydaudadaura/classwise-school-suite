@@ -51,6 +51,7 @@ Parent security decision: real-family phone-only access conflicts with the secur
 - [x] Attendance tracking upgrade: kiosk with live clock, PIN boxes, live on-site badge, Sign In/Sign Out, Today/Yesterday boards with late minutes and penalties; multiple geofence sites; per-minute late penalty. Unit tests pass; kiosk not yet clicked through in the browser.
 
 ## Open tasks
+- [ ] Separate subjects by their registered class; individual/general result entry must never merge another class's subjects.
 - [ ] Add individual/general subject score-entry modes, visible score columns, safe changed-score saving and signed-in verification.
 - [x] Add administrator form-master class assignment and default assigned-class score entry; administrator assignment/reload/removal verified and original state restored; three assignment-rule tests pass and restrictive score-write policies applied. Full teacher score submission still requires a teacher-session test.
 - [x] Scaffold managed app email support for notify.alegacyng.com.ng; install rendering packages and preserve authenticated preview access. Sending awaits domain verification; no feature-specific email triggers were requested.

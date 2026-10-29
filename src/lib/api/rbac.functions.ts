@@ -525,160 +525,71 @@ export const createPlatformUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
-      fullName: z.string().trim().min(2, "Full name must be at least 2 characters"),
-      email: z.string().trim().email("Invalid email address"),
+      fullName: z.string().trim().min(2, "Full name must be at least 2 characters").max(120),
+      email: z.string().trim().email("Invalid email address").max(255),
       role: z.enum(["super_admin", "school_admin", "teacher", "form_master", "accountant", "student", "parent"]),
-      schoolId: z.string().nullable().optional(),
+      schoolId: z.string().uuid().nullable().optional(),
       schoolName: z.string().optional(),
-      password: z.string().min(6, "Password must be at least 6 characters").default("StaffPass#2026"),
+      password: z.string().min(8, "Password must be at least 8 characters").max(72),
     })
   )
   .handler(async ({ data, context }) => {
-    const callerEmail = context.claims?.email?.toLowerCase();
-    const isSuper = await isUserSuperAdmin(context.supabase, context.userId);
-    const platformUsers = getStoredPlatformUsers();
-    const callerUser = platformUsers.find((u) => u.email.toLowerCase() === callerEmail);
-    const isSchoolAdmin =
-      callerUser?.role === "school_admin" ||
-      (context.claims as any)?.roles?.includes("school_admin");
+    const { data: isSuper } = await context.supabase.rpc("is_super_admin", { _user_id: context.userId });
+    if (data.role === "super_admin" && !isSuper) throw new Error("Only the Super Admin can create another Super Admin");
+    const schoolId = data.role === "super_admin" ? null : data.schoolId ?? null;
+    if (data.role !== "super_admin") {
+      if (!schoolId) throw new Error("Choose the school for this account");
+      const { data: canManage } = await context.supabase.rpc("can_manage_school", { _user_id: context.userId, _school_id: schoolId });
+      if (!isSuper && !canManage) throw new Error("You are not allowed to add accounts for this school");
+      if (!isSuper && data.role === "school_admin") throw new Error("Only the Super Admin can add school administrators");
+    }
+    const dbRole = (data.role === "form_master" ? "teacher" : data.role) as "super_admin" | "school_admin" | "teacher" | "accountant" | "student" | "parent";
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const email = data.email.toLowerCase();
 
-    if (!isSuper && !isSchoolAdmin) {
-      throw new Error(
-        "Security Violation: Only the platform Super Admin or an authorized School Administrator can create login credentials."
-      );
+    let userId: string | null = null;
+    for (let page = 1; page <= 50 && !userId; page++) {
+      const { data: list, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 1000 });
+      if (error) throw new Error(`Could not look up accounts: ${error.message}`);
+      userId = list.users.find((u) => u.email?.toLowerCase() === email)?.id ?? null;
+      if (list.users.length < 1000) break;
+    }
+    const created = !userId;
+    if (!userId) {
+      const { data: made, error } = await supabaseAdmin.auth.admin.createUser({
+        email, password: data.password, email_confirm: true,
+        user_metadata: { full_name: data.fullName, school_id: schoolId },
+      });
+      if (error || !made.user) throw new Error(error?.message ?? "Could not create the account");
+      userId = made.user.id;
     }
 
-    const schools = getStoredSchools();
-    let targetSchoolId: string | null = null;
-    let targetSchoolName = "";
+    const { data: profile } = await supabaseAdmin.from("profiles").select("id, school_id").eq("user_id", userId).maybeSingle();
+    const { error: profErr } = profile
+      ? await supabaseAdmin.from("profiles").update({ full_name: data.fullName, school_id: profile.school_id ?? schoolId }).eq("user_id", userId)
+      : await supabaseAdmin.from("profiles").insert({ user_id: userId, full_name: data.fullName, school_id: schoolId });
+    if (profErr) throw new Error(`Could not save profile: ${profErr.message}`);
 
-    if (!isSuper && isSchoolAdmin) {
-      // School Administrators can only provision their own school's staff and students
-      if (data.role === "super_admin" || data.role === "school_admin") {
-        throw new Error(
-          "Permission Denied: School Administrators cannot create administrative accounts. You can only create credentials for Teachers, Form Masters, Accountants, Students, and Parents."
-        );
-      }
-
-      // Enforce strict school isolation: bind target school to caller's school
-      let callerSchoolId =
-        callerUser?.schoolId ||
-        (context.claims as any)?.school_id ||
-        (context.claims as any)?.schoolId;
-
-      // 1. If callerUser or claims did not have schoolId, look up in database profiles/roles
-      if (!callerSchoolId && context.userId) {
-        try {
-          const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-          const { data: prof } = await supabaseAdmin
-            .from("profiles")
-            .select("school_id")
-            .eq("user_id", context.userId)
-            .maybeSingle();
-          if (prof?.school_id) {
-            callerSchoolId = prof.school_id;
-          } else {
-            const { data: urole } = await supabaseAdmin
-              .from("user_roles")
-              .select("school_id")
-              .eq("user_id", context.userId)
-              .maybeSingle();
-            if (urole?.school_id) callerSchoolId = urole.school_id;
-          }
-        } catch {
-          // offline
-        }
-      }
-
-      // 2. Fall back to data.schoolId passed from frontend
-      if (!callerSchoolId && data.schoolId) {
-        callerSchoolId = data.schoolId;
-      }
-
-      // 3. Fall back to first available school if still unassigned
-      if (!callerSchoolId) {
-        if (schools.length > 0) {
-          callerSchoolId = schools[0].id;
-        } else {
-          callerSchoolId = "af91ff67-95eb-4b62-93a0-5617d23a2f1d";
-        }
-      }
-
-      // Automatically update caller record with the resolved schoolId
-      if (callerUser && !callerUser.schoolId && callerSchoolId) {
-        callerUser.schoolId = callerSchoolId;
-        const matched = schools.find((s) => s.id === callerSchoolId);
-        if (matched) callerUser.schoolName = matched.name;
-        saveStoredPlatformUsers(platformUsers);
-      }
-
-      targetSchoolId = callerSchoolId;
-      const matchedSchool = schools.find((s) => s.id === callerSchoolId);
-      targetSchoolName = matchedSchool?.name || callerUser?.schoolName || "Assigned School Workspace";
+    const { data: existingRole } = await supabaseAdmin.from("user_roles").select("id").eq("user_id", userId).eq("role", dbRole).maybeSingle();
+    if (existingRole) {
+      await supabaseAdmin.from("user_roles").update({ active: true, school_id: schoolId }).eq("id", existingRole.id);
     } else {
-      // Super Admin provisioning
-      if (data.role !== "super_admin") {
-        if (!data.schoolId) {
-          throw new Error("Please specify the school workspace to assign this user to.");
-        }
-        targetSchoolId = data.schoolId;
-        const matchedSchool = schools.find((s) => s.id === data.schoolId);
-        targetSchoolName = matchedSchool?.name || data.schoolName || "Assigned School";
-      } else {
-        targetSchoolId = null;
-        targetSchoolName = "All Schools (Platform Owner)";
-      }
+      const { error: roleErr } = await supabaseAdmin.from("user_roles").insert({ user_id: userId, role: dbRole, school_id: schoolId });
+      if (roleErr) throw new Error(`Could not assign role: ${roleErr.message}`);
     }
+    const { data: check } = await supabaseAdmin.from("user_roles").select("id").eq("user_id", userId).eq("role", dbRole).eq("active", true).maybeSingle();
+    if (!check) throw new Error("The role was not saved. Please try again.");
 
-    const normalizedEmail = data.email.trim().toLowerCase();
-
-    // Check if email already registered
-    const existing = platformUsers.find((u) => u.email.toLowerCase() === normalizedEmail);
-    if (existing) {
-      throw new Error(`An account with email "${normalizedEmail}" already exists.`);
-    }
-
-    const newUserId = `usr-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-
-    const newUserRecord: PlatformUserRecord = {
-      userId: newUserId,
-      email: normalizedEmail,
-      fullName: data.fullName.trim(),
-      schoolId: targetSchoolId,
-      schoolName: targetSchoolName,
-      role: data.role,
-      status: "active",
-      createdAt: new Date().toISOString(),
-      lastActiveAt: new Date().toISOString(),
-      isPermanentSuperAdmin: false,
+    const { data: school } = schoolId ? await supabaseAdmin.from("schools").select("name").eq("id", schoolId).maybeSingle() : { data: null };
+    const user: PlatformUserRecord = {
+      userId, email, fullName: data.fullName, schoolId, schoolName: school?.name ?? "All Schools",
+      role: data.role, status: "active", createdAt: new Date().toISOString(),
     };
-
-    platformUsers.unshift(newUserRecord);
-    saveStoredPlatformUsers(platformUsers);
-
-    try {
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      await Promise.all([
-        supabaseAdmin.from("profiles").upsert({
-          user_id: newUserId,
-          full_name: data.fullName.trim(),
-          school_id: targetSchoolId,
-        }),
-        supabaseAdmin.from("user_roles").upsert({
-          user_id: newUserId,
-          role: data.role as any,
-          school_id: targetSchoolId,
-        }),
-      ]);
-    } catch {
-      // offline / local store fallback
-    }
-
     return {
-      ok: true,
-      user: newUserRecord,
-      initialPassword: data.password,
-      message: `Login credentials created successfully for ${data.fullName} (${data.role.replace("_", " ")}) at ${targetSchoolName}.`,
+      ok: true, user, initialPassword: created ? data.password : undefined,
+      message: created
+        ? `Account created for ${data.fullName}. They can sign in now with this email and password.`
+        : `${email} already had an account; the role was added. Their existing password is unchanged.`,
     };
   });
 

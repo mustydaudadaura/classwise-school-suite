@@ -1,8 +1,14 @@
 import { createMiddleware } from '@tanstack/react-start';
 import { getRequest } from '@tanstack/react-start/server';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
 import { supabase as clientSupabase } from '@/integrations/supabase/client';
+
+type VerifiedAuthContext = {
+  supabase: SupabaseClient<Database>;
+  userId: string;
+  claims: { sub: string; email?: string; role?: string; [key: string]: unknown };
+};
 
 export const requireSupabaseAuth = createMiddleware({ type: 'function' })
   .client(async ({ next }) => {
@@ -33,7 +39,7 @@ export const requireSupabaseAuth = createMiddleware({ type: 'function' })
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
   })
-  .server(async ({ next }) => {
+  .server<VerifiedAuthContext>(async ({ next }) => {
     const url =
       process.env.SUPABASE_URL ||
       process.env.VITE_SUPABASE_URL ||

@@ -27,22 +27,7 @@ export function useAuth(): AuthState {
 
     const checkRemoteSession = () => {
       supabase.auth.getSession().then(async ({ data }) => {
-        let sess = data.session;
-        if (!sess && typeof window !== "undefined") {
-          try {
-            const stored =
-              localStorage.getItem("sb-placeholder-auth-token") ||
-              localStorage.getItem("sb-placeholder-key-auth-token");
-            if (stored) {
-              const parsed = JSON.parse(stored);
-              if (parsed?.access_token && parsed?.user) {
-                sess = parsed;
-              }
-            }
-          } catch {
-            void 0;
-          }
-        }
+        const sess = data.session;
         setSession(sess);
         if (sess?.user) {
           await loadProfile(sess.user.id, sess.user);
@@ -94,78 +79,31 @@ export function useAuth(): AuthState {
   }, []);
 
   const loadProfile = async (userId: string, userObj?: User | null) => {
-    const userEmail = (userObj?.email || session?.user?.email || "").toLowerCase();
-    const isPlatformOwner = userEmail === "mustydawuddaura@gmail.com";
-
     try {
       const [profileResult, roleResult] = await Promise.all([
         supabase.from("profiles").select("full_name, school_id").eq("user_id", userId).maybeSingle(),
         supabase.from("user_roles").select("role, school_id").eq("user_id", userId),
       ]);
 
-      let fetchedRoles = roleResult.data?.map((r) => r.role) ?? [];
-      if (!fetchedRoles.length && userObj?.app_metadata?.roles) {
-        fetchedRoles = Array.isArray(userObj.app_metadata.roles)
-          ? (userObj.app_metadata.roles as AppRole[])
-          : [userObj.app_metadata.roles as AppRole];
-      }
-
-      if (isPlatformOwner) {
-        if (!fetchedRoles.includes("super_admin")) {
-          fetchedRoles = ["super_admin", ...fetchedRoles];
-        }
-      }
-
-      // School isolation: Only Super Admin can switch schools via selected school key
-      const selected = typeof window !== "undefined" ? localStorage.getItem(ACTIVE_SCHOOL_KEY) : null;
+      if (profileResult.error) throw profileResult.error;
+      if (roleResult.error) throw roleResult.error;
+      const fetchedRoles = roleResult.data?.map((r) => r.role) ?? [];
       const isSuper = fetchedRoles.includes("super_admin");
-      let targetSchoolId =
-        profileResult.data?.school_id ||
-        roleResult.data?.find((r) => r.school_id)?.school_id ||
-        userObj?.user_metadata?.school_id ||
-        (userObj as any)?.school_id ||
-        null;
-
-      // If school administrator or super admin has no school assigned yet, fallback to default school
-      if (!targetSchoolId && (fetchedRoles.includes("school_admin") || isSuper)) {
-        const { data: firstSchool } = await supabase.from("schools").select("id").limit(1).maybeSingle();
-        if (firstSchool?.id) {
-          targetSchoolId = firstSchool.id;
-        } else {
-          targetSchoolId = "af91ff67-95eb-4b62-93a0-5617d23a2f1d";
-        }
+      const selected = localStorage.getItem(ACTIVE_SCHOOL_KEY);
+      let targetSchoolId = profileResult.data?.school_id ?? roleResult.data?.find((r) => r.school_id)?.school_id ?? null;
+      if (isSuper && selected) {
+        const { data: selectedSchool, error } = await supabase.from("schools").select("id").eq("id", selected).maybeSingle();
+        if (error) throw error;
+        if (selectedSchool) targetSchoolId = selectedSchool.id;
       }
-
-      setFullName(
-        profileResult.data?.full_name ??
-        userObj?.user_metadata?.full_name ??
-        (isPlatformOwner ? "Musty Dawud Daura" : null)
-      );
-      setSchoolId(
-        isSuper && selected
-          ? selected
-          : targetSchoolId || "af91ff67-95eb-4b62-93a0-5617d23a2f1d"
-      );
-      setRoles(fetchedRoles.length ? fetchedRoles : (isPlatformOwner ? ["super_admin"] : []));
+      setFullName(profileResult.data?.full_name ?? userObj?.user_metadata?.full_name ?? null);
+      setSchoolId(targetSchoolId);
+      setRoles(fetchedRoles);
     } catch (err) {
       console.warn("Could not fetch remote profile:", err);
-      if (isPlatformOwner) {
-        setRoles(["super_admin"]);
-        setFullName("Musty Dawud Daura");
-        const selected = typeof window !== "undefined" ? localStorage.getItem(ACTIVE_SCHOOL_KEY) : null;
-        setSchoolId(selected || "af91ff67-95eb-4b62-93a0-5617d23a2f1d");
-      } else {
-        const fallbackRoles: AppRole[] = Array.isArray(userObj?.app_metadata?.roles)
-          ? userObj.app_metadata.roles
-          : userObj?.app_metadata?.roles
-          ? [userObj.app_metadata.roles]
-          : [];
-        const fallbackSchool = userObj?.user_metadata?.school_id || (userObj as any)?.school_id || null;
-        const fallbackName = userObj?.user_metadata?.full_name || null;
-        setRoles(fallbackRoles);
-        setFullName(fallbackName);
-        setSchoolId(fallbackSchool);
-      }
+      setRoles([]);
+      setFullName(null);
+      setSchoolId(null);
     }
   };
 

@@ -52,4 +52,5 @@ Parent security decision: real-family phone-only access conflicts with the secur
 
 ## Open tasks
 - [ ] Add administrator editing and rejection with reasons for pending classes, subjects and students; verify authorization and saved outcomes.
+- [ ] Allow Admin and Super Admin editing of existing registered data, preserving school scope and protected account access.
 - [x] Answered: database storage limits (DB healthy, 14.2 MB used, 14% disk; disk can grow on request)

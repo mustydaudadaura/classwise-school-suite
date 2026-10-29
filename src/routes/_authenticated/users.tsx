@@ -239,7 +239,7 @@ function UsersPage() {
         newUserForm.schoolId ||
         mySchoolId ||
         schools?.[0]?.id ||
-        "af91ff67-95eb-4b62-93a0-5617d23a2f1d";
+        null;
       const targetSchoolId = newUserForm.role === "super_admin" ? null : activeSchoolId;
       const schoolObj = schools?.find((s) => s.id === targetSchoolId);
 

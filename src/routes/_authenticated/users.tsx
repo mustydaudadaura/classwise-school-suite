@@ -257,10 +257,11 @@ function UsersPage() {
     onSuccess: (res: any) => {
       toast.success(res.message);
       setCreateUserOpen(false);
-      if (res.user) {
+      // Only show a login slip when the password on it is really the account's password.
+      if (res.user && res.initialPassword) {
         setCreatedCreds({
           user: res.user,
-          password: res.initialPassword || newUserForm.password || "StaffPass#2026",
+          password: res.initialPassword,
         });
       }
       setNewUserForm({

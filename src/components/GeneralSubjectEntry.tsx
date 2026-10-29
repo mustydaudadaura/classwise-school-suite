@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { calculateGrade, CA_RATIOS, type CARatio, type GradingScaleType } from '@/lib/grading';
+import { calculateGrade, CA_RATIOS, type CaRatioType, type GradingScaleType } from '@/lib/grading';
 import { validateBroadsheet, type EntryScore } from '@/lib/broadsheet';
 import { toast } from 'sonner';
 
@@ -12,7 +12,7 @@ type Props = {
   schoolId: string; classId: string; session: string; term: 'first' | 'second' | 'third';
   students: { id: string; admission_no: string; first_name: string; last_name: string }[];
   subjects: { id: string; name: string }[];
-  ratio: CARatio; scale: GradingScaleType; canApprove: boolean;
+  ratio: CaRatioType; scale: GradingScaleType; canApprove: boolean;
 };
 export function GeneralSubjectEntry(p: Props) {
   const qc = useQueryClient();

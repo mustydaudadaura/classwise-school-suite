@@ -1,5 +1,7 @@
 # Architecture rules
 
+- Individual and general broadsheet score entry write the existing assessments with shared grading validation and persisted-row checks; only changed broadsheet cells are submitted, preserving untouched scores and approval rules.
+
 - Assign form masters through the school-admin-checked class-assignment RPC; classes.teacher_id is the primary assignment and old class-teacher allocations are reconciled. Score entry defaults to assigned classes, with matching restrictive write policies; subject-teacher allocations remain valid.
 
 - App emails use the managed server-only template helper; delivery, suppression and unsubscribe are hosted, with no local email queues or tables. Preserve self-authenticated /lovable/ routes and keep email rendering dependencies bundled for the Worker runtime.

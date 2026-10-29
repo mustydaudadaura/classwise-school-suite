@@ -16,6 +16,8 @@ import { toast } from "sonner";
 import { FileDown, Send, Scale } from "lucide-react";
 import { publishReportCards } from "@/lib/api/results.functions";
 import { scoreEntryClasses } from "@/lib/form-master";
+import { GeneralSubjectEntry } from "@/components/GeneralSubjectEntry";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   calculateGrade,
   validateScores,
@@ -39,6 +41,8 @@ function ResultsPage() {
     class_id: "", subject_id: "", session: "2025/2026", term: "first" as "first"|"second"|"third",
   });
   const [scores, setScores] = useState<Record<string, { ca1: number; ca2: number; exam: number }>>({});
+  const [entryMode, setEntryMode] = useState('individual');
+  const [saving, setSaving] = useState(false);
 
   const canApprove = access.can("results.publish");
   const [remarks, setRemarks] = useState<Record<string, string>>({});
@@ -89,7 +93,7 @@ function ResultsPage() {
     ? getScaleForSection(selectedClass.level || selectedClass.section || selectedClass.name)
     : academicConfig.secondaryScale;
 
-  const { data: subjects } = useQuery({
+  const { data: subjects, error: subjectsError, isPending: subjectsLoading } = useQuery({
     queryKey: ["res-subjects", filters.class_id, schoolId],
     enabled: Boolean(schoolId),
     queryFn: async () => {
@@ -102,31 +106,36 @@ function ResultsPage() {
         q = q.or(`class_id.eq.${filters.class_id},class_id.is.null`);
       }
       const { data, error } = await q.order("name");
-      if (error) {
-        console.warn("Could not fetch filtered subjects, falling back to all school subjects:", error);
-        const fallback = await supabase.from("subjects").select("id, name").eq("school_id", schoolId).eq("active", true).eq("pending_activation", false).order("name");
-        return fallback.data ?? [];
-      }
+      if (error) throw error;
       return data ?? [];
     },
   });
 
-  const { data: students } = useQuery({
-    queryKey: ["res-students", filters.class_id],
-    enabled: !!filters.class_id,
+  useEffect(() => {
+    if (subjects?.length && !subjects.some(s => s.id === filters.subject_id)) {
+      setFilters(previous => ({ ...previous, subject_id: subjects[0]?.id ?? '' }));
+      setScores({});
+    }
+  }, [subjects, filters.subject_id]);
+
+  const { data: students, error: studentsError, isPending: studentsLoading } = useQuery({
+    queryKey: ["res-students", schoolId, filters.class_id],
+    enabled: Boolean(schoolId && filters.class_id),
     queryFn: async () => {
-      const { data } = await supabase.from("students").select("id, admission_no, first_name, last_name").eq("class_id", filters.class_id).eq("active", true).eq("pending_activation", false).order("last_name");
+      const { data, error } = await supabase.from("students").select("id, admission_no, first_name, last_name").eq('school_id', schoolId ?? '').eq("class_id", filters.class_id).eq("active", true).eq("pending_activation", false).order("last_name");
+      if (error) throw error;
       return data ?? [];
     },
   });
 
-  const { data: existing } = useQuery({
-    queryKey: ["assessments", filters],
+  const { data: existing, error: existingError, isPending: existingLoading } = useQuery({
+    queryKey: ["assessments", schoolId, filters],
     enabled: !!(filters.class_id && filters.subject_id),
     queryFn: async () => {
-      const { data } = await supabase.from("assessments").select("*")
+      const { data, error } = await supabase.from("assessments").select("*").eq('school_id', schoolId ?? '')
         .eq("class_id", filters.class_id).eq("subject_id", filters.subject_id)
         .eq("session", filters.session).eq("term", filters.term);
+      if (error) throw error;
       const m: Record<string, any> = {};
       (data ?? []).forEach((a: any) => { m[a.student_id] = a; });
       return m;
@@ -134,6 +143,7 @@ function ResultsPage() {
   });
 
   const saveScore = async (studentId: string) => {
+    if (saving) return;
     if (!schoolId) return toast.error("No school");
     if (!classes?.some(c => c.id === filters.class_id)) return toast.error("Choose your assigned class");
     const ex = existing?.[studentId];
@@ -146,7 +156,8 @@ function ResultsPage() {
 
     const gradeDef = calculateGrade(validation.total, scaleType);
 
-    const { error } = await supabase.from("assessments").upsert({
+    setSaving(true);
+    const { data: saved, error } = await supabase.from("assessments").upsert({
       school_id: schoolId,
       student_id: studentId,
       subject_id: filters.subject_id,
@@ -160,8 +171,10 @@ function ResultsPage() {
       grade: gradeDef.grade,
       remark: gradeDef.remark,
       status: "submitted",
-    }, { onConflict: "student_id,subject_id,session,term" });
+    }, { onConflict: "student_id,subject_id,session,term" }).select('id,student_id,subject_id,ca1,ca2,exam').single();
+    setSaving(false);
     if (error) return toast.error(error.message);
+    if (!saved || saved.student_id !== studentId || saved.subject_id !== filters.subject_id || Number(saved.ca1) !== s.ca1 || Number(saved.exam) !== s.exam) return toast.error('Saved scores could not be confirmed');
     toast.success(`Score saved (${gradeDef.grade} — ${gradeDef.remark})`);
     qc.invalidateQueries({ queryKey: ["assessments"] });
   };
@@ -196,6 +209,7 @@ function ResultsPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  if (access.loading) return <p>Loading score-entry access…</p>;
   if (!isStaff) {
     return (
       <div className="space-y-6">
@@ -259,7 +273,7 @@ function ResultsPage() {
           <h1 className="text-2xl font-bold tracking-tight">Results Entry</h1>
           <p className="text-sm text-muted-foreground">CA1 (max 20) · CA2 (max 20) · Exam (max 60). Grading is automatic. Results must be approved before report cards can be published.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button asChild variant="outline"><Link to="/report-cards"><FileDown className="mr-2 h-4 w-4" /> Report cards</Link></Button>
           <Button
             disabled={!access.can("results.publish") || !filters.class_id || publishMutation.isPending}
@@ -269,6 +283,8 @@ function ResultsPage() {
           </Button>
         </div>
       </div>
+
+      <Tabs value={entryMode} onValueChange={setEntryMode}><TabsList className="flex h-auto flex-wrap justify-start"><TabsTrigger value="individual">Individual subject entry</TabsTrigger><TabsTrigger value="general">General subject entry</TabsTrigger></TabsList></Tabs>
 
       <Card>
         <CardHeader><CardTitle>Select</CardTitle></CardHeader>
@@ -290,11 +306,11 @@ function ResultsPage() {
               </SelectContent>
             </Select>
           </div>
-          <div>
+          {entryMode === 'individual' && <div>
             <Label>Subject</Label>
             <Select
               value={filters.subject_id}
-              onValueChange={(v) => setFilters({ ...filters, subject_id: v })}
+              onValueChange={(v) => { setFilters({ ...filters, subject_id: v }); setScores({}); }}
             >
               <SelectTrigger><SelectValue placeholder={subjects?.length ? "Choose Subject" : "No subjects available"} /></SelectTrigger>
               <SelectContent>
@@ -305,11 +321,11 @@ function ResultsPage() {
                 )}
               </SelectContent>
             </Select>
-          </div>
-          <div><Label>Session</Label><Input value={filters.session} onChange={(e) => setFilters({ ...filters, session: e.target.value })} /></div>
+          </div>}
+          <div><Label>Session</Label><Input value={filters.session} onChange={(e) => { setFilters({ ...filters, session: e.target.value }); setScores({}); }} /></div>
           <div>
             <Label>Term</Label>
-            <Select value={filters.term} onValueChange={(v: any) => setFilters({ ...filters, term: v })}>
+            <Select value={filters.term} onValueChange={(v: any) => { setFilters({ ...filters, term: v }); setScores({}); }}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="first">First</SelectItem>
@@ -321,7 +337,14 @@ function ResultsPage() {
         </CardContent>
       </Card>
 
-      {filters.class_id && filters.subject_id && (
+      {subjectsError && <p role="alert" className="text-destructive">Subjects could not be loaded: {subjectsError.message}</p>}
+      {studentsError && <p role="alert" className="text-destructive">Students could not be loaded: {studentsError.message}</p>}
+      {existingError && entryMode === 'individual' && <p role="alert" className="text-destructive">Scores could not be loaded: {existingError.message}</p>}
+      {filters.class_id && !subjectsLoading && !subjectsError && subjects?.length === 0 && <p>No active subjects in this class.</p>}
+      {filters.class_id && studentsLoading && <p>Loading students…</p>}
+      {entryMode === 'general' && schoolId && filters.class_id && !studentsLoading && !subjectsLoading && !studentsError && !subjectsError && <GeneralSubjectEntry key={`${schoolId}:${filters.class_id}:${filters.session}:${filters.term}`} schoolId={schoolId} classId={filters.class_id} session={filters.session} term={filters.term} students={students ?? []} subjects={subjects ?? []} ratio={academicConfig.caRatio} scale={scaleType} canApprove={canApprove} />}
+
+      {entryMode === 'individual' && filters.class_id && filters.subject_id && !existingError && (
         <Card>
           <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
             <CardTitle>Scoresheet</CardTitle>
@@ -408,7 +431,7 @@ function ResultsPage() {
                         {ex?.review_remark && <p className="mt-1 text-xs text-muted-foreground">Remark: {ex.review_remark}</p>}
                       </TableCell>
                       <TableCell className="space-y-1 min-w-[160px]">
-                        <Button size="sm" disabled={ex?.status === "approved" && !canApprove} onClick={() => saveScore(st.id)}>{ex?.status === "draft" ? "Resubmit" : "Save"}</Button>
+                        <Button size="sm" disabled={saving || existingLoading || (ex?.status === "approved" && !canApprove)} onClick={() => saveScore(st.id)}>{saving ? 'Saving…' : ex?.status === "draft" ? "Resubmit" : "Save"}</Button>
                         {canApprove && ex && (
                           <div className="flex flex-col gap-1">
                             {ex.status !== "approved" && <Button size="sm" variant="outline" onClick={() => review([ex.id], "approved")}>Approve</Button>}

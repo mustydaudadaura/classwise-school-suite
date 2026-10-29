@@ -21,6 +21,7 @@ import { Settings as ThemeSettings } from '@/components/Settings';
 import { AcademicSettings } from '@/components/AcademicSettings';
 import { RegistryActions } from '@/components/RegistryActions';
 import { DigitalCredentialsManager } from '@/components/DigitalCredentialsManager';
+import { RegisteredDetailsEditor } from '@/components/RegisteredDetailsEditor';
 
 export const Route = createFileRoute('/_authenticated/settings')({
   head: () => ({ meta: [
@@ -186,7 +187,7 @@ function SchoolSettings({ schoolId }: { schoolId: string }) {
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{SCHOOL_PERMISSIONS.filter(p => !['settings.edit', 'users.edit', 'audit.view'].includes(p)).map(permission => <label key={permission} className="flex items-center gap-2 text-sm"><Checkbox checked={permissions.includes(permission)} onCheckedChange={checked => setPermissions(checked ? [...permissions, permission] : permissions.filter(p => p !== permission))} />{permission.replace('.', ' · ')}</label>)}</div>
         <Button disabled={busy || !permissions.length}>Create role</Button>
       </form>
-      <div className="divide-y divide-border">{customRoles.map(r => <div key={r.id} className="flex flex-wrap items-center justify-between gap-3 py-3"><span className="font-medium">{r.name}</span><RegistryActions table="school_custom_roles" id={r.id} name={r.name} active={r.active} /></div>)}</div>
+      <div className="divide-y divide-border">{customRoles.map(r => <div key={r.id} className="flex flex-wrap items-center justify-between gap-3 py-3"><span className="font-medium">{r.name}</span><RegisteredDetailsEditor kind="role" id={r.id} name={r.name} /><RegistryActions table="school_custom_roles" id={r.id} name={r.name} active={r.active} /></div>)}</div>
       <form className="space-y-4 border-t border-border pt-6" onSubmit={e => { e.preventDefault(); void run(() => supabase.from('school_role_assignments').insert({ school_id: schoolId, role_id: roleId, user_id: userId }), 'Staff role assigned'); }}>
         <h2 className="text-lg font-semibold">Assign custom role</h2>
         <div className="grid gap-3 sm:grid-cols-2">

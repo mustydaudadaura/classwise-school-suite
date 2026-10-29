@@ -12,6 +12,7 @@ import { Plus, Settings2, RefreshCw, Copy, Wand2, ExternalLink, Globe, Download 
 import { toast } from "sonner";
 import { RegistryActions } from "@/components/RegistryActions";
 import { schoolRegistrationSchema } from "@/lib/school-registration";
+import { selectSchool } from "@/lib/school-access";
 
 // Build a school code like "HGA-001" from the school name.
 // Uses up to 3 initials + 3-digit random suffix, checks uniqueness in DB.
@@ -247,6 +248,7 @@ function SchoolsPage() {
                     <TableCell>
                       <div className="flex flex-wrap items-center gap-1.5">
                         <RegistryActions table="schools" id={s.id} name={s.name} active={s.active} />
+                        <Button size="sm" variant="outline" asChild><Link to="/settings" search={{ tab: "details" }} onClick={() => selectSchool(s.id)}>Edit details</Link></Button>
                         <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setEditing(s)}>
                           <Settings2 className="mr-1 h-3.5 w-3.5" /> Branding
                         </Button>

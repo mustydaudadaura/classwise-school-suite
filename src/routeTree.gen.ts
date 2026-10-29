@@ -52,6 +52,7 @@ import { Route as ApiPublicVirtualAccountWebhookRouteImport } from './routes/api
 import { Route as ApiWebhooksPaymentsRouteImport } from './routes/api/webhooks/payments'
 import { Route as PortalReceiptIdRouteImport } from './routes/portal/receipt.$id'
 import { Route as PortalReportCardIdRouteImport } from './routes/portal/report-card.$id'
+import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -274,6 +275,12 @@ const PortalReportCardIdRoute = PortalReportCardIdRouteImport.update({
   path: '/report-card/$id',
   getParentRoute: () => PortalRoute,
 } as any)
+const LovableEmailTransactionalPreviewRoute =
+  LovableEmailTransactionalPreviewRouteImport.update({
+    id: '/lovable/email/transactional/preview',
+    path: '/lovable/email/transactional/preview',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -318,6 +325,7 @@ export interface FileRoutesByFullPath {
   '/api/webhooks/payments': typeof ApiWebhooksPaymentsRoute
   '/portal/receipt/$id': typeof PortalReceiptIdRoute
   '/portal/report-card/$id': typeof PortalReportCardIdRoute
+  '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -361,6 +369,7 @@ export interface FileRoutesByTo {
   '/api/webhooks/payments': typeof ApiWebhooksPaymentsRoute
   '/portal/receipt/$id': typeof PortalReceiptIdRoute
   '/portal/report-card/$id': typeof PortalReportCardIdRoute
+  '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -407,6 +416,7 @@ export interface FileRoutesById {
   '/api/webhooks/payments': typeof ApiWebhooksPaymentsRoute
   '/portal/receipt/$id': typeof PortalReceiptIdRoute
   '/portal/report-card/$id': typeof PortalReportCardIdRoute
+  '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -453,6 +463,7 @@ export interface FileRouteTypes {
     | '/api/webhooks/payments'
     | '/portal/receipt/$id'
     | '/portal/report-card/$id'
+    | '/lovable/email/transactional/preview'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -496,6 +507,7 @@ export interface FileRouteTypes {
     | '/api/webhooks/payments'
     | '/portal/receipt/$id'
     | '/portal/report-card/$id'
+    | '/lovable/email/transactional/preview'
   id:
     | '__root__'
     | '/'
@@ -541,6 +553,7 @@ export interface FileRouteTypes {
     | '/api/webhooks/payments'
     | '/portal/receipt/$id'
     | '/portal/report-card/$id'
+    | '/lovable/email/transactional/preview'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -557,6 +570,7 @@ export interface RootRouteChildren {
   ApiPublicParentLoginRoute: typeof ApiPublicParentLoginRoute
   ApiPublicVirtualAccountWebhookRoute: typeof ApiPublicVirtualAccountWebhookRoute
   ApiWebhooksPaymentsRoute: typeof ApiWebhooksPaymentsRoute
+  LovableEmailTransactionalPreviewRoute: typeof LovableEmailTransactionalPreviewRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -862,6 +876,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PortalReportCardIdRouteImport
       parentRoute: typeof PortalRoute
     }
+    '/lovable/email/transactional/preview': {
+      id: '/lovable/email/transactional/preview'
+      path: '/lovable/email/transactional/preview'
+      fullPath: '/lovable/email/transactional/preview'
+      preLoaderRoute: typeof LovableEmailTransactionalPreviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -969,6 +990,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicParentLoginRoute: ApiPublicParentLoginRoute,
   ApiPublicVirtualAccountWebhookRoute: ApiPublicVirtualAccountWebhookRoute,
   ApiWebhooksPaymentsRoute: ApiWebhooksPaymentsRoute,
+  LovableEmailTransactionalPreviewRoute: LovableEmailTransactionalPreviewRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

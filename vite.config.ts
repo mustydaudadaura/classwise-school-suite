@@ -5,8 +5,9 @@
 //     error logger plugins, and sandbox detection (port/host/strictPort).
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
+import { loadEnv, type ConfigEnv } from "vite";
 
-export default defineConfig({
+const appConfig = defineConfig({
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
     // nitro/vite builds from this
@@ -14,7 +15,11 @@ export default defineConfig({
   },
   vite: {
     resolve: {
-      alias: [{
+      alias: [
+        { find: "entities/lib/decode.js", replacement: new URL('./node_modules/entities/lib/decode.js', import.meta.url).pathname },
+        { find: "entities/lib/encode.js", replacement: new URL('./node_modules/entities/lib/encode.js', import.meta.url).pathname },
+        { find: "entities", replacement: new URL('./node_modules/entities', import.meta.url).pathname },
+        {
         find: /^@\/integrations\/supabase\/auth-middleware$/,
         replacement: new URL('./src/lib/verified-auth.ts', import.meta.url).pathname,
       }],
@@ -34,3 +39,9 @@ export default defineConfig({
     },
   },
 });
+
+export default async (env: ConfigEnv) => {
+  // Server secrets stay in process.env, never in browser define values.
+  Object.assign(process.env, loadEnv(env.mode, process.cwd(), ""));
+  return appConfig(env);
+};

@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { FileDown, Send, Scale } from "lucide-react";
 import { publishReportCards } from "@/lib/api/results.functions";
+import { scoreEntryClasses } from "@/lib/form-master";
 import {
   calculateGrade,
   validateScores,
@@ -29,7 +30,7 @@ export const Route = createFileRoute("/_authenticated/results")({
 });
 
 function ResultsPage() {
-  const { roles, schoolId } = useAuth();
+  const { roles, schoolId, user } = useAuth();
   const qc = useQueryClient();
   const access = useSchoolAccess();
   const isStaff = access.can("results.edit");
@@ -62,11 +63,26 @@ function ResultsPage() {
   const academicConfig = resolveSchoolAcademicConfig(activeSchool?.report_template);
   const caRatioConfig = CA_RATIOS[academicConfig.caRatio] || CA_RATIOS["20_20_60"];
 
-  const { data: classes } = useQuery({
-    queryKey: ["res-classes", schoolId],
+  const { data: classes, error: classAccessError } = useQuery({
+    queryKey: ["res-classes", schoolId, user?.id, roles],
     enabled: Boolean(schoolId),
-    queryFn: async () => schoolId ? (await supabase.from("classes").select("id, name, level, section, arm").eq("school_id", schoolId).eq("active", true).eq("pending_activation", false).order("name")).data ?? [] : [],
+    queryFn: async () => {
+      if (!schoolId || !user) return [];
+      const { data, error } = await supabase.from("classes").select("id, name, level, section, arm, teacher_id").eq("school_id", schoolId).eq("active", true).eq("pending_activation", false).order("name");
+      if (error) throw error;
+      const { data: administrator, error: adminError } = await supabase.rpc('can_manage_school', { _user_id: user.id, _school_id: schoolId });
+      if (adminError) throw adminError;
+      const { data: allocations, error: allocationError } = await supabase.from('teacher_allocations').select('class_id, teacher_id').eq('school_id', schoolId).eq('teacher_id', user.id);
+      if (allocationError) throw allocationError;
+      return scoreEntryClasses(data ?? [], user.id, Boolean(administrator), allocations ?? []);
+    },
   });
+
+  useEffect(() => {
+    if (!classes) return;
+    setFilters(previous => classes.some(c => c.id === previous.class_id) ? previous : { ...previous, class_id: classes[0]?.id ?? '', subject_id: '' });
+    setScores({});
+  }, [classes]);
 
   const selectedClass = classes?.find((c: any) => c.id === filters.class_id);
   const scaleType = selectedClass
@@ -119,6 +135,7 @@ function ResultsPage() {
 
   const saveScore = async (studentId: string) => {
     if (!schoolId) return toast.error("No school");
+    if (!classes?.some(c => c.id === filters.class_id)) return toast.error("Choose your assigned class");
     const ex = existing?.[studentId];
     const s = scores[studentId] ?? { ca1: ex?.ca1 ?? 0, ca2: ex?.ca2 ?? 0, exam: ex?.exam ?? 0 };
 
@@ -255,13 +272,16 @@ function ResultsPage() {
 
       <Card>
         <CardHeader><CardTitle>Select</CardTitle></CardHeader>
+        {classAccessError && <p role="alert" className="px-6 text-destructive">Class assignments could not be loaded: {classAccessError.message}</p>}
+        {!classAccessError && classes?.length === 0 && <p className="px-6 text-muted-foreground">No class assigned yet.</p>}
         <CardContent className="grid grid-cols-1 gap-3 sm:grid-cols-4">
           <div>
             <Label>Class</Label>
             <Select
               value={filters.class_id}
               onValueChange={(v) => {
-                setFilters({ ...filters, class_id: v });
+                setFilters({ ...filters, class_id: v, subject_id: '' });
+                setScores({});
               }}
             >
               <SelectTrigger><SelectValue placeholder="Choose Class" /></SelectTrigger>

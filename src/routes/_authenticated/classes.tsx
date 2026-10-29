@@ -20,6 +20,7 @@ import { hasRole } from "@/hooks/useAuth";
 import { useRegistrationSubmission } from "@/hooks/useRegistrationSubmission";
 import { PendingClassActivations } from "@/components/PendingClassActivations";
 import { RegistrationReview } from "@/components/RegistrationReview";
+import { FormMasterAssignment } from "@/components/FormMasterAssignment";
 
 export const Route = createFileRoute("/_authenticated/classes")({
   head: () => ({ meta: [{ title: "Classes & Subjects — Alegacy" }, { name: "description", content: "Classes & Subjects for authorized school accounts and families in Alegacy." }, { property: "og:title", content: "Classes & Subjects — Alegacy" }, { property: "og:description", content: "Classes & Subjects for authorized school accounts and families in Alegacy." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
@@ -153,11 +154,11 @@ function ClassesPage() {
           <Card>
             <CardContent className="pt-6">
               <Table>
-                <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Level</TableHead><TableHead>Arm</TableHead><TableHead>Section</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
+                <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Level</TableHead><TableHead>Arm</TableHead><TableHead>Section</TableHead><TableHead>Form master</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
                 <TableBody>
-                  {classesError ? <TableRow><TableCell colSpan={5} role="alert" className="text-destructive">Classes could not be loaded: {classesError.message}</TableCell></TableRow> : classesLoading ? <TableRow><TableCell colSpan={5}>Loading classes…</TableCell></TableRow> : classes?.length ? classes.map((c: any) => (
-                    <TableRow key={c.id}><TableCell className="font-medium">{c.name}</TableCell><TableCell>{c.level ?? "—"}</TableCell><TableCell>{c.arm ?? "—"}</TableCell><TableCell className="capitalize">{c.section ?? "—"}</TableCell><TableCell>{c.rejected_at ? <div className="flex items-center gap-2"><span className="text-sm text-destructive">Rejected: {c.rejection_reason}</span>{isAdministrator && <RegistrationReview kind="classes" id={c.id} name={c.name} editOnly />}</div> : c.pending_activation ? <span className="text-sm text-muted-foreground">Awaiting approval</span> : isAdministrator ? <RegistryActions table="classes" id={c.id} name={c.name} active={c.active} /> : <span className="text-sm text-muted-foreground">{c.active ? "Active" : "Inactive"}</span>}</TableCell></TableRow>
-                  )) : <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground">No classes yet</TableCell></TableRow>}
+                  {classesError ? <TableRow><TableCell colSpan={6} role="alert" className="text-destructive">Classes could not be loaded: {classesError.message}</TableCell></TableRow> : classesLoading ? <TableRow><TableCell colSpan={6}>Loading classes…</TableCell></TableRow> : classes?.length ? classes.map((c: any) => (
+                    <TableRow key={c.id}><TableCell className="font-medium">{c.name}</TableCell><TableCell>{c.level ?? "—"}</TableCell><TableCell>{c.arm ?? "—"}</TableCell><TableCell className="capitalize">{c.section ?? "—"}</TableCell><TableCell>{isAdministrator && schoolId && c.active && !c.pending_activation ? <FormMasterAssignment schoolId={schoolId} classId={c.id} className={c.name} teacherId={c.teacher_id} /> : c.teacher_id === user?.id ? "My class" : "—"}</TableCell><TableCell>{c.rejected_at ? <div className="flex items-center gap-2"><span className="text-sm text-destructive">Rejected: {c.rejection_reason}</span>{isAdministrator && <RegistrationReview kind="classes" id={c.id} name={c.name} editOnly />}</div> : c.pending_activation ? <span className="text-sm text-muted-foreground">Awaiting approval</span> : isAdministrator ? <RegistryActions table="classes" id={c.id} name={c.name} active={c.active} /> : <span className="text-sm text-muted-foreground">{c.active ? "Active" : "Inactive"}</span>}</TableCell></TableRow>
+                  )) : <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">No classes yet</TableCell></TableRow>}
                 </TableBody>
               </Table>
             </CardContent>

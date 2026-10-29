@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AttendanceKioskRouteImport } from './routes/attendance-kiosk'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as PortalRouteImport } from './routes/portal'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
@@ -64,6 +65,11 @@ const AuthenticatedRoute = AuthenticatedRouteImport.update({
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AttendanceKioskRoute = AttendanceKioskRouteImport.update({
+  id: '/attendance-kiosk',
+  path: '/attendance-kiosk',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -272,6 +278,7 @@ const PortalReportCardIdRoute = PortalReportCardIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/attendance-kiosk': typeof AttendanceKioskRoute
   '/auth': typeof AuthRoute
   '/portal': typeof PortalRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
@@ -315,6 +322,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/attendance-kiosk': typeof AttendanceKioskRoute
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/verify-credential': typeof VerifyCredentialRoute
@@ -359,6 +367,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/admin': typeof AdminRoute
+  '/attendance-kiosk': typeof AttendanceKioskRoute
   '/auth': typeof AuthRoute
   '/portal': typeof PortalRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
@@ -404,6 +413,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
+    | '/attendance-kiosk'
     | '/auth'
     | '/portal'
     | '/reset-password'
@@ -447,6 +457,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/admin'
+    | '/attendance-kiosk'
     | '/auth'
     | '/reset-password'
     | '/verify-credential'
@@ -490,6 +501,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/admin'
+    | '/attendance-kiosk'
     | '/auth'
     | '/portal'
     | '/reset-password'
@@ -535,6 +547,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   AdminRoute: typeof AdminRoute
+  AttendanceKioskRoute: typeof AttendanceKioskRoute
   AuthRoute: typeof AuthRoute
   PortalRoute: typeof PortalRouteWithChildren
   ResetPasswordRoute: typeof ResetPasswordRoute
@@ -567,6 +580,13 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/attendance-kiosk': {
+      id: '/attendance-kiosk'
+      path: '/attendance-kiosk'
+      fullPath: '/attendance-kiosk'
+      preLoaderRoute: typeof AttendanceKioskRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -939,6 +959,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   AdminRoute: AdminRoute,
+  AttendanceKioskRoute: AttendanceKioskRoute,
   AuthRoute: AuthRoute,
   PortalRoute: PortalRouteWithChildren,
   ResetPasswordRoute: ResetPasswordRoute,

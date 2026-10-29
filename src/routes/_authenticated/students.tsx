@@ -68,7 +68,7 @@ function StudentsPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("students")
-        .select("id, admission_no, first_name, last_name, middle_name, gender, dob, active, pending_activation, class_id, classes(name)")
+        .select("id, admission_no, first_name, last_name, middle_name, gender, dob, active, pending_activation, rejection_reason, rejected_at, class_id, classes(name)")
         .eq("school_id", schoolId ?? "")
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -400,6 +400,7 @@ function StudentsPage() {
                             >
                               {fullName}
                             </Link>
+                            {s.rejected_at && <span className="text-xs text-destructive">Rejected: {s.rejection_reason}</span>}
                             {s.pending_activation && <span className="rounded-full bg-accent px-2 py-0.5 text-xs text-accent-foreground">Awaiting activation</span>}
                           </div>
                         </TableCell>

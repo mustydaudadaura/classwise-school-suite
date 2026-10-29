@@ -71,6 +71,13 @@
       "when": 1793295652556,
       "tag": "0009_attendance_sites",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1793300126380,
+      "tag": "0010_registration_review_actions",
+      "breakpoints": true
     }
   ]
 }

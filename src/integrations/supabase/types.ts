@@ -585,6 +585,9 @@ export type Database = {
           level: string | null
           name: string
           pending_activation: boolean
+          rejected_at: string | null
+          rejection_reason: string | null
+          reviewed_by: string | null
           school_id: string
           section: Database["public"]["Enums"]["class_section"] | null
           submitted_by: string | null
@@ -599,6 +602,9 @@ export type Database = {
           level?: string | null
           name: string
           pending_activation?: boolean
+          rejected_at?: string | null
+          rejection_reason?: string | null
+          reviewed_by?: string | null
           school_id: string
           section?: Database["public"]["Enums"]["class_section"] | null
           submitted_by?: string | null
@@ -613,6 +619,9 @@ export type Database = {
           level?: string | null
           name?: string
           pending_activation?: boolean
+          rejected_at?: string | null
+          rejection_reason?: string | null
+          reviewed_by?: string | null
           school_id?: string
           section?: Database["public"]["Enums"]["class_section"] | null
           submitted_by?: string | null
@@ -2756,7 +2765,10 @@ export type Database = {
           pending_activation: boolean
           photo_url: string | null
           previous_school: string | null
+          rejected_at: string | null
+          rejection_reason: string | null
           religion: string | null
+          reviewed_by: string | null
           school_id: string
           state_of_origin: string | null
           status: string
@@ -2790,7 +2802,10 @@ export type Database = {
           pending_activation?: boolean
           photo_url?: string | null
           previous_school?: string | null
+          rejected_at?: string | null
+          rejection_reason?: string | null
           religion?: string | null
+          reviewed_by?: string | null
           school_id: string
           state_of_origin?: string | null
           status?: string
@@ -2824,7 +2839,10 @@ export type Database = {
           pending_activation?: boolean
           photo_url?: string | null
           previous_school?: string | null
+          rejected_at?: string | null
+          rejection_reason?: string | null
           religion?: string | null
+          reviewed_by?: string | null
           school_id?: string
           state_of_origin?: string | null
           status?: string
@@ -2864,6 +2882,9 @@ export type Database = {
           id: string
           name: string
           pending_activation: boolean
+          rejected_at: string | null
+          rejection_reason: string | null
+          reviewed_by: string | null
           school_id: string
           submitted_by: string | null
         }
@@ -2875,6 +2896,9 @@ export type Database = {
           id?: string
           name: string
           pending_activation?: boolean
+          rejected_at?: string | null
+          rejection_reason?: string | null
+          reviewed_by?: string | null
           school_id: string
           submitted_by?: string | null
         }
@@ -2886,6 +2910,9 @@ export type Database = {
           id?: string
           name?: string
           pending_activation?: boolean
+          rejected_at?: string | null
+          rejection_reason?: string | null
+          reviewed_by?: string | null
           school_id?: string
           submitted_by?: string | null
         }
@@ -3223,6 +3250,16 @@ export type Database = {
           subject_id: string
           subject_position: number
         }[]
+      }
+      review_pending_registration: {
+        Args: {
+          _action: string
+          _changes?: Json
+          _id: string
+          _reason?: string
+          _table: string
+        }
+        Returns: Json
       }
       school_module_enabled: {
         Args: { _module: string; _school_id: string }

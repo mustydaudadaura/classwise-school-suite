@@ -24,3 +24,4 @@
 
 - Form masters admit students into their own class through a checked database function; those students stay inactive until a school admin activates them, so admin approval cannot be bypassed.
 - Registration controls use school-scoped permission checks; staff class/subject submissions use RLS-protected inactive rows, teacher student submissions use a checked RPC, and only school administrators approve/activate them. Preserve the assigned-class form-master path and verify saved approval state.
+- Registration editing/rejection uses a field-allowlisted invoker RPC with school-administrator checks and preserved activation state; rejection reasons remain on inactive records. Staff profile and custom-role editors use school-scoped RLS updates without changing login identities or school affiliation, so editing cannot grant cross-school access.

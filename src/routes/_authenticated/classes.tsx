@@ -12,9 +12,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { RegistryActions } from "@/components/RegistryActions";
-import { hasRole } from "@/hooks/useAuth";
+import { useSchoolAccess } from "@/hooks/useSchoolAccess";
+import { classSubmissionState } from "@/lib/registry-permissions";
 import { requireSavedRecord } from "@/lib/registry-save";
 import { ClassImport } from "@/components/ClassImport";
+import { hasRole } from "@/hooks/useAuth";
+import { useRegistrationSubmission } from "@/hooks/useRegistrationSubmission";
+import { PendingClassActivations } from "@/components/PendingClassActivations";
 
 export const Route = createFileRoute("/_authenticated/classes")({
   head: () => ({ meta: [{ title: "Classes & Subjects — Alegacy" }, { name: "description", content: "Classes & Subjects for authorized school accounts and families in Alegacy." }, { property: "og:title", content: "Classes & Subjects — Alegacy" }, { property: "og:description", content: "Classes & Subjects for authorized school accounts and families in Alegacy." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
@@ -22,8 +26,14 @@ export const Route = createFileRoute("/_authenticated/classes")({
 });
 
 function ClassesPage() {
-  const { schoolId, roles } = useAuth();
-  const canManage = hasRole(roles, "super_admin", "school_admin");
+  const { schoolId, user, roles } = useAuth();
+  const access = useSchoolAccess();
+  const canManage = access.schoolId === schoolId && access.can("academics.edit");
+  const submission = useRegistrationSubmission(user?.id, schoolId);
+  const subjectSubmission = useRegistrationSubmission(user?.id, schoolId, 'subject');
+  const isAdministrator = canManage && hasRole(roles, "super_admin", "school_admin");
+  const canAddClass = isAdministrator || submission.allowed;
+  const canAddSubject = isAdministrator || subjectSubmission.allowed;
   const qc = useQueryClient();
   const [cls, setCls] = useState<{ name: string; level: string; arm: string; section: "nursery" | "primary" | "secondary" | "" }>({ name: "", level: "", arm: "", section: "" });
   const [saving, setSaving] = useState(false);
@@ -56,15 +66,18 @@ function ClassesPage() {
     if (!cls.name.trim()) return toast.error("Enter a class name");
     setSaving(true);
     try {
+      if (!user) throw new Error("Sign in before registering a class");
+      const state = classSubmissionState(isAdministrator, submission.allowed, user.id);
       const { data, error } = await supabase.from("classes").insert({
         name: cls.name.trim(), level: cls.level.trim() || null, arm: cls.arm.trim() || null,
-        section: cls.section || null, school_id: schoolId,
-      }).select("id, school_id").single();
+        section: cls.section || null, school_id: schoolId, ...state,
+      }).select("id, school_id, active, pending_activation").single();
       if (error) throw error;
       requireSavedRecord(data, schoolId);
+      if (data.active !== state.active || data.pending_activation !== state.pending_activation) throw new Error("Class approval status could not be confirmed");
       await qc.invalidateQueries({ queryKey: ["classes"] });
       await qc.invalidateQueries({ queryKey: ["classes-for-students"] });
-      toast.success("Class created");
+      toast.success(isAdministrator ? "Class created" : "Class submitted — awaiting administrator approval");
       setCls({ name: "", level: "", arm: "", section: "" });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : (error as { message?: string }).message ?? "Class could not be saved");
@@ -79,14 +92,17 @@ function ClassesPage() {
     if (sub.class_id && !classes?.some(c => c.id === sub.class_id)) return toast.error("Choose a class in this school");
     setSaving(true);
     try {
+      if (!user) throw new Error("Sign in before registering a subject");
+      const state = classSubmissionState(isAdministrator, subjectSubmission.allowed, user.id);
       const { data, error } = await supabase.from("subjects").insert({
         school_id: schoolId, name: sub.name.trim(), code: sub.code.trim() || null,
-        class_id: sub.class_id || null,
-      }).select("id, school_id").single();
+        class_id: sub.class_id || null, ...state,
+      }).select("id, school_id, active, pending_activation").single();
       if (error) throw error;
       requireSavedRecord(data, schoolId);
+      if (data.active !== state.active || data.pending_activation !== state.pending_activation) throw new Error("Subject approval status could not be confirmed");
       await qc.invalidateQueries({ queryKey: ["subjects"] });
-      toast.success("Subject added");
+      toast.success(isAdministrator ? "Subject added" : "Subject submitted — awaiting administrator approval");
       setSub({ name: "", code: "", class_id: "" });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : (error as { message?: string }).message ?? "Subject could not be saved");
@@ -101,6 +117,7 @@ function ClassesPage() {
       </div>
 
       {!schoolId && <p role="alert" className="text-destructive">Select a school from the school switcher before adding records.</p>}
+      {submission.error && <p role="alert" className="text-destructive">Registration access could not be checked: {submission.error.message}</p>}
       <Tabs defaultValue="classes">
         <TabsList>
           <TabsTrigger value="classes">Classes</TabsTrigger>
@@ -108,8 +125,9 @@ function ClassesPage() {
         </TabsList>
 
         <TabsContent value="classes" className="space-y-4">
-          {canManage && schoolId && !classesLoading && !classesError && <ClassImport kind="classes" schoolId={schoolId} classes={classes ?? []} subjects={subjects ?? []} />}
-          <Card>
+          {isAdministrator && schoolId && !classesLoading && !classesError && <ClassImport kind="classes" schoolId={schoolId} classes={classes ?? []} subjects={subjects ?? []} />}
+          {isAdministrator && <PendingClassActivations classes={(classes ?? []).filter(c => c.pending_activation)} />}
+          {canAddClass && <Card>
             <CardHeader><CardTitle>Add class</CardTitle></CardHeader>
             <CardContent>
               <form onSubmit={addClass} className="grid grid-cols-1 gap-3 sm:grid-cols-5">
@@ -118,7 +136,7 @@ function ClassesPage() {
                 <div><Label>Arm</Label><Input placeholder="A" value={cls.arm} onChange={(e) => setCls({ ...cls, arm: e.target.value })} /></div>
                 <div>
                   <Label>Section</Label>
-                  <Select value={cls.section || undefined} onValueChange={(v) => setCls({ ...cls, section: v as any })}>
+                  <Select value={cls.section} onValueChange={(v) => setCls({ ...cls, section: v as "nursery" | "primary" | "secondary" })}>
                     <SelectTrigger><SelectValue placeholder="Select section" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="nursery">Nursery</SelectItem>
@@ -127,17 +145,17 @@ function ClassesPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="flex items-end"><Button type="submit" disabled={saving || !schoolId} className="w-full">{saving ? "Saving…" : "Add"}</Button></div>
+                <div className="flex items-end"><Button type="submit" disabled={saving || !schoolId} className="w-full">{saving ? "Saving…" : isAdministrator ? "Add" : "Submit class"}</Button></div>
               </form>
             </CardContent>
-          </Card>
+          </Card>}
           <Card>
             <CardContent className="pt-6">
               <Table>
                 <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Level</TableHead><TableHead>Arm</TableHead><TableHead>Section</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
                 <TableBody>
                   {classesError ? <TableRow><TableCell colSpan={5} role="alert" className="text-destructive">Classes could not be loaded: {classesError.message}</TableCell></TableRow> : classesLoading ? <TableRow><TableCell colSpan={5}>Loading classes…</TableCell></TableRow> : classes?.length ? classes.map((c: any) => (
-                    <TableRow key={c.id}><TableCell className="font-medium">{c.name}</TableCell><TableCell>{c.level ?? "—"}</TableCell><TableCell>{c.arm ?? "—"}</TableCell><TableCell className="capitalize">{c.section ?? "—"}</TableCell><TableCell>{canManage && <RegistryActions table="classes" id={c.id} name={c.name} active={c.active} />}</TableCell></TableRow>
+                    <TableRow key={c.id}><TableCell className="font-medium">{c.name}</TableCell><TableCell>{c.level ?? "—"}</TableCell><TableCell>{c.arm ?? "—"}</TableCell><TableCell className="capitalize">{c.section ?? "—"}</TableCell><TableCell>{c.pending_activation ? <span className="text-sm text-muted-foreground">Awaiting approval</span> : isAdministrator ? <RegistryActions table="classes" id={c.id} name={c.name} active={c.active} /> : <span className="text-sm text-muted-foreground">{c.active ? "Active" : "Inactive"}</span>}</TableCell></TableRow>
                   )) : <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground">No classes yet</TableCell></TableRow>}
                 </TableBody>
               </Table>
@@ -146,8 +164,9 @@ function ClassesPage() {
         </TabsContent>
 
         <TabsContent value="subjects" className="space-y-4">
-          {canManage && schoolId && !classesLoading && !subjectsLoading && !classesError && !subjectsError && <ClassImport kind="subjects" schoolId={schoolId} classes={classes ?? []} subjects={subjects ?? []} />}
-          <Card>
+          {isAdministrator && schoolId && !classesLoading && !subjectsLoading && !classesError && !subjectsError && <ClassImport kind="subjects" schoolId={schoolId} classes={classes ?? []} subjects={subjects ?? []} />}
+          {isAdministrator && <PendingClassActivations kind="subjects" classes={(subjects ?? []).filter(s => s.pending_activation)} />}
+          {canAddSubject && <Card>
             <CardHeader><CardTitle>Add subject</CardTitle></CardHeader>
             <CardContent>
               <form onSubmit={addSubject} className="grid grid-cols-1 gap-3 sm:grid-cols-4">
@@ -163,17 +182,17 @@ function ClassesPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="flex items-end"><Button type="submit" disabled={saving || !schoolId} className="w-full">{saving ? "Saving…" : "Add"}</Button></div>
+                <div className="flex items-end"><Button type="submit" disabled={saving || !schoolId} className="w-full">{saving ? "Saving…" : isAdministrator ? "Add" : "Submit subject"}</Button></div>
               </form>
             </CardContent>
-          </Card>
+          </Card>}
           <Card>
             <CardContent className="pt-6">
               <Table>
                 <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Code</TableHead><TableHead>Class</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
                 <TableBody>
                   {subjectsError ? <TableRow><TableCell colSpan={4} role="alert" className="text-destructive">Subjects could not be loaded: {subjectsError.message}</TableCell></TableRow> : subjectsLoading ? <TableRow><TableCell colSpan={4}>Loading subjects…</TableCell></TableRow> : subjects?.length ? subjects.map((s: any) => (
-                    <TableRow key={s.id}><TableCell className="font-medium">{s.name}</TableCell><TableCell>{s.code ?? "—"}</TableCell><TableCell>{s.classes?.name ?? "All"}</TableCell><TableCell>{canManage && <RegistryActions table="subjects" id={s.id} name={s.name} active={s.active} />}</TableCell></TableRow>
+                    <TableRow key={s.id}><TableCell className="font-medium">{s.name}</TableCell><TableCell>{s.code ?? "—"}</TableCell><TableCell>{s.classes?.name ?? "All"}</TableCell><TableCell>{s.pending_activation ? <span className="text-sm text-muted-foreground">Awaiting approval</span> : isAdministrator ? <RegistryActions table="subjects" id={s.id} name={s.name} active={s.active} /> : <span className="text-sm text-muted-foreground">{s.active ? "Active" : "Inactive"}</span>}</TableCell></TableRow>
                   )) : <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground">No subjects yet</TableCell></TableRow>}
                 </TableBody>
               </Table>

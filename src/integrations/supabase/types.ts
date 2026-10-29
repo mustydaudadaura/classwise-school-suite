@@ -543,8 +543,10 @@ export type Database = {
           id: string
           level: string | null
           name: string
+          pending_activation: boolean
           school_id: string
           section: Database["public"]["Enums"]["class_section"] | null
+          submitted_by: string | null
           teacher_id: string | null
         }
         Insert: {
@@ -555,8 +557,10 @@ export type Database = {
           id?: string
           level?: string | null
           name: string
+          pending_activation?: boolean
           school_id: string
           section?: Database["public"]["Enums"]["class_section"] | null
+          submitted_by?: string | null
           teacher_id?: string | null
         }
         Update: {
@@ -567,8 +571,10 @@ export type Database = {
           id?: string
           level?: string | null
           name?: string
+          pending_activation?: boolean
           school_id?: string
           section?: Database["public"]["Enums"]["class_section"] | null
+          submitted_by?: string | null
           teacher_id?: string | null
         }
         Relationships: [
@@ -2816,7 +2822,9 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          pending_activation: boolean
           school_id: string
+          submitted_by: string | null
         }
         Insert: {
           active?: boolean
@@ -2825,7 +2833,9 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
+          pending_activation?: boolean
           school_id: string
+          submitted_by?: string | null
         }
         Update: {
           active?: boolean
@@ -2834,7 +2844,9 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          pending_activation?: boolean
           school_id?: string
+          submitted_by?: string | null
         }
         Relationships: [
           {
@@ -3081,8 +3093,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      activate_pending_classes: { Args: { _ids: string[] }; Returns: number }
       activate_pending_students: { Args: { _ids: string[] }; Returns: number }
+      activate_pending_subjects: { Args: { _ids: string[] }; Returns: number }
       can_manage_school: {
+        Args: { _school_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_submit_school_registration: {
+        Args: { _school_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_submit_school_subject: {
         Args: { _school_id: string; _user_id: string }
         Returns: boolean
       }
@@ -3170,6 +3192,21 @@ export type Database = {
         Returns: boolean
       }
       student_school_id: { Args: { _student_id: string }; Returns: string }
+      submit_student_admission: {
+        Args: {
+          _admission_no: string
+          _class_id: string
+          _dob: string
+          _first_name: string
+          _gender: Database["public"]["Enums"]["gender_type"]
+          _last_name: string
+          _middle_name: string
+          _parent_email: string
+          _parent_name: string
+          _parent_phone: string
+        }
+        Returns: string
+      }
       teaches_class: {
         Args: { _class_id: string; _user_id: string }
         Returns: boolean

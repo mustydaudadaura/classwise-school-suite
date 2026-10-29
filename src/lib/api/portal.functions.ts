@@ -4,13 +4,25 @@ import { z } from "zod";
 const TokenOnly = z.object({ token: z.string().min(10) });
 const WithChild = z.object({ token: z.string().min(10), student_id: z.string().uuid().optional() });
 
-async function verify(token: string) {
+async function verify(token: string, studentId?: string) {
   const { verifyParentToken } = await import("@/lib/parent-auth.server");
-  return verifyParentToken(token);
+  const claims = verifyParentToken(token);
+  if (studentId) await requireActiveChild(claims, studentId);
+  return claims;
 }
 async function admin() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   return supabaseAdmin;
+}
+
+async function requireActiveChild(claims: { parent_id: string; school_id: string }, studentId: string) {
+  const db = await admin();
+  const [link, student] = await Promise.all([
+    db.from("student_parents").select("id").eq("parent_id", claims.parent_id).eq("student_id", studentId).maybeSingle(),
+    db.from("students").select("id").eq("id", studentId).eq("school_id", claims.school_id).eq("active", true).eq("pending_activation", false).maybeSingle(),
+  ]);
+  if (link.error || student.error) throw new Error("Student access could not be verified");
+  if (!link.data || !student.data) throw new Error("Student access is unavailable until the school administrator activates the admission");
 }
 
 const DEMO_SCHOOL = {
@@ -38,32 +50,22 @@ export const getPortalContext = createServerFn({ method: "POST" })
   .inputValidator((d) => TokenOnly.parse(d))
   .handler(async ({ data }) => {
     const claims = await verify(data.token);
-    try {
       const db = await admin();
-      const [{ data: parent }, { data: school }, { data: links }] = await Promise.all([
+      const [parentResult, schoolResult, linksResult] = await Promise.all([
         db.from("parents").select("id, full_name, phone, email").eq("id", claims.parent_id).maybeSingle(),
         db.from("schools").select("id, name, logo_url, code, phone, address, motto, current_session, current_term, branch_name").eq("id", claims.school_id).maybeSingle(),
-        db.from("student_parents").select("is_primary, students(id, admission_no, first_name, last_name, photo_url, classes(name))").eq("parent_id", claims.parent_id),
+        db.from("student_parents").select("is_primary, students!inner(id, admission_no, first_name, last_name, photo_url, classes(name))").eq("parent_id", claims.parent_id).eq("students.school_id", claims.school_id).eq("students.active", true).eq("students.pending_activation", false),
       ]);
-      const students = (links ?? []).map((l: any) => l.students).filter(Boolean);
-      if (students.length > 0) {
-        return { parent: parent ?? { id: claims.parent_id, full_name: "Mrs. Hauwa Bello" }, school: school ?? DEMO_SCHOOL, students };
-      }
-    } catch {
-      // DB offline fallback
-    }
-
-    return {
-      parent: { id: claims.parent_id, full_name: "Mrs. Hauwa Bello", phone: "08031000001", email: "hauwa.bello@example.com" },
-      school: DEMO_SCHOOL,
-      students: [DEMO_STUDENT],
-    };
+      if (parentResult.error || schoolResult.error || linksResult.error) throw new Error("Family details could not be loaded");
+      if (!parentResult.data || !schoolResult.data) throw new Error("Family account not found");
+      const students = (linksResult.data ?? []).map((l: any) => l.students).filter(Boolean);
+      return { parent: parentResult.data, school: schoolResult.data, students };
   });
 
 export const getPortalSummary = createServerFn({ method: "POST" })
   .inputValidator((d) => WithChild.parse(d))
   .handler(async ({ data }) => {
-    const claims = await verify(data.token);
+    const claims = await verify(data.token, data.student_id);
     const sid = data.student_id;
     if (!sid) return { attendance: { present: 0, total: 0 }, balance: 0, unreadCount: 0, latestReport: null };
 
@@ -103,10 +105,11 @@ export const getPortalSummary = createServerFn({ method: "POST" })
 export const getPortalAttendance = createServerFn({ method: "POST" })
   .inputValidator((d) => WithChild.extend({ from: z.string(), to: z.string() }).parse(d))
   .handler(async ({ data }) => {
-    const claims = await verify(data.token);
+    if (!data.student_id) throw new Error("Choose an activated student");
+    const claims = await verify(data.token, data.student_id);
     try {
       const db = await admin();
-      const { data: rows } = await db.from("attendance").select("date, status, note").eq("student_id", data.student_id!).gte("date", data.from).lte("date", data.to).order("date", { ascending: false });
+      const { data: rows } = await db.from("attendance").select("date, status, note").eq("student_id", data.student_id).gte("date", data.from).lte("date", data.to).order("date", { ascending: false });
       if (rows && rows.length > 0) return { rows };
     } catch {
       // fallback
@@ -126,10 +129,11 @@ export const getPortalAttendance = createServerFn({ method: "POST" })
 export const getPortalReportCards = createServerFn({ method: "POST" })
   .inputValidator((d) => WithChild.parse(d))
   .handler(async ({ data }) => {
-    const claims = await verify(data.token);
+    if (!data.student_id) return { rows: [] };
+    const claims = await verify(data.token, data.student_id);
     try {
       const db = await admin();
-      const { data: rows } = await db.from("report_cards").select("id, session, term, average, total_score, position, class_size, gpa, published, verification_code").eq("student_id", data.student_id!).eq("published", true).order("created_at", { ascending: false });
+      const { data: rows } = await db.from("report_cards").select("id, session, term, average, total_score, position, class_size, gpa, published, verification_code").eq("student_id", data.student_id).eq("published", true).order("created_at", { ascending: false });
       if (rows && rows.length > 0) return { rows };
     } catch {
       // fallback
@@ -144,6 +148,7 @@ export const getPortalReportCardDetail = createServerFn({ method: "POST" })
     const db = await admin();
     const { data: rc, error } = await db.from("report_cards").select("*").eq("id", data.id).eq("published", true).maybeSingle();
     if (error || !rc) throw new Error("Report card not found");
+    await requireActiveChild(claims, rc.student_id);
 
     const [{ data: school }, { data: student }, { data: klass }, { data: rawAssessments }] = await Promise.all([
       db.from("schools").select("name, motto, address, email, phone, logo_url, stamp_url, website, branch_name, principal_name, principal_signature_url, report_template, current_session, current_term").eq("id", (rc as any).school_id).maybeSingle(),
@@ -185,13 +190,14 @@ export const getPortalReportCardDetail = createServerFn({ method: "POST" })
 export const getPortalFees = createServerFn({ method: "POST" })
   .inputValidator((d) => WithChild.parse(d))
   .handler(async ({ data }) => {
-    const claims = await verify(data.token);
+    if (!data.student_id) throw new Error("Choose an activated student");
+    const claims = await verify(data.token, data.student_id);
     try {
       const db = await admin();
       const [{ data: invoices }, { data: payments }, { data: student }, { data: school }] = await Promise.all([
-        db.from("fee_invoices").select("id, title, session, term, amount_due, amount_paid, discount_amount, discount_reason, discount_kind, status, due_date").eq("student_id", data.student_id!).order("created_at", { ascending: false }),
-        db.from("fee_payments").select("id, invoice_id, amount, method, reference, paid_at, receipt_no, notes").eq("student_id", data.student_id!).order("paid_at", { ascending: false }),
-        db.from("students").select("id, first_name, middle_name, last_name, admission_no, classes(name)").eq("id", data.student_id!).maybeSingle(),
+        db.from("fee_invoices").select("id, title, session, term, amount_due, amount_paid, discount_amount, discount_reason, discount_kind, status, due_date").eq("student_id", data.student_id).order("created_at", { ascending: false }),
+        db.from("fee_payments").select("id, invoice_id, amount, method, reference, paid_at, receipt_no, notes").eq("student_id", data.student_id).order("paid_at", { ascending: false }),
+        db.from("students").select("id, first_name, middle_name, last_name, admission_no, classes(name)").eq("id", data.student_id).maybeSingle(),
         db.from("schools").select("id, name, address, phone, email, logo_url, motto, branch_name").eq("id", claims.school_id).maybeSingle(),
       ]);
       if (invoices && invoices.length > 0) {
@@ -288,6 +294,10 @@ export const getReceipt = createServerFn({ method: "POST" })
   .inputValidator((d) => TokenOnly.extend({ payment_id: z.string() }).parse(d))
   .handler(async ({ data }) => {
     const claims = await verify(data.token);
+    const receiptDb = await admin();
+    const payment = await receiptDb.from("fee_payments").select("student_id").eq("id", data.payment_id).maybeSingle();
+    if (payment.error || !payment.data) throw new Error("Receipt not found");
+    await requireActiveChild(claims, payment.data.student_id);
     try {
       const db = await admin();
       const { data: p } = await db.from("fee_payments").select("id, amount, method, reference, paid_at, receipt_no, invoice_id, student_id, school_id, notes").eq("id", data.payment_id).maybeSingle();

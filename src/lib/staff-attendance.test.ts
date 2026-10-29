@@ -47,12 +47,12 @@ describe("payroll", () => {
 
 import { checkSites } from "./staff-attendance";
 describe("per-minute late and sites", () => {
-  it("charges ₦3 per late minute", () => {
+  test("charges ₦3 per late minute", () => {
     const st = { ...DEFAULT_SETTINGS, penalties: { ...DEFAULT_SETTINGS.penalties, late_per_minute: 3 } };
     const r = { date: "2026-10-29", status: "late" as const, late: true, lateMinutes: 143, early: false, earlyMinutes: 0, missingCheckout: false, workedMinutes: 0, counts: true };
     expect(penaltiesForDay(r, st)).toEqual([{ kind: "late", amount: 429, minutes: 143 }]);
   });
-  it("accepts a point inside any active site", () => {
+  test("accepts a point inside any active site", () => {
     const sites = [{ name: "A", latitude: 0, longitude: 0, radius_m: 100 }, { name: "B", latitude: 13.0149, longitude: 8.3436, radius_m: 200 }];
     const r = checkSites({ lat: 13.0149, lng: 8.3437 }, sites)!;
     expect(r.inside).toBe(true); expect(r.site.name).toBe("B");

@@ -72,18 +72,6 @@
     "isPermanentSuperAdmin": true
   },
   {
-    "userId": "usr-test-1793103235298-4tvu",
-    "email": "principal.salisu@atqacademy.edu.ng",
-    "fullName": "Mujittaba Salisu",
-    "schoolId": "school-assalam-tahfizul-001",
-    "schoolName": "Assalam Tahfizul Qur'an Academy Limited",
-    "role": "school_admin",
-    "status": "active",
-    "createdAt": "2026-10-27T12:13:55.298Z",
-    "lastActiveAt": "2026-10-27T12:13:55.298Z",
-    "isPermanentSuperAdmin": false
-  },
-  {
     "userId": "usr-test-1793103235298-lp2v",
     "email": "teacher.bello@atqacademy.edu.ng",
     "fullName": "Ustaz Aliyu Bello",

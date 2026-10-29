@@ -18,6 +18,7 @@ import {
   Building2, BookOpen, Wallet, Users, Search, Filter, RefreshCw, Check, GraduationCap,
   Eye, EyeOff,
 } from "lucide-react";
+import { StaffAccessRegistry } from "@/components/StaffAccessRegistry";
 import { toast } from "sonner";
 import { useAuth, hasRole } from "@/hooks/useAuth";
 import {
@@ -343,6 +344,7 @@ function UsersPage() {
 
   return (
     <div className="space-y-6">
+      <StaffAccessRegistry />
       {/* Page Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>

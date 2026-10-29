@@ -19,6 +19,7 @@ import { CampusManager } from '@/components/CampusManager';
 import { ReportTemplateSettings } from '@/components/ReportTemplateSettings';
 import { Settings as ThemeSettings } from '@/components/Settings';
 import { AcademicSettings } from '@/components/AcademicSettings';
+import { RegistryActions } from '@/components/RegistryActions';
 import { DigitalCredentialsManager } from '@/components/DigitalCredentialsManager';
 
 export const Route = createFileRoute('/_authenticated/settings')({
@@ -185,15 +186,16 @@ function SchoolSettings({ schoolId }: { schoolId: string }) {
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{SCHOOL_PERMISSIONS.filter(p => !['settings.edit', 'users.edit', 'audit.view'].includes(p)).map(permission => <label key={permission} className="flex items-center gap-2 text-sm"><Checkbox checked={permissions.includes(permission)} onCheckedChange={checked => setPermissions(checked ? [...permissions, permission] : permissions.filter(p => p !== permission))} />{permission.replace('.', ' · ')}</label>)}</div>
         <Button disabled={busy || !permissions.length}>Create role</Button>
       </form>
+      <div className="divide-y divide-border">{customRoles.map(r => <div key={r.id} className="flex flex-wrap items-center justify-between gap-3 py-3"><span className="font-medium">{r.name}</span><RegistryActions table="school_custom_roles" id={r.id} name={r.name} active={r.active} /></div>)}</div>
       <form className="space-y-4 border-t border-border pt-6" onSubmit={e => { e.preventDefault(); void run(() => supabase.from('school_role_assignments').insert({ school_id: schoolId, role_id: roleId, user_id: userId }), 'Staff role assigned'); }}>
         <h2 className="text-lg font-semibold">Assign custom role</h2>
         <div className="grid gap-3 sm:grid-cols-2">
-          <Select value={roleId} onValueChange={setRoleId}><SelectTrigger aria-label="Custom role"><SelectValue placeholder="Select role" /></SelectTrigger><SelectContent>{customRoles.map(r => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}</SelectContent></Select>
+          <Select value={roleId} onValueChange={setRoleId}><SelectTrigger aria-label="Custom role"><SelectValue placeholder="Select role" /></SelectTrigger><SelectContent>{customRoles.filter(r => r.active).map(r => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}</SelectContent></Select>
           <Select value={userId} onValueChange={setUserId}><SelectTrigger aria-label="Staff account"><SelectValue placeholder="Select staff account" /></SelectTrigger><SelectContent>{profiles.map(p => <SelectItem key={p.user_id} value={p.user_id}>{p.full_name ?? p.user_id}</SelectItem>)}</SelectContent></Select>
         </div><Button disabled={busy || !roleId || !userId}>Assign role</Button>
       </form>
       <div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>Staff</TableHead><TableHead>Custom role</TableHead><TableHead>Access</TableHead><TableHead /></TableRow></TableHeader><TableBody>
-        {assignments.map(a => <TableRow key={a.id}><TableCell>{profiles.find(p => p.user_id === a.user_id)?.full_name ?? a.user_id}</TableCell><TableCell>{customRoles.find(r => r.id === a.role_id)?.name}</TableCell><TableCell className="max-w-xs whitespace-normal text-xs">{customRoles.find(r => r.id === a.role_id)?.permissions.join(', ')}</TableCell><TableCell><Button variant="ghost" size="icon" aria-label="Remove custom role" title="Remove custom role" disabled={busy} onClick={() => { if (window.confirm('Remove this staff assignment?')) void run(() => supabase.from('school_role_assignments').delete().eq('id', a.id), 'Assignment removed'); }}><Trash2 className="h-4 w-4" /></Button></TableCell></TableRow>)}
+        {assignments.map(a => <TableRow key={a.id}><TableCell>{profiles.find(p => p.user_id === a.user_id)?.full_name ?? a.user_id}</TableCell><TableCell>{customRoles.find(r => r.id === a.role_id)?.name}</TableCell><TableCell className="max-w-xs whitespace-normal text-xs">{customRoles.find(r => r.id === a.role_id)?.permissions.join(', ')}</TableCell><TableCell><RegistryActions table="school_role_assignments" id={a.id} name="custom role assignment" active={a.active} /></TableCell></TableRow>)}
         {!assignments.length && <TableRow><TableCell colSpan={4} className="text-muted-foreground">No custom staff assignments</TableCell></TableRow>}
       </TableBody></Table></div>
     </TabsContent>

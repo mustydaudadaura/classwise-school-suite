@@ -1,5 +1,17 @@
 [
   {
+    "userId": "usr-1793253157593-1a2l3",
+    "email": "faruqhamisu2000@gmail.com",
+    "fullName": "Faruq Hamisu",
+    "schoolId": "bc7ba1b6-38ee-4f1b-bc92-13b93e87dd09",
+    "schoolName": "Assalam Tahfizul Qur'an Academy Limited.",
+    "role": "form_master",
+    "status": "active",
+    "createdAt": "2026-10-29T05:52:37.593Z",
+    "lastActiveAt": "2026-10-29T05:52:37.593Z",
+    "isPermanentSuperAdmin": false
+  },
+  {
     "userId": "usr-student-1793201350767-z5x",
     "email": "student.abdullahi@atqacademy.edu.ng",
     "fullName": "Abdullahi Kabir (JSS 1A)",

@@ -49,3 +49,6 @@ Parent security decision: real-family phone-only access conflicts with the secur
 - [x] Form masters admit students; admin bulk-activates
 - [x] Remove all schools except Assalam Tahfizul Qur'an Academy Limited
 - [x] Attendance tracking upgrade: kiosk with live clock, PIN boxes, live on-site badge, Sign In/Sign Out, Today/Yesterday boards with late minutes and penalties; multiple geofence sites; per-minute late penalty. Unit tests pass; kiosk not yet clicked through in the browser.
+
+## Open tasks
+- [ ] Answer user: database storage limits / how much data the app can hold (asked 29 Oct 2026)

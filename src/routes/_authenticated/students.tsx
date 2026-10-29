@@ -19,6 +19,7 @@ import { BulkImportDialog } from "@/components/BulkImportDialog";
 import { PendingActivations } from "@/components/PendingActivations";
 import { useSchoolAccess } from "@/hooks/useSchoolAccess";
 import { admissionMode } from "@/lib/registry-permissions";
+import { useRegistrationSubmission } from "@/hooks/useRegistrationSubmission";
 
 export const Route = createFileRoute("/_authenticated/students")({
   head: () => ({ meta: [{ title: "Students — Alegacy" }, { name: "description", content: "Students for authorized school accounts and families in Alegacy." }, { property: "og:title", content: "Students — Alegacy" }, { property: "og:description", content: "Students for authorized school accounts and families in Alegacy." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
@@ -30,6 +31,8 @@ function StudentsPage() {
   const access = useSchoolAccess();
   const canManage = access.schoolId === schoolId && access.can("students.edit");
   const canActivate = canManage && hasRole(roles, "super_admin", "school_admin");
+  const submission = useRegistrationSubmission(user?.id, schoolId);
+  const teacherSubmission = submission.allowed && !canActivate;
   const qc = useQueryClient();
   const { data: formMasterClassIds, error: formMasterError } = useQuery({
     queryKey: ["form-master-classes", schoolId, user?.id],
@@ -46,7 +49,7 @@ function StudentsPage() {
     },
   });
   const isFormMaster = !canManage && (formMasterClassIds?.length ?? 0) > 0;
-  const canAdmit = !access.loading && (canManage || isFormMaster);
+  const canAdmit = !access.loading && (canActivate || teacherSubmission || isFormMaster);
   const [saving, setSaving] = useState(false);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
@@ -108,7 +111,7 @@ function StudentsPage() {
     },
   });
 
-  const admitClasses = canManage ? (classes ?? []) : (classes ?? []).filter((c) => formMasterClassIds?.includes(c.id));
+  const admitClasses = canActivate || teacherSubmission ? (classes ?? []) : (classes ?? []).filter((c) => formMasterClassIds?.includes(c.id));
   const pendingStudents = (students ?? []).filter((s: any) => s.pending_activation);
 
   const create = async (e: React.FormEvent) => {
@@ -119,9 +122,9 @@ function StudentsPage() {
     if (form.class_id && !classes?.some(c => c.id === form.class_id)) return toast.error("Choose a class in this school");
     setSaving(true);
     try {
-    const mode = admissionMode(canManage, admitClasses.map(c => c.id), form.class_id);
-    if (mode === "form-master") {
-      const { data: newId, error: fmErr } = await supabase.rpc("form_master_admit_student", {
+    const mode = admissionMode(canActivate, admitClasses.map(c => c.id), form.class_id, teacherSubmission);
+    if (mode !== "direct") {
+      const { data: newId, error: fmErr } = await supabase.rpc(mode === "teacher" ? "submit_student_admission" : "form_master_admit_student", {
         _class_id: form.class_id, _admission_no: form.admission_no, _first_name: form.first_name, _last_name: form.last_name,
         _middle_name: form.middle_name, _gender: form.gender, _dob: (form.dob || null) as string,
         _parent_name: form.parent_name, _parent_phone: form.parent_phone, _parent_email: form.parent_email,
@@ -231,7 +234,7 @@ function StudentsPage() {
           >
             Print Roster
           </Button>
-          {canManage && <BulkImportDialog schoolId={schoolId} classes={classes ?? []} onDone={() => qc.invalidateQueries({ queryKey: ["students"] })} />}
+          {canActivate && <BulkImportDialog schoolId={schoolId} classes={classes ?? []} onDone={() => qc.invalidateQueries({ queryKey: ["students"] })} />}
           {canAdmit && <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild><Button><UserPlus className="mr-2 h-4 w-4" /> Admit student</Button></DialogTrigger>
           <DialogContent className="max-h-[90vh] overflow-y-auto">
@@ -279,7 +282,8 @@ function StudentsPage() {
       </div>
 
       {!schoolId && <p role="alert" className="text-destructive">Select a school from the school switcher before adding students.</p>}
-      {schoolId && !access.loading && !canAdmit && <p role="alert" className="text-muted-foreground">Student admission requires school editing permission or a form-master class assignment. Ask your school administrator to check your access.</p>}
+      {schoolId && !access.loading && !canAdmit && <p role="alert" className="text-muted-foreground">Student admission requires teacher or school administrator access. Ask your school administrator to check your access.</p>}
+      {submission.error && <p role="alert" className="text-destructive">Registration access could not be checked: {submission.error.message}</p>}
       {formMasterError && <p role="alert" className="text-destructive">Your form-master class assignment could not be loaded: {formMasterError.message}</p>}
       {classesError && <p role="alert" className="text-destructive">Classes could not be loaded: {classesError.message}</p>}
       {canActivate && <PendingActivations students={pendingStudents as any} />}

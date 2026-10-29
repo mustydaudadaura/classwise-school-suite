@@ -13,9 +13,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { RegistryActions } from "@/components/RegistryActions";
 import { useSchoolAccess } from "@/hooks/useSchoolAccess";
-import { requireRegistryPermission } from "@/lib/registry-permissions";
+import { requireRegistryPermission, classSubmissionState } from "@/lib/registry-permissions";
 import { requireSavedRecord } from "@/lib/registry-save";
 import { ClassImport } from "@/components/ClassImport";
+import { hasRole } from "@/hooks/useAuth";
+import { useRegistrationSubmission } from "@/hooks/useRegistrationSubmission";
+import { PendingClassActivations } from "@/components/PendingClassActivations";
 
 export const Route = createFileRoute("/_authenticated/classes")({
   head: () => ({ meta: [{ title: "Classes & Subjects — Alegacy" }, { name: "description", content: "Classes & Subjects for authorized school accounts and families in Alegacy." }, { property: "og:title", content: "Classes & Subjects — Alegacy" }, { property: "og:description", content: "Classes & Subjects for authorized school accounts and families in Alegacy." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
@@ -23,9 +26,12 @@ export const Route = createFileRoute("/_authenticated/classes")({
 });
 
 function ClassesPage() {
-  const { schoolId } = useAuth();
+  const { schoolId, user, roles } = useAuth();
   const access = useSchoolAccess();
   const canManage = access.schoolId === schoolId && access.can("academics.edit");
+  const submission = useRegistrationSubmission(user?.id, schoolId);
+  const isAdministrator = canManage && hasRole(roles, "super_admin", "school_admin");
+  const canAddClass = isAdministrator || submission.allowed;
   const qc = useQueryClient();
   const [cls, setCls] = useState<{ name: string; level: string; arm: string; section: "nursery" | "primary" | "secondary" | "" }>({ name: "", level: "", arm: "", section: "" });
   const [saving, setSaving] = useState(false);
@@ -58,16 +64,18 @@ function ClassesPage() {
     if (!cls.name.trim()) return toast.error("Enter a class name");
     setSaving(true);
     try {
-      requireRegistryPermission(canManage);
+      if (!user) throw new Error("Sign in before registering a class");
+      const state = classSubmissionState(isAdministrator, submission.allowed, user.id);
       const { data, error } = await supabase.from("classes").insert({
         name: cls.name.trim(), level: cls.level.trim() || null, arm: cls.arm.trim() || null,
-        section: cls.section || null, school_id: schoolId,
-      }).select("id, school_id").single();
+        section: cls.section || null, school_id: schoolId, ...state,
+      }).select("id, school_id, active, pending_activation").single();
       if (error) throw error;
       requireSavedRecord(data, schoolId);
+      if (data.active !== state.active || data.pending_activation !== state.pending_activation) throw new Error("Class approval status could not be confirmed");
       await qc.invalidateQueries({ queryKey: ["classes"] });
       await qc.invalidateQueries({ queryKey: ["classes-for-students"] });
-      toast.success("Class created");
+      toast.success(isAdministrator ? "Class created" : "Class submitted — awaiting administrator approval");
       setCls({ name: "", level: "", arm: "", section: "" });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : (error as { message?: string }).message ?? "Class could not be saved");
@@ -105,7 +113,7 @@ function ClassesPage() {
       </div>
 
       {!schoolId && <p role="alert" className="text-destructive">Select a school from the school switcher before adding records.</p>}
-      {schoolId && !access.loading && !canManage && <p role="alert" className="text-muted-foreground">Your account can view classes and subjects. Ask your school administrator to register new ones.</p>}
+      {submission.error && <p role="alert" className="text-destructive">Registration access could not be checked: {submission.error.message}</p>}
       <Tabs defaultValue="classes">
         <TabsList>
           <TabsTrigger value="classes">Classes</TabsTrigger>
@@ -114,7 +122,8 @@ function ClassesPage() {
 
         <TabsContent value="classes" className="space-y-4">
           {canManage && schoolId && !classesLoading && !classesError && <ClassImport kind="classes" schoolId={schoolId} classes={classes ?? []} subjects={subjects ?? []} />}
-          {canManage && <Card>
+          {isAdministrator && <PendingClassActivations classes={(classes ?? []).filter(c => c.pending_activation)} />}
+          {canAddClass && <Card>
             <CardHeader><CardTitle>Add class</CardTitle></CardHeader>
             <CardContent>
               <form onSubmit={addClass} className="grid grid-cols-1 gap-3 sm:grid-cols-5">
@@ -132,7 +141,7 @@ function ClassesPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="flex items-end"><Button type="submit" disabled={saving || !schoolId} className="w-full">{saving ? "Saving…" : "Add"}</Button></div>
+                <div className="flex items-end"><Button type="submit" disabled={saving || !schoolId} className="w-full">{saving ? "Saving…" : isAdministrator ? "Add" : "Submit class"}</Button></div>
               </form>
             </CardContent>
           </Card>}
@@ -142,7 +151,7 @@ function ClassesPage() {
                 <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Level</TableHead><TableHead>Arm</TableHead><TableHead>Section</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
                 <TableBody>
                   {classesError ? <TableRow><TableCell colSpan={5} role="alert" className="text-destructive">Classes could not be loaded: {classesError.message}</TableCell></TableRow> : classesLoading ? <TableRow><TableCell colSpan={5}>Loading classes…</TableCell></TableRow> : classes?.length ? classes.map((c: any) => (
-                    <TableRow key={c.id}><TableCell className="font-medium">{c.name}</TableCell><TableCell>{c.level ?? "—"}</TableCell><TableCell>{c.arm ?? "—"}</TableCell><TableCell className="capitalize">{c.section ?? "—"}</TableCell><TableCell>{canManage && <RegistryActions table="classes" id={c.id} name={c.name} active={c.active} />}</TableCell></TableRow>
+                    <TableRow key={c.id}><TableCell className="font-medium">{c.name}</TableCell><TableCell>{c.level ?? "—"}</TableCell><TableCell>{c.arm ?? "—"}</TableCell><TableCell className="capitalize">{c.section ?? "—"}</TableCell><TableCell>{c.pending_activation ? <span className="text-sm text-muted-foreground">Awaiting approval</span> : isAdministrator ? <RegistryActions table="classes" id={c.id} name={c.name} active={c.active} /> : <span className="text-sm text-muted-foreground">{c.active ? "Active" : "Inactive"}</span>}</TableCell></TableRow>
                   )) : <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground">No classes yet</TableCell></TableRow>}
                 </TableBody>
               </Table>

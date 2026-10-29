@@ -18,4 +18,5 @@
 - Staff accounts are created server-side with the admin auth API (confirmed email + initial password) only after is_super_admin/can_manage_school checks, and the function itself writes the profile and role; client signUp silently fails for existing emails.
 - School registry writes must return an actual saved row before showing success; database read failures must not render as an empty registry.
 - Class, subject and student registries filter by the selected school and verify returned saved rows through the shared registry-save helper; this prevents false success and cross-school list mixing.
+- Registry lifecycle actions use one authenticated database RPC that checks school administration, protects own/Super Admin access, and blocks deletion across foreign-key references; active role flags control operational permissions while audit history and auth accounts remain intact.
 - SECURITY DEFINER execution is limited by purpose: trigger functions and parent phone lookup are server-only, policy helpers remain authenticated-callable, and published-report verification stays public.

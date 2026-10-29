@@ -12,6 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, UserPlus, Search, X, SlidersHorizontal, ArrowUpDown, Download } from "lucide-react";
 import { toast } from "sonner";
+import { RegistryActions } from "@/components/RegistryActions";
+import { hasRole } from "@/hooks/useAuth";
 import { requireSavedRecord } from "@/lib/registry-save";
 import { BulkImportDialog } from "@/components/BulkImportDialog";
 
@@ -21,7 +23,8 @@ export const Route = createFileRoute("/_authenticated/students")({
 });
 
 function StudentsPage() {
-  const { schoolId } = useAuth();
+  const { schoolId, roles } = useAuth();
+  const canManage = hasRole(roles, "super_admin", "school_admin");
   const qc = useQueryClient();
   const [saving, setSaving] = useState(false);
   const [open, setOpen] = useState(false);
@@ -41,7 +44,7 @@ function StudentsPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("students")
-        .select("id, admission_no, first_name, last_name, middle_name, gender, dob, class_id, classes(name)")
+        .select("id, admission_no, first_name, last_name, middle_name, gender, dob, active, class_id, classes(name)")
         .eq("school_id", schoolId ?? "")
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -78,7 +81,7 @@ function StudentsPage() {
     queryKey: ["classes-for-students", schoolId],
     enabled: Boolean(schoolId),
     queryFn: async () => {
-      const { data, error } = await supabase.from("classes").select("id, name").eq("school_id", schoolId ?? "").order("name");
+      const { data, error } = await supabase.from("classes").select("id, name").eq("active", true).eq("school_id", schoolId ?? "").order("name");
       if (error) throw error;
       return data;
     },
@@ -366,6 +369,7 @@ function StudentsPage() {
                           >
                             Profile →
                           </Link>
+                          {canManage && <RegistryActions table="students" id={s.id} name={fullName} active={s.active} />}
                         </TableCell>
                       </TableRow>
                     );

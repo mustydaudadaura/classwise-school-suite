@@ -82,7 +82,7 @@ export function useAuth(): AuthState {
     try {
       const [profileResult, roleResult] = await Promise.all([
         supabase.from("profiles").select("full_name, school_id").eq("user_id", userId).maybeSingle(),
-        supabase.from("user_roles").select("role, school_id").eq("user_id", userId),
+        supabase.from("user_roles").select("role, school_id").eq("active", true).eq("user_id", userId),
       ]);
 
       if (profileResult.error) throw profileResult.error;

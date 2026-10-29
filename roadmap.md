@@ -1,5 +1,7 @@
 # School ERP upgrade roadmap
 
+- [x] Add confirmed deactivate/reactivate and safe delete controls for schools, classes, subjects, students, staff and roles; verified class status persistence, linked-delete rejection, unused-subject deletion, and protected owner access. Six regression tests pass. Staff removal deletes assigned roles, not auth accounts.
+
 - [x] Repair password-reset email destination and provide a public new-password form; legacy routing and expired-link handling verified, six auth/recovery tests pass.
 - [ ] Confirm password update through a real emailed recovery link — requires the owner to open a fresh reset email; no recovery link is available for automated testing.
 

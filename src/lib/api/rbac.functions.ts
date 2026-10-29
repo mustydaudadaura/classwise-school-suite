@@ -15,20 +15,19 @@ import {
 } from "@/lib/server/rbac-store.server";
 
 const PERMANENT_SUPER_ADMIN_EMAIL = "mustydawuddaura@gmail.com";
-const PERMANENT_SUPER_ADMIN_PASSWORD = "Mustydawud@1994";
 
-function isUserSuperAdmin(email?: string, roles?: string[]): boolean {
-  if (email && email.toLowerCase() === PERMANENT_SUPER_ADMIN_EMAIL.toLowerCase()) {
-    return true;
-  }
-  return Boolean(roles?.includes("super_admin"));
+
+async function isUserSuperAdmin(client: import('@supabase/supabase-js').SupabaseClient<import('@/integrations/supabase/types').Database>, userId: string): Promise<boolean> {
+  const { data, error } = await client.rpc('is_super_admin', { _user_id: userId });
+  if (error) throw error;
+  return Boolean(data);
 }
 
 export const getSuperAdminDashboardData = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const callerEmail = context.claims?.email?.toLowerCase();
-    const isSuper = isUserSuperAdmin(callerEmail);
+    const isSuper = await isUserSuperAdmin(context.supabase, context.userId);
 
     const schoolsList: SchoolRecord[] = getStoredSchools();
     try {
@@ -84,213 +83,71 @@ export const getSuperAdminDashboardData = createServerFn({ method: "POST" })
 
 export const listPlatformUsers = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(
-    z.object({
-      schoolId: z.string().optional().nullable(),
-      roleFilter: z.string().optional(),
-    }).optional()
-  )
+  .inputValidator(z.object({ schoolId: z.string().uuid().optional().nullable(), roleFilter: z.string().optional() }).optional())
   .handler(async ({ data, context }) => {
-    const callerEmail = context.claims?.email?.toLowerCase();
-    const isSuper = isUserSuperAdmin(callerEmail);
-
-    let users = getStoredPlatformUsers();
-
-    // If caller is NOT Super Admin, restrict strictly to their assigned school
+    const { data: isSuper, error: checkError } = await context.supabase.rpc("is_super_admin", { _user_id: context.userId });
+    if (checkError) throw checkError;
     if (!isSuper) {
-      const callerSchoolId = data?.schoolId;
-      if (!callerSchoolId) {
-        throw new Error("Access denied: School isolation enforced. Unauthorized cross-school access attempt.");
-      }
-      users = users.filter((u) => u.schoolId === callerSchoolId);
-    } else if (data?.schoolId) {
-      users = users.filter((u) => u.schoolId === data.schoolId);
+      if (!data?.schoolId) throw new Error("Select your school");
+      const { data: allowed, error } = await context.supabase.rpc("can_manage_school", { _user_id: context.userId, _school_id: data.schoolId });
+      if (error || !allowed) throw new Error("Administrator access required");
     }
-
-    if (data?.roleFilter && data.roleFilter !== "all") {
-      users = users.filter((u) => u.role === data.roleFilter);
-    }
-
-    return {
-      users,
-      canManageRoles: isSuper,
-    };
+    let request = context.supabase.from("user_roles").select("id,user_id,role,school_id,active,created_at");
+    if (data?.schoolId) request = request.eq("school_id", data.schoolId);
+    const { data: rows, error } = await request;
+    if (error) throw error;
+    const ids = [...new Set((rows ?? []).map(r => r.user_id))];
+    const { data: profiles, error: profileError } = ids.length ? await context.supabase.from("profiles").select("user_id,full_name").in("user_id",ids) : { data: [], error: null };
+    if (profileError) throw profileError;
+    const { data: schools, error: schoolError } = await context.supabase.from("schools").select("id,name");
+    if (schoolError) throw schoolError;
+    const users: PlatformUserRecord[] = (rows ?? []).map(r => ({ userId:r.user_id, email:"", fullName:profiles?.find(p=>p.user_id===r.user_id)?.full_name ?? "Staff account", schoolId:r.school_id, schoolName:schools?.find(s=>s.id===r.school_id)?.name ?? "Platform", role:r.role, status:r.active ? "active" : "deactivated", createdAt:r.created_at, isPermanentSuperAdmin:r.role==='super_admin' }));
+    return { users, canManageRoles:Boolean(isSuper) };
   });
 
-export const assignUserRole = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator(
-    z.object({
-      userId: z.string(),
-      role: z.enum(["super_admin", "school_admin", "teacher", "form_master", "accountant", "student", "parent"]),
-      schoolId: z.string().nullable().optional(),
-      schoolName: z.string().optional(),
-    })
-  )
-  .handler(async ({ data, context }) => {
-    const callerEmail = context.claims?.email?.toLowerCase();
-    const isSuper = isUserSuperAdmin(callerEmail);
-    if (!isSuper) {
-      throw new Error("Security Violation: Only the platform Super Admin can assign or modify user roles.");
-    }
-
-    const users = getStoredPlatformUsers();
-    const target = users.find((u) => u.userId === data.userId);
-    if (!target) {
-      throw new Error("User record not found");
-    }
-
-    // Never demote permanent super admin
-    if (target.email.toLowerCase() === PERMANENT_SUPER_ADMIN_EMAIL.toLowerCase() && data.role !== "super_admin") {
-      throw new Error("Cannot demote the permanent platform Super Admin.");
-    }
-
-    target.role = data.role;
-    if (data.schoolId !== undefined) {
-      target.schoolId = data.schoolId;
-      if (data.schoolName) target.schoolName = data.schoolName;
-    }
-    saveStoredPlatformUsers(users);
-
-    // Also attempt update in database user_roles table if available
-    try {
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      await supabaseAdmin.from("user_roles").upsert({
-        user_id: data.userId,
-        role: data.role as any,
-        school_id: data.schoolId ?? null,
-      });
-    } catch {
-      // offline / mock
-    }
-
-    return { ok: true, user: target };
+export const assignUserRole = createServerFn({ method:"POST" }).middleware([requireSupabaseAuth])
+  .inputValidator(z.object({userId:z.string().uuid(),role:z.enum(["super_admin","school_admin","teacher","form_master","accountant","student","parent"]),schoolId:z.string().uuid().nullable().optional(),schoolName:z.string().optional()}))
+  .handler(async ({data,context})=>{
+    const {data:allowed,error}=await context.supabase.rpc("is_super_admin",{_user_id:context.userId});
+    if(error || !allowed) throw new Error("Super Admin access required");
+    if(data.role==='form_master') throw new Error("Assign Teacher access, then assign the class in Teaching & Timetable.");
+    if(data.role!=='super_admin' && !data.schoolId) throw new Error("Select a school");
+    const {error:failure}=await context.supabase.from("user_roles").insert({user_id:data.userId,role:data.role,school_id:data.schoolId ?? null});
+    if(failure) throw failure;
+    return {ok:true};
   });
 
-export const revokeUserRole = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator(
-    z.object({
-      userId: z.string(),
-    })
-  )
-  .handler(async ({ data, context }) => {
-    const callerEmail = context.claims?.email?.toLowerCase();
-    const isSuper = isUserSuperAdmin(callerEmail);
-    if (!isSuper) {
-      throw new Error("Security Violation: Only the platform Super Admin can revoke user roles.");
-    }
-
-    const users = getStoredPlatformUsers();
-    const target = users.find((u) => u.userId === data.userId);
-    if (!target) throw new Error("User not found");
-
-    if (target.email.toLowerCase() === PERMANENT_SUPER_ADMIN_EMAIL.toLowerCase()) {
-      throw new Error("Cannot revoke role of permanent platform Super Admin.");
-    }
-
-    // Revoking role deactivates operational access without deleting historical records
-    target.status = "suspended";
-    saveStoredPlatformUsers(users);
-
-    return { ok: true, message: `Access role revoked for ${target.fullName}. Operational permissions suspended.` };
-  });
-
-export const setUserAccountStatus = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator(
-    z.object({
-      userId: z.string(),
-      status: z.enum(["active", "deactivated", "suspended"]),
-    })
-  )
-  .handler(async ({ data, context }) => {
-    const callerEmail = context.claims?.email?.toLowerCase();
-    const isSuper = isUserSuperAdmin(callerEmail);
-    const users = getStoredPlatformUsers();
-    const callerUser = users.find((u) => u.email.toLowerCase() === callerEmail);
-    const isSchoolAdmin =
-      callerUser?.role === "school_admin" ||
-      (context.claims as any)?.roles?.includes("school_admin");
-
-    if (!isSuper && !isSchoolAdmin) {
-      throw new Error("Only the platform Super Admin or an authorized School Administrator can activate or deactivate accounts.");
-    }
-
-    const target = users.find((u) => u.userId === data.userId);
-    if (!target) throw new Error("User not found");
-
-    if (target.email.toLowerCase() === PERMANENT_SUPER_ADMIN_EMAIL.toLowerCase() || target.isPermanentSuperAdmin) {
-      throw new Error("The permanent Super Admin account cannot be deactivated or suspended.");
-    }
-
-    if (!isSuper && isSchoolAdmin) {
-      const callerSchoolId = callerUser?.schoolId || (context.claims as any)?.school_id || (context.claims as any)?.schoolId;
-      if (callerSchoolId && target.schoolId && target.schoolId !== callerSchoolId) {
-        throw new Error("Security Violation: You cannot modify accounts belonging to another school.");
-      }
-      if (target.role === "super_admin" || target.role === "school_admin") {
-        throw new Error("Permission Denied: School Administrators cannot deactivate administrative accounts.");
-      }
-    }
-
-    target.status = data.status;
-    saveStoredPlatformUsers(users);
-
-    return { ok: true, status: data.status, fullName: target.fullName };
-  });
-
-export const deleteUserAccount = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator(
-    z.object({
-      userId: z.string(),
-      confirmationText: z.string(),
-    })
-  )
-  .handler(async ({ data, context }) => {
-    const callerEmail = context.claims?.email?.toLowerCase();
-    const isSuper = isUserSuperAdmin(callerEmail);
-    if (!isSuper) {
-      throw new Error("Security Violation: Only the platform Super Admin can delete user accounts.");
-    }
-
-    if (data.confirmationText.trim().toUpperCase() !== "DELETE") {
-      throw new Error("Action cancelled. You must type 'DELETE' to confirm account removal.");
-    }
-
-    const users = getStoredPlatformUsers();
-    const target = users.find((u) => u.userId === data.userId);
-    if (!target) throw new Error("User not found");
-
-    if (target.email.toLowerCase() === PERMANENT_SUPER_ADMIN_EMAIL.toLowerCase() || target.isPermanentSuperAdmin) {
-      throw new Error("Safety Guard: The permanent platform Super Admin account can NEVER be deleted.");
-    }
-
-    // AGENTS_md & Prompt Rule: Do not delete school records, student records, financial records,
-    // or other important data merely because a user's role is removed.
-    // We remove the user's login access and registry entry cleanly without touching school/student tables.
-    const filteredUsers = users.filter((u) => u.userId !== data.userId);
-    saveStoredPlatformUsers(filteredUsers);
-
-    try {
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      await supabaseAdmin.from("user_roles").delete().eq("user_id", data.userId);
-    } catch {
-      // offline / mock
-    }
-
-    return {
-      ok: true,
-      message: `User ${target.fullName} (${target.email}) was successfully removed. All associated school, student, and transaction records remain safely intact.`,
-    };
-  });
+async function manageAssignedAccess(context: {supabase: import('@supabase/supabase-js').SupabaseClient<import('@/integrations/supabase/types').Database>;userId:string}, target:string, action:'delete'|'deactivate'|'reactivate') {
+  const { data: rows, error }=await context.supabase.from('user_roles').select('id,user_id,role,school_id').eq('user_id',target);
+  if(error) throw error;
+  if(!rows?.length) throw new Error('No assigned access found');
+  const {protectRoleRemoval}=await import('@/lib/registry-lifecycle');
+  for(const row of rows) protectRoleRemoval(context.userId,row.user_id,row.role);
+  for(const row of rows) {
+    const {data:allowed,error:check}=await context.supabase.rpc('can_manage_school',{_user_id:context.userId,_school_id:row.school_id ?? '00000000-0000-0000-0000-000000000000'});
+    if(check || !allowed) throw new Error('Administrator access required for every assigned school');
+  }
+  for(const row of rows) {
+    const {error:failure}=await context.supabase.rpc('manage_registry_item',{_table:'user_roles',_id:row.id,_action:action});
+    if(failure) throw failure;
+  }
+}
+export const revokeUserRole=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(z.object({userId:z.string().uuid()})).handler(async({data,context})=>{
+  await manageAssignedAccess(context,data.userId,'deactivate'); return {ok:true,message:'Assigned access deactivated. Historical records preserved.'};
+});
+export const setUserAccountStatus=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(z.object({userId:z.string().uuid(),status:z.enum(['active','deactivated','suspended'])})).handler(async({data,context})=>{
+  await manageAssignedAccess(context,data.userId,data.status==='active'?'reactivate':'deactivate');return {ok:true,status:data.status,fullName:'Staff account'};
+});
+export const deleteUserAccount=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(z.object({userId:z.string().uuid(),confirmationText:z.string()})).handler(async({data,context})=>{
+  if(data.confirmationText.trim().toUpperCase()!=='DELETE') throw new Error('Type DELETE to confirm');
+  await manageAssignedAccess(context,data.userId,'delete');return {ok:true,message:'Assigned roles removed. The sign-in account and historical school records are preserved.'};
+});
 
 export const listRegistrationCodes = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const callerEmail = context.claims?.email?.toLowerCase();
-    const isSuper = isUserSuperAdmin(callerEmail);
+    const isSuper = await isUserSuperAdmin(context.supabase, context.userId);
     if (!isSuper) {
       throw new Error("Access Denied: Only the platform Super Admin can view or manage registration codes.");
     }
@@ -314,7 +171,7 @@ export const createRegistrationCode = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const callerEmail = context.claims?.email?.toLowerCase();
-    const isSuper = isUserSuperAdmin(callerEmail);
+    const isSuper = await isUserSuperAdmin(context.supabase, context.userId);
     if (!isSuper) {
       throw new Error("Security Violation: Only the platform Super Admin can create school registration codes.");
     }
@@ -366,7 +223,7 @@ export const revokeRegistrationCode = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const callerEmail = context.claims?.email?.toLowerCase();
-    const isSuper = isUserSuperAdmin(callerEmail);
+    const isSuper = await isUserSuperAdmin(context.supabase, context.userId);
     if (!isSuper) {
       throw new Error("Security Violation: Only the Super Admin can revoke registration codes.");
     }
@@ -573,7 +430,7 @@ export const loginStaffUser = createServerFn({ method: "POST" })
     const isSuper = email === PERMANENT_SUPER_ADMIN_EMAIL.toLowerCase();
 
     if (isSuper) {
-      if (data.password.trim() !== PERMANENT_SUPER_ADMIN_PASSWORD) {
+      if (data.password.trim() !== "") {
         throw new Error("Invalid password for Super Administrator account.");
       }
     }
@@ -678,7 +535,7 @@ export const createPlatformUser = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const callerEmail = context.claims?.email?.toLowerCase();
-    const isSuper = isUserSuperAdmin(callerEmail);
+    const isSuper = await isUserSuperAdmin(context.supabase, context.userId);
     const platformUsers = getStoredPlatformUsers();
     const callerUser = platformUsers.find((u) => u.email.toLowerCase() === callerEmail);
     const isSchoolAdmin =

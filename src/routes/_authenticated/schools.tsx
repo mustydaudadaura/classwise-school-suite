@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Settings2, RefreshCw, Copy, Wand2, ExternalLink, Globe, Download } from "lucide-react";
 import { toast } from "sonner";
+import { RegistryActions } from "@/components/RegistryActions";
 import { schoolRegistrationSchema } from "@/lib/school-registration";
 
 // Build a school code like "HGA-001" from the school name.
@@ -40,7 +41,7 @@ export const Route = createFileRoute("/_authenticated/schools")({
 });
 
 type School = {
-  id: string; name: string; code: string; address: string | null;
+  id: string; name: string; code: string; address: string | null; active: boolean;
   phone: string | null; email: string | null; motto: string | null;
   logo_url: string | null; stamp_url: string | null; website: string | null;
   branch_name: string | null; principal_name: string | null;
@@ -210,11 +211,6 @@ function SchoolsPage() {
         </div>
       </div>
 
-      {/* Record Retention Policy Banner */}
-      <div className="flex items-center gap-2 p-3 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 text-xs text-blue-900 dark:text-blue-200">
-        <span className="font-semibold">Permanent School Registry: </span>
-        Registered schools, codes, and institutional branding are permanently protected from deletion to guarantee lifelong student credential verification and transcript authenticity.
-      </div>
 
       <Card>
         <CardHeader><CardTitle>All schools</CardTitle></CardHeader>
@@ -249,7 +245,8 @@ function SchoolsPage() {
                     <TableCell>{s.current_session ?? "—"}</TableCell>
                     <TableCell>{s.phone ?? "—"}</TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <RegistryActions table="schools" id={s.id} name={s.name} active={s.active} />
                         <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setEditing(s)}>
                           <Settings2 className="mr-1 h-3.5 w-3.5" /> Branding
                         </Button>

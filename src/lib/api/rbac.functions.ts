@@ -555,6 +555,7 @@ export const createPlatformUser = createServerFn({ method: "POST" })
       if (list.users.length < 1000) break;
     }
     const created = !userId;
+    let passwordUpdated = false;
     if (!userId) {
       const { data: made, error } = await supabaseAdmin.auth.admin.createUser({
         email, password: data.password, email_confirm: true,
@@ -562,6 +563,25 @@ export const createPlatformUser = createServerFn({ method: "POST" })
       });
       if (error || !made.user) throw new Error(error?.message ?? "Could not create the account");
       userId = made.user.id;
+    } else if (userId !== context.userId) {
+      // Existing account: set the password shown on the login slip, but only when the
+      // caller manages every school this account belongs to and it is not a Super Admin.
+      const { data: targetRoles } = await supabaseAdmin.from("user_roles").select("role, school_id").eq("user_id", userId);
+      const roles = targetRoles ?? [];
+      const targetIsSuper = roles.some((r) => r.role === "super_admin");
+      let allowed = !targetIsSuper;
+      if (allowed && !isSuper) {
+        const schoolIds = Array.from(new Set(roles.map((r) => r.school_id).filter(Boolean))) as string[];
+        for (const sid of schoolIds) {
+          const { data: ok } = await context.supabase.rpc("can_manage_school", { _user_id: context.userId, _school_id: sid });
+          if (!ok) { allowed = false; break; }
+        }
+      }
+      if (allowed) {
+        const { error: pwErr } = await supabaseAdmin.auth.admin.updateUserById(userId, { password: data.password, email_confirm: true });
+        if (pwErr) throw new Error(`Could not set the password: ${pwErr.message}`);
+        passwordUpdated = true;
+      }
     }
 
     const { data: profile } = await supabaseAdmin.from("profiles").select("id, school_id").eq("user_id", userId).maybeSingle();
@@ -586,10 +606,12 @@ export const createPlatformUser = createServerFn({ method: "POST" })
       role: data.role, status: "active", createdAt: new Date().toISOString(),
     };
     return {
-      ok: true, user, initialPassword: created ? data.password : undefined,
+      ok: true, user, initialPassword: created || passwordUpdated ? data.password : undefined,
       message: created
         ? `Account created for ${data.fullName}. They can sign in now with this email and password.`
-        : `${email} already had an account; the role was added. Their existing password is unchanged.`,
+        : passwordUpdated
+          ? `${email} already had an account; the role was added and the password was set to the one you entered.`
+          : `${email} already had an account; the role was added. Their existing password is unchanged.`,
     };
   });
 

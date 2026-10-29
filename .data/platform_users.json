@@ -70,29 +70,5 @@
     "createdAt": "2025-01-01T00:00:00.000Z",
     "lastActiveAt": "2026-10-27T12:13:55.285Z",
     "isPermanentSuperAdmin": true
-  },
-  {
-    "userId": "usr-test-1793103235298-lp2v",
-    "email": "teacher.bello@atqacademy.edu.ng",
-    "fullName": "Ustaz Aliyu Bello",
-    "schoolId": "school-assalam-tahfizul-001",
-    "schoolName": "Assalam Tahfizul Qur'an Academy Limited",
-    "role": "teacher",
-    "status": "active",
-    "createdAt": "2026-10-27T12:13:55.298Z",
-    "lastActiveAt": "2026-10-27T12:13:55.298Z",
-    "isPermanentSuperAdmin": false
-  },
-  {
-    "userId": "usr-test-1793103235299-cffo",
-    "email": "bursar.fatima@atqacademy.edu.ng",
-    "fullName": "Bursar Fatima Umar",
-    "schoolId": "school-assalam-tahfizul-001",
-    "schoolName": "Assalam Tahfizul Qur'an Academy Limited",
-    "role": "accountant",
-    "status": "active",
-    "createdAt": "2026-10-27T12:13:55.299Z",
-    "lastActiveAt": "2026-10-27T12:13:55.299Z",
-    "isPermanentSuperAdmin": false
   }
 ]

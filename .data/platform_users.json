@@ -72,42 +72,6 @@
     "isPermanentSuperAdmin": true
   },
   {
-    "userId": "00000000-0000-0000-0000-000000000001",
-    "email": "demo.admin@eduerp-demo.ng",
-    "fullName": "Hajiya Maryam Sani",
-    "schoolId": "af91ff67-95eb-4b62-93a0-5617d23a2f1d",
-    "schoolName": "Al-Huda International Academy",
-    "role": "school_admin",
-    "status": "active",
-    "createdAt": "2025-02-10T08:30:00.000Z",
-    "lastActiveAt": "2026-10-27T12:13:55.285Z",
-    "isPermanentSuperAdmin": false
-  },
-  {
-    "userId": "teacher-user-ibrahim",
-    "email": "ibrahim.lawal@alhuda.edu.ng",
-    "fullName": "Mallam Ibrahim Lawal",
-    "schoolId": "af91ff67-95eb-4b62-93a0-5617d23a2f1d",
-    "schoolName": "Al-Huda International Academy",
-    "role": "teacher",
-    "status": "active",
-    "createdAt": "2025-02-15T09:00:00.000Z",
-    "lastActiveAt": "2026-10-27T12:13:55.285Z",
-    "isPermanentSuperAdmin": false
-  },
-  {
-    "userId": "teacher-user-zainab",
-    "email": "zainab.abubakar@alhuda.edu.ng",
-    "fullName": "Ustaza Zainab Abubakar",
-    "schoolId": "af91ff67-95eb-4b62-93a0-5617d23a2f1d",
-    "schoolName": "Al-Huda International Academy",
-    "role": "teacher",
-    "status": "active",
-    "createdAt": "2025-02-18T10:15:00.000Z",
-    "lastActiveAt": "2026-10-27T12:13:55.285Z",
-    "isPermanentSuperAdmin": false
-  },
-  {
     "userId": "accountant-user-usman",
     "email": "bursar.usman@alhuda.edu.ng",
     "fullName": "Malam Usman Bello",

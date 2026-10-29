@@ -8,6 +8,13 @@
       "when": 1793250667516,
       "tag": "0000_harden_database_access_and_validate_status",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793252895767,
+      "tag": "0001_registry_lifecycle_controls",
+      "breakpoints": true
     }
   ]
 }

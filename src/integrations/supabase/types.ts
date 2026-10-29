@@ -536,6 +536,7 @@ export type Database = {
       }
       classes: {
         Row: {
+          active: boolean
           arm: string | null
           campus_id: string | null
           created_at: string
@@ -547,6 +548,7 @@ export type Database = {
           teacher_id: string | null
         }
         Insert: {
+          active?: boolean
           arm?: string | null
           campus_id?: string | null
           created_at?: string
@@ -558,6 +560,7 @@ export type Database = {
           teacher_id?: string | null
         }
         Update: {
+          active?: boolean
           arm?: string | null
           campus_id?: string | null
           created_at?: string
@@ -1920,6 +1923,7 @@ export type Database = {
       }
       school_custom_roles: {
         Row: {
+          active: boolean
           created_at: string
           id: string
           name: string
@@ -1927,6 +1931,7 @@ export type Database = {
           school_id: string
         }
         Insert: {
+          active?: boolean
           created_at?: string
           id?: string
           name: string
@@ -1934,6 +1939,7 @@ export type Database = {
           school_id: string
         }
         Update: {
+          active?: boolean
           created_at?: string
           id?: string
           name?: string
@@ -2011,6 +2017,7 @@ export type Database = {
       }
       school_role_assignments: {
         Row: {
+          active: boolean
           created_at: string
           id: string
           role_id: string
@@ -2018,6 +2025,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          active?: boolean
           created_at?: string
           id?: string
           role_id: string
@@ -2025,6 +2033,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          active?: boolean
           created_at?: string
           id?: string
           role_id?: string
@@ -2050,6 +2059,7 @@ export type Database = {
       }
       schools: {
         Row: {
+          active: boolean
           address: string | null
           branch_name: string | null
           code: string
@@ -2074,6 +2084,7 @@ export type Database = {
           website: string | null
         }
         Insert: {
+          active?: boolean
           address?: string | null
           branch_name?: string | null
           code: string
@@ -2098,6 +2109,7 @@ export type Database = {
           website?: string | null
         }
         Update: {
+          active?: boolean
           address?: string | null
           branch_name?: string | null
           code?: string
@@ -2671,6 +2683,7 @@ export type Database = {
       }
       students: {
         Row: {
+          active: boolean
           address: string | null
           admission_date: string | null
           admission_no: string
@@ -2702,6 +2715,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          active?: boolean
           address?: string | null
           admission_date?: string | null
           admission_no: string
@@ -2733,6 +2747,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          active?: boolean
           address?: string | null
           admission_date?: string | null
           admission_no?: string
@@ -2789,6 +2804,7 @@ export type Database = {
       }
       subjects: {
         Row: {
+          active: boolean
           class_id: string | null
           code: string | null
           created_at: string
@@ -2797,6 +2813,7 @@ export type Database = {
           school_id: string
         }
         Insert: {
+          active?: boolean
           class_id?: string | null
           code?: string | null
           created_at?: string
@@ -2805,6 +2822,7 @@ export type Database = {
           school_id: string
         }
         Update: {
+          active?: boolean
           class_id?: string | null
           code?: string | null
           created_at?: string
@@ -3019,6 +3037,7 @@ export type Database = {
       }
       user_roles: {
         Row: {
+          active: boolean
           created_at: string
           id: string
           role: Database["public"]["Enums"]["app_role"]
@@ -3026,6 +3045,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          active?: boolean
           created_at?: string
           id?: string
           role: Database["public"]["Enums"]["app_role"]
@@ -3033,6 +3053,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          active?: boolean
           created_at?: string
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
@@ -3091,6 +3112,10 @@ export type Database = {
         Returns: boolean
       }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      manage_registry_item: {
+        Args: { _action: string; _id: string; _table: string }
+        Returns: Json
+      }
       manages_school_finance: {
         Args: { _school_id: string; _user_id: string }
         Returns: boolean

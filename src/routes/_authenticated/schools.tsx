@@ -90,7 +90,10 @@ function SchoolsPage() {
     if (creating) return;
     setCreating(true);
     try {
-      const { data: allowed, error: roleError } = await supabase.rpc("is_super_admin", { _user_id: (await supabase.auth.getUser()).data.user?.id ?? "" });
+      const { data: auth, error: authError } = await supabase.auth.getUser();
+      if (authError) throw authError;
+      if (!auth.user) throw new Error("Sign in with a registered Super Admin account to create a school.");
+      const { data: allowed, error: roleError } = await supabase.rpc("is_super_admin", { _user_id: auth.user.id });
       if (roleError) throw roleError;
       if (!allowed) throw new Error("Sign in with a registered Super Admin account to create a school.");
       const code = form.code.trim() || await generateUniqueSchoolCode(form.name);

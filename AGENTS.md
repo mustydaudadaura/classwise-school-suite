@@ -14,3 +14,5 @@
 - Resolve the managed auth-middleware import to the app-owned verified-auth middleware until managed regeneration removes imported bypasses; this preserves generated files while enforcing real sessions and typed RLS clients.
 - Keep auth input validation in a shared tested helper and give the verified middleware an explicit user-scoped context type; missing configuration must deny access rather than infer an administrative context.
 - Staff accounts are created server-side with the admin auth API (confirmed email + initial password) only after is_super_admin/can_manage_school checks, and the function itself writes the profile and role; client signUp silently fails for existing emails.
+- School registry writes must return an actual saved row before showing success; database read failures must not render as an empty registry.
+- SECURITY DEFINER execution is limited by purpose: trigger functions and parent phone lookup are server-only, policy helpers remain authenticated-callable, and published-report verification stays public.

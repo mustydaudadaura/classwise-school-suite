@@ -1,5 +1,7 @@
 # School ERP upgrade roadmap
 
+- [ ] Check and repair class, subject and student registration; verify saved records after reopening each list.
+
 - [x] Review all 52 public tables for RLS, grants and policy presence; repair function execution privileges and validate student status.
 - [x] School registry now confirms a saved row and displays load errors; remove fabricated transport/session roles and school fallbacks; registration regression tests pass.
 - [x] Create the owner-selected real Super Admin via email invitation; verify school creation and reopening after reload using Registration Verification School.

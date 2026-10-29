@@ -1,5 +1,7 @@
 # School ERP upgrade roadmap
 
+- [ ] Fix school registration and audit all public tables for access, policies and integration errors; verify confirmed repairs.
+
 - [x] Fix inherited preview type errors and verify the sign-in screen; three auth input regression tests pass.
 
 - [x] Compare uploaded master brief with current pages, server functions and live table/policy inventory.

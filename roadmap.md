@@ -1,5 +1,7 @@
 # School ERP upgrade roadmap
 
+- [ ] Repair password-reset email destination and provide a public new-password form; check recovery and expired-link handling.
+
 - [x] Check and repair class, subject and student registration; verified all three persist after reload through the owner account, including the guardian link; six regression tests pass.
 
 - [x] Review all 52 public tables for RLS, grants and policy presence; repair function execution privileges and validate student status.

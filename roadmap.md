@@ -2,7 +2,7 @@
 
 - [x] Review all 52 public tables for RLS, grants and policy presence; repair function execution privileges and validate student status.
 - [x] School registry now confirms a saved row and displays load errors; remove fabricated transport/session roles and school fallbacks; registration regression tests pass.
-- [ ] Verify school creation and reopening as a real Super Admin — this remix has zero auth users; needs the owner's first real account and administrator assignment.
+- [x] Create the owner-selected real Super Admin via email invitation; verify school creation and reopening after reload using Registration Verification School.
 
 - [x] Fix inherited preview type errors and verify the sign-in screen; three auth input regression tests pass.
 

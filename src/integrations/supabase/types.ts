@@ -3191,6 +3191,7 @@ export type Database = {
         Args: { _permission: string; _school_id: string; _user_id: string }
         Returns: boolean
       }
+      storage_school_folder: { Args: { _name: string }; Returns: string }
       student_school_id: { Args: { _student_id: string }; Returns: string }
       submit_student_admission: {
         Args: {

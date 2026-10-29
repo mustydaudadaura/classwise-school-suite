@@ -57,6 +57,13 @@
       "when": 1793280502457,
       "tag": "0007_block_unapproved_registry_usage",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793282115742,
+      "tag": "0008_tighten_schools_read_and_school_assets",
+      "breakpoints": true
     }
   ]
 }

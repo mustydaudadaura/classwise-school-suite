@@ -72,42 +72,6 @@
     "isPermanentSuperAdmin": true
   },
   {
-    "userId": "accountant-user-usman",
-    "email": "bursar.usman@alhuda.edu.ng",
-    "fullName": "Malam Usman Bello",
-    "schoolId": "af91ff67-95eb-4b62-93a0-5617d23a2f1d",
-    "schoolName": "Al-Huda International Academy",
-    "role": "accountant",
-    "status": "active",
-    "createdAt": "2025-02-20T11:30:00.000Z",
-    "lastActiveAt": "2026-10-27T12:13:55.285Z",
-    "isPermanentSuperAdmin": false
-  },
-  {
-    "userId": "student-user-ahmad",
-    "email": "ahmad.ibrahim@alhuda.edu.ng",
-    "fullName": "Ahmad Ibrahim Lawal",
-    "schoolId": "af91ff67-95eb-4b62-93a0-5617d23a2f1d",
-    "schoolName": "Al-Huda International Academy",
-    "role": "student",
-    "status": "active",
-    "createdAt": "2025-03-01T08:00:00.000Z",
-    "lastActiveAt": "2026-10-27T12:13:55.285Z",
-    "isPermanentSuperAdmin": false
-  },
-  {
-    "userId": "parent-user-ibrahim",
-    "email": "parent.lawal@alhuda.edu.ng",
-    "fullName": "Alhaji Ibrahim Lawal",
-    "schoolId": "af91ff67-95eb-4b62-93a0-5617d23a2f1d",
-    "schoolName": "Al-Huda International Academy",
-    "role": "parent",
-    "status": "active",
-    "createdAt": "2025-03-01T08:30:00.000Z",
-    "lastActiveAt": "2026-10-27T12:13:55.285Z",
-    "isPermanentSuperAdmin": false
-  },
-  {
     "userId": "usr-test-1793103235298-4tvu",
     "email": "principal.salisu@atqacademy.edu.ng",
     "fullName": "Mujittaba Salisu",

@@ -43,6 +43,13 @@
       "when": 1793280105654,
       "tag": "0005_teacher_registration_approval",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793280190308,
+      "tag": "0006_staff_subject_approval",
+      "breakpoints": true
     }
   ]
 }

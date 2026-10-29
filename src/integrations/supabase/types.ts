@@ -2822,7 +2822,9 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          pending_activation: boolean
           school_id: string
+          submitted_by: string | null
         }
         Insert: {
           active?: boolean
@@ -2831,7 +2833,9 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
+          pending_activation?: boolean
           school_id: string
+          submitted_by?: string | null
         }
         Update: {
           active?: boolean
@@ -2840,7 +2844,9 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          pending_activation?: boolean
           school_id?: string
+          submitted_by?: string | null
         }
         Relationships: [
           {
@@ -3089,11 +3095,16 @@ export type Database = {
     Functions: {
       activate_pending_classes: { Args: { _ids: string[] }; Returns: number }
       activate_pending_students: { Args: { _ids: string[] }; Returns: number }
+      activate_pending_subjects: { Args: { _ids: string[] }; Returns: number }
       can_manage_school: {
         Args: { _school_id: string; _user_id: string }
         Returns: boolean
       }
       can_submit_school_registration: {
+        Args: { _school_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_submit_school_subject: {
         Args: { _school_id: string; _user_id: string }
         Returns: boolean
       }

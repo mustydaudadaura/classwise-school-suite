@@ -3164,6 +3164,14 @@ export type Database = {
       activate_pending_classes: { Args: { _ids: string[] }; Returns: number }
       activate_pending_students: { Args: { _ids: string[] }; Returns: number }
       activate_pending_subjects: { Args: { _ids: string[] }; Returns: number }
+      assign_form_master: {
+        Args: { _class_id: string; _school_id: string; _teacher_id?: string }
+        Returns: Json
+      }
+      can_enter_class_scores: {
+        Args: { _class_id: string; _school_id: string; _user_id: string }
+        Returns: boolean
+      }
       can_manage_school: {
         Args: { _school_id: string; _user_id: string }
         Returns: boolean
@@ -3198,6 +3206,13 @@ export type Database = {
           _parent_phone: string
         }
         Returns: string
+      }
+      form_master_candidates: {
+        Args: { _school_id: string }
+        Returns: {
+          full_name: string
+          user_id: string
+        }[]
       }
       get_user_school: { Args: { _user_id: string }; Returns: string }
       has_role: {

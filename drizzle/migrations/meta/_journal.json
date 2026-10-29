@@ -1,20 +1,5 @@
 {
   "version": "7",
   "dialect": "postgresql",
-  "entries": [
-    {
-      "idx": 0,
-      "version": "7",
-      "when": 1792084672590,
-      "tag": "0000_curriculum_assistant",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1792644966659,
-      "tag": "0001_attach_new_user_profile_trigger",
-      "breakpoints": true
-    }
-  ]
+  "entries": []
 }

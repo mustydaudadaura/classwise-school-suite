@@ -16,6 +16,7 @@ import { RegistryActions } from "@/components/RegistryActions";
 import { hasRole } from "@/hooks/useAuth";
 import { requireSavedRecord } from "@/lib/registry-save";
 import { BulkImportDialog } from "@/components/BulkImportDialog";
+import { PendingActivations } from "@/components/PendingActivations";
 
 export const Route = createFileRoute("/_authenticated/students")({
   head: () => ({ meta: [{ title: "Students — Alegacy" }, { name: "description", content: "Students for authorized school accounts and families in Alegacy." }, { property: "og:title", content: "Students — Alegacy" }, { property: "og:description", content: "Students for authorized school accounts and families in Alegacy." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
@@ -23,9 +24,24 @@ export const Route = createFileRoute("/_authenticated/students")({
 });
 
 function StudentsPage() {
-  const { schoolId, roles } = useAuth();
+  const { schoolId, roles, user } = useAuth();
   const canManage = hasRole(roles, "super_admin", "school_admin");
   const qc = useQueryClient();
+  const { data: formMasterClassIds } = useQuery({
+    queryKey: ["form-master-classes", schoolId, user?.id],
+    enabled: Boolean(schoolId && user?.id && !canManage),
+    queryFn: async () => {
+      const [own, alloc] = await Promise.all([
+        supabase.from("classes").select("id").eq("school_id", schoolId ?? "").eq("active", true).eq("teacher_id", user!.id),
+        supabase.from("teacher_allocations").select("class_id").eq("school_id", schoolId ?? "").eq("teacher_id", user!.id).eq("is_class_teacher", true),
+      ]);
+      if (own.error) throw own.error;
+      if (alloc.error) throw alloc.error;
+      return Array.from(new Set([...(own.data ?? []).map((c) => c.id), ...(alloc.data ?? []).map((a) => a.class_id)]));
+    },
+  });
+  const isFormMaster = !canManage && (formMasterClassIds?.length ?? 0) > 0;
+  const canAdmit = canManage || isFormMaster;
   const [saving, setSaving] = useState(false);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
@@ -44,7 +60,7 @@ function StudentsPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("students")
-        .select("id, admission_no, first_name, last_name, middle_name, gender, dob, active, class_id, classes(name)")
+        .select("id, admission_no, first_name, last_name, middle_name, gender, dob, active, pending_activation, class_id, classes(name)")
         .eq("school_id", schoolId ?? "")
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -87,14 +103,32 @@ function StudentsPage() {
     },
   });
 
+  const admitClasses = canManage ? (classes ?? []) : (classes ?? []).filter((c) => formMasterClassIds?.includes(c.id));
+  const pendingStudents = (students ?? []).filter((s: any) => s.pending_activation);
+
   const create = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!schoolId) return toast.error("Select a school first");
     if (saving) return;
     if (![form.admission_no, form.first_name, form.last_name].every(v => v.trim())) return toast.error("Enter the admission number and student names");
     if (form.class_id && !classes?.some(c => c.id === form.class_id)) return toast.error("Choose a class in this school");
+    if (!canManage && !admitClasses.some(c => c.id === form.class_id)) return toast.error("Choose your form class");
     setSaving(true);
     try {
+    if (!canManage) {
+      const { data: newId, error: fmErr } = await supabase.rpc("form_master_admit_student", {
+        _class_id: form.class_id, _admission_no: form.admission_no, _first_name: form.first_name, _last_name: form.last_name,
+        _middle_name: form.middle_name, _gender: form.gender, _dob: (form.dob || null) as string,
+        _parent_name: form.parent_name, _parent_phone: form.parent_phone, _parent_email: form.parent_email,
+      });
+      if (fmErr) throw fmErr;
+      if (!newId) throw new Error("Student could not be saved");
+      await qc.invalidateQueries({ queryKey: ["students"] });
+      toast.success("Student admitted — waiting for the school admin to activate");
+      setOpen(false);
+      setForm({ admission_no: "", first_name: "", last_name: "", middle_name: "", gender: "male", dob: "", class_id: "", parent_name: "", parent_phone: "", parent_email: "" });
+      return;
+    }
 
     // Insert student
     const { data: student, error: sErr } = await supabase.from("students").insert({
@@ -187,8 +221,8 @@ function StudentsPage() {
           >
             Print Roster
           </Button>
-          <BulkImportDialog schoolId={schoolId} classes={classes ?? []} onDone={() => qc.invalidateQueries({ queryKey: ["students"] })} />
-          <Dialog open={open} onOpenChange={setOpen}>
+          {canManage && <BulkImportDialog schoolId={schoolId} classes={classes ?? []} onDone={() => qc.invalidateQueries({ queryKey: ["students"] })} />}
+          {canAdmit && <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild><Button><UserPlus className="mr-2 h-4 w-4" /> Admit student</Button></DialogTrigger>
           <DialogContent className="max-h-[90vh] overflow-y-auto">
             <DialogHeader><DialogTitle>New student admission</DialogTitle></DialogHeader>
@@ -214,7 +248,7 @@ function StudentsPage() {
                   <Select value={form.class_id} onValueChange={(v) => setForm({ ...form, class_id: v })}>
                     <SelectTrigger><SelectValue placeholder="Choose class" /></SelectTrigger>
                     <SelectContent>
-                      {classes?.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                      {admitClasses.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -230,12 +264,13 @@ function StudentsPage() {
               <Button type="submit" disabled={saving || !schoolId} className="w-full">{saving ? "Saving…" : "Admit student"}</Button>
             </form>
           </DialogContent>
-        </Dialog>
+        </Dialog>}
         </div>
       </div>
 
       {!schoolId && <p role="alert" className="text-destructive">Select a school from the school switcher before adding students.</p>}
       {classesError && <p role="alert" className="text-destructive">Classes could not be loaded: {classesError.message}</p>}
+      {canManage && <PendingActivations students={pendingStudents as any} />}
       <Card>
         <CardHeader className="pb-3">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
@@ -349,6 +384,7 @@ function StudentsPage() {
                             >
                               {fullName}
                             </Link>
+                            {s.pending_activation && <span className="rounded-full bg-accent px-2 py-0.5 text-xs text-accent-foreground">Awaiting activation</span>}
                           </div>
                         </TableCell>
                         <TableCell className="capitalize text-muted-foreground text-sm">

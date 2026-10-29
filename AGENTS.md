@@ -21,3 +21,5 @@
 - Registry lifecycle actions use one authenticated database RPC that checks school administration, protects own/Super Admin access, and blocks deletion across foreign-key references; active role flags control operational permissions while audit history and auth accounts remain intact.
 - SECURITY DEFINER execution is limited by purpose: trigger functions and parent phone lookup are server-only, policy helpers remain authenticated-callable, and published-report verification stays public.
 - Bulk class and subject copying uses school-scoped RLS writes and shared tested preparation helpers; re-read before importing, skip existing names, and verify every returned row without cloning students, teachers or historical records.
+
+- Form masters admit students into their own class through a checked database function; those students stay inactive until a school admin activates them, so admin approval cannot be bypassed.

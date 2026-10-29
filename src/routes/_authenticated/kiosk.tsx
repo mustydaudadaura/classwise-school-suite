@@ -1,17 +1,21 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
+import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { kioskIdentify, kioskPunch } from "@/lib/api/staff-attendance.functions";
+import { kioskBoard, kioskIdentify, kioskPunch } from "@/lib/api/staff-attendance.functions";
 import { getLocation } from "@/lib/geo-client";
-import { fmtTime } from "@/lib/staff-attendance";
+import { checkSites, fmtTime, SCHOOL_TZ } from "@/lib/staff-attendance";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Delete, XCircle, MapPin, ShieldAlert, Navigation, Sparkles } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { CheckCircle2, Delete, LogIn, LogOut, MapPin, ShieldAlert } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/kiosk")({
   head: () => ({ meta: [
     { title: "Attendance Kiosk — Alegacy" },
-    { name: "description", content: "Shared tablet kiosk where staff check in and out with a 4-digit PIN." },
+    { name: "description", content: "Shared tablet kiosk where staff sign in and out with a 4-digit PIN." },
     { property: "og:title", content: "Attendance Kiosk — Alegacy" },
     { property: "og:description", content: "PIN-based staff attendance kiosk for schools." },
     { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" },
@@ -19,82 +23,118 @@ export const Route = createFileRoute("/_authenticated/kiosk")({
   component: KioskPage,
 });
 
-type Who = { name: string; photo: string | null; check_in_at: string | null; check_out_at: string | null; status: string | null };
+const naira = (n: number) => (n > 0 ? `₦${Math.round(n).toLocaleString()}` : "0");
+
+function useClock() {
+  const [now, setNow] = useState<Date | null>(null);
+  useEffect(() => { setNow(new Date()); const t = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(t); }, []);
+  return now;
+}
 
 function KioskPage() {
   const { schoolId } = useAuth();
   const identify = useServerFn(kioskIdentify);
   const punch = useServerFn(kioskPunch);
+  const board = useServerFn(kioskBoard);
+  const now = useClock();
   const [pin, setPin] = useState("");
-  const [who, setWho] = useState<Who | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [geo, setGeo] = useState<{ lat: number; lng: number; accuracy: number } | null>(null);
+  const [geoErr, setGeoErr] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const reset = () => { setPin(""); setWho(null); setMsg(null); };
-  const autoReset = (ms = 8000) => { if (timer.current) clearTimeout(timer.current); timer.current = setTimeout(reset, ms); };
+  const q = useQuery({ queryKey: ["kiosk-board", schoolId], enabled: !!schoolId, queryFn: () => board({ data: { school_id: schoolId! } }), refetchInterval: 60000 });
+
+  useEffect(() => {
+    let alive = true;
+    const run = async () => { const r = await getLocation(10000); if (!alive) return; if (r.fix) { setGeo(r.fix); setGeoErr(null); } else setGeoErr(r.error ?? "Location unavailable"); };
+    run(); const t = setInterval(run, 30000);
+    return () => { alive = false; clearInterval(t); };
+  }, []);
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
 
   if (!schoolId) return <p className="text-muted-foreground">Select a school first.</p>;
 
-  const press = async (d: string) => {
-    if (busy || who) return;
-    const next = (pin + d).slice(0, 4); setPin(next); setMsg(null);
-    if (next.length === 4) {
-      setBusy(true);
-      try { setWho(await identify({ data: { school_id: schoolId, pin: next } })); autoReset(20000); }
-      catch (e) { setMsg({ ok: false, text: (e as Error).message }); setPin(""); autoReset(4000); }
-      finally { setBusy(false); }
-    }
-  };
+  const sites = q.data?.sites ?? [];
+  const hit = geo && sites.length ? checkSites(geo, sites) : null;
+  const clear = (ms: number) => { if (timer.current) clearTimeout(timer.current); timer.current = setTimeout(() => setMsg(null), ms); };
+
   const act = async (action: "in" | "out") => {
+    if (pin.length !== 4) { setMsg({ ok: false, text: "Enter your 4-digit PIN first." }); return; }
     if (!navigator.onLine) { setMsg({ ok: false, text: "No internet connection. Nothing was recorded." }); return; }
     setBusy(true);
     try {
-      const loc = await getLocation(8000);
+      const who = await identify({ data: { school_id: schoolId, pin } });
+      const loc = geo ? { fix: geo } : await getLocation(8000);
       const r = await punch({ data: { school_id: schoolId, pin, action, lat: loc.fix?.lat ?? null, lng: loc.fix?.lng ?? null, accuracy: loc.fix?.accuracy ?? null } });
-      const label = action === "in" ? "Check-in" : "Check-out";
-      setMsg({ ok: true, text: r.already ? `${label} already recorded at ${fmtTime(r.time)}` : `${label} successful at ${fmtTime(r.time)}` });
+      const label = action === "in" ? "Signed in" : "Signed out";
+      const extra = "late" in r && r.late ? ` · ${r.lateMinutes} min late` : "";
+      setMsg({ ok: true, text: `${who.name}: ${r.already ? "already " : ""}${label.toLowerCase()} at ${fmtTime(r.time)}${extra}` });
+      q.refetch();
     } catch (e) { setMsg({ ok: false, text: (e as Error).message }); }
-    finally { setBusy(false); autoReset(6000); }
+    finally { setPin(""); setBusy(false); clear(8000); }
   };
+  const press = (d: string) => { if (!busy) { setPin((p) => (p + d).slice(0, 4)); setMsg(null); } };
 
   return (
-    <div className="mx-auto flex min-h-[75vh] max-w-md flex-col items-center justify-center gap-5 text-center">
-      {/* Geofence protection indicator */}
-      <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-800 dark:text-emerald-300">
-        <MapPin className="h-3.5 w-3.5 text-emerald-600" />
-        <span>School Geolocation Geofencing Active</span>
-      </div>
+    <div className="mx-auto max-w-3xl space-y-6">
+      <Card><CardContent className="space-y-6 p-6 sm:p-8">
+        <div>
+          <p className="text-sm text-muted-foreground">Local time (Lagos)</p>
+          <p className="font-serif text-6xl font-bold tabular-nums tracking-tight">{now ? now.toLocaleTimeString("en-GB", { timeZone: SCHOOL_TZ, hour12: false }) : "--:--:--"}</p>
+          <p className="text-muted-foreground">{now?.toLocaleDateString("en-GB", { timeZone: SCHOOL_TZ, weekday: "long", day: "2-digit", month: "long", year: "numeric" })}</p>
+        </div>
+        <div className="flex gap-3" aria-label="PIN entered">
+          {[0, 1, 2, 3].map((i) => <div key={i} className="flex h-16 w-16 items-center justify-center rounded-xl border-2 border-border bg-background text-3xl">{pin[i] ? "•" : ""}</div>)}
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((d) => <Button key={d} variant="secondary" className="h-16 text-2xl" onClick={() => press(d)} disabled={busy}>{d}</Button>)}
+          <Button variant="secondary" className="h-16" onClick={() => setPin("")}>Clear</Button>
+          <Button variant="secondary" className="h-16 text-2xl" onClick={() => press("0")} disabled={busy}>0</Button>
+          <Button variant="secondary" className="h-16" aria-label="Delete" onClick={() => setPin(pin.slice(0, -1))}><Delete /></Button>
+        </div>
+        <div role="status" className={`rounded-xl border-2 p-4 text-center text-sm ${hit?.inside ? "border-primary/40 bg-primary/10 text-primary" : "border-destructive/40 bg-destructive/10 text-destructive"}`}>
+          {!sites.length ? "No school site has been set. Ask the administrator to add one in Attendance settings."
+            : geoErr && !geo ? geoErr
+            : !hit ? "Getting location…"
+            : <><b>{hit.inside ? "On-site" : "Off-site"} at {hit.site.name.toUpperCase()}</b> · {hit.distance}m from center (allowed: {hit.site.radius_m}m)</>}
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <Button size="lg" className="h-16 text-xl" disabled={busy || pin.length !== 4} onClick={() => act("in")}><LogIn /> Sign In</Button>
+          <Button size="lg" variant="destructive" className="h-16 text-xl" disabled={busy || pin.length !== 4} onClick={() => act("out")}><LogOut /> Sign Out</Button>
+        </div>
+        <p className="text-center text-sm text-muted-foreground">Enter your 4-digit PIN, then press Sign In or Sign Out.<br /><span className="inline-flex items-center gap-1"><MapPin className="h-4 w-4" />{geo ? `Location ready (±${Math.round(geo.accuracy)} m)` : "Getting location…"}</span></p>
+      </CardContent></Card>
 
-      {!who ? <>
-        <div>
-          <h1 className="text-3xl font-bold">Staff Attendance Kiosk</h1>
-          <p className="text-xs text-muted-foreground mt-1">
-            Check in/out within school premises. Non-premises attempts are strictly denied.
-          </p>
-        </div>
-        <p className="text-sm font-semibold text-foreground">Enter your 4-digit Staff PIN</p>
-        <div className="flex gap-3" aria-label="PIN entered">{[0, 1, 2, 3].map((i) => <span key={i} className={`h-5 w-5 rounded-full border-2 border-primary ${pin.length > i ? "bg-primary" : ""}`} />)}</div>
-        <div className="grid w-full grid-cols-3 gap-3">
-          {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((d) => <Button key={d} variant="outline" className="h-20 text-3xl font-mono shadow-sm" onClick={() => press(d)} disabled={busy}>{d}</Button>)}
-          <Button variant="ghost" className="h-20 text-sm font-semibold" onClick={reset}>Clear</Button>
-          <Button variant="outline" className="h-20 text-3xl font-mono shadow-sm" onClick={() => press("0")} disabled={busy}>0</Button>
-          <Button variant="ghost" className="h-20" aria-label="Delete" onClick={() => setPin(pin.slice(0, -1))}><Delete /></Button>
-        </div>
-      </> : <>
-        {who.photo ? <img src={who.photo} alt="" className="h-28 w-28 rounded-full object-cover border-2 border-primary shadow" /> : <div className="flex h-28 w-28 items-center justify-center rounded-full bg-primary text-4xl font-bold text-primary-foreground shadow">{who.name.slice(0, 1)}</div>}
-        <div>
-          <h1 className="text-2xl font-bold uppercase">{who.name}</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">Today: in {fmtTime(who.check_in_at)} · out {fmtTime(who.check_out_at)}</p>
-        </div>
-        {!msg?.ok && (!who.check_in_at
-          ? <Button className="h-20 w-full text-2xl font-bold shadow-md bg-emerald-600 hover:bg-emerald-700 text-white" disabled={busy} onClick={() => act("in")}>CHECK IN</Button>
-          : !who.check_out_at ? <Button className="h-20 w-full text-2xl font-bold shadow-md bg-amber-600 hover:bg-amber-700 text-white" disabled={busy} onClick={() => act("out")}>CHECK OUT</Button>
-          : <p className="text-base font-semibold text-emerald-600">Attendance complete for today.</p>)}
-        <Button variant="ghost" size="sm" onClick={reset}>Done</Button>
-      </>}
-      {msg && <div role="status" className={`flex items-center gap-2 rounded-lg border p-3.5 text-sm font-medium ${msg.ok ? "border-emerald-500 bg-emerald-50/50 text-emerald-800 dark:text-emerald-200" : "border-destructive bg-destructive/10 text-destructive"}`}>{msg.ok ? <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" /> : <ShieldAlert className="h-5 w-5 text-destructive shrink-0" />}{msg.text}</div>}
+      <Card><CardContent className="p-6 text-center">
+        {msg ? <p className={`flex items-center justify-center gap-2 text-lg font-medium ${msg.ok ? "text-primary" : "text-destructive"}`}>{msg.ok ? <CheckCircle2 /> : <ShieldAlert />}{msg.text}</p>
+          : <><p className="text-muted-foreground">Ready</p><p className="text-xl text-muted-foreground">Please enter your PIN to clock in or out.</p></>}
+      </CardContent></Card>
+
+      {q.error && <p className="text-sm text-destructive">{(q.error as Error).message}</p>}
+      {q.data && <><DayBoard title="Today" day={q.data.today} /><DayBoard title="Yesterday" day={q.data.yesterday} /></>}
     </div>
+  );
+}
+
+type Day = Awaited<ReturnType<typeof kioskBoard>>["today"];
+function DayBoard({ title, day }: { title: string; day: Day }) {
+  const c = day.counts;
+  const tiles: [number, string, string][] = [[c.onTime, "On time", "bg-primary/10 text-primary"], [c.late, "Late", "bg-accent text-accent-foreground"], [c.stillIn, "Still in", "bg-secondary text-secondary-foreground"], [c.missedOut, "Missed out", "bg-destructive/10 text-destructive"], [c.absent, "Absent", "bg-destructive/10 text-destructive"]];
+  const label = new Date(`${day.date}T12:00:00Z`).toLocaleDateString("en-GB", { weekday: "short", day: "2-digit", month: "short" });
+  return (
+    <Card><CardContent className="space-y-4 p-6">
+      <div className="flex items-baseline justify-between"><h2 className="text-2xl font-bold">{title}</h2><span className="text-sm text-muted-foreground">{label}{day.holiday ? ` · ${day.holiday}` : ""}</span></div>
+      <div className="grid grid-cols-5 gap-2">{tiles.map(([n, l, cls]) => <div key={l} className={`rounded-xl p-3 text-center ${cls}`}><p className="text-2xl font-bold">{n}</p><p className="text-[10px] uppercase sm:text-xs">{l}</p></div>)}</div>
+      <div className="max-h-96 overflow-auto rounded-lg border">
+        <Table><TableHeader><TableRow><TableHead>Staff</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Late</TableHead><TableHead className="text-right">Penalty</TableHead></TableRow></TableHeader>
+          <TableBody>{day.rows.map((r, i) => {
+            const st = r.stillIn ? "Signed in" : r.missedOut ? "Missed out" : r.status === "late" ? "Late" : r.status === "present" ? "On time" : r.status === "absent" ? "Absent" : r.status === "not_yet" ? "—" : r.status.replace("_", " ");
+            return <TableRow key={i}><TableCell>{r.name}</TableCell><TableCell><Badge variant={r.status === "absent" || r.missedOut ? "destructive" : "secondary"} className="uppercase">{st}</Badge></TableCell>
+              <TableCell className="text-right">{r.late ? `${r.lateMinutes}m` : "—"}</TableCell><TableCell className={`text-right ${r.penalty > 0 ? "text-destructive" : "text-primary"}`}>{naira(r.penalty)}</TableCell></TableRow>;
+          })}{!day.rows.length && <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground">No active staff yet.</TableCell></TableRow>}</TableBody></Table>
+      </div>
+    </CardContent></Card>
   );
 }

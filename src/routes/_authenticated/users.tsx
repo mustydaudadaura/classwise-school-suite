@@ -344,7 +344,6 @@ function UsersPage() {
 
   return (
     <div className="space-y-6">
-      <StaffAccessRegistry />
       {/* Page Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -446,6 +445,7 @@ function UsersPage() {
         })}
       </div>
 
+      <StaffAccessRegistry />
       {/* Main Tabs */}
       <Tabs defaultValue="users" className="space-y-4">
         <TabsList className="grid w-full grid-cols-2 sm:w-auto sm:inline-grid sm:grid-cols-3">
@@ -1011,7 +1011,7 @@ function UsersPage() {
           <DialogHeader>
             <div className="flex items-center gap-2 text-destructive">
               <AlertTriangle className="h-5 w-5" />
-              <DialogTitle className="text-destructive">Confirm Account Deletion</DialogTitle>
+              <DialogTitle className="text-destructive">Confirm Role Removal</DialogTitle>
             </div>
             <DialogDescription>
               Are you sure you want to remove the account for <strong>{deleteModalUser?.fullName}</strong> ({deleteModalUser?.email})?
@@ -1022,7 +1022,7 @@ function UsersPage() {
             <div className="rounded-md bg-destructive/10 p-3 text-destructive border border-destructive/20 space-y-1">
               <p className="font-semibold">Important Safety Guarantee:</p>
               <p>
-                Deleting this user account will revoke their login credentials and platform access. School records, student data, grades, and financial audit logs will <strong>NOT</strong> be deleted.
+                Removing assigned roles revokes school permissions but preserves the sign-in account. School records, student data, grades, and financial audit logs will <strong>NOT</strong> be deleted.
               </p>
             </div>
 
@@ -1049,7 +1049,7 @@ function UsersPage() {
               disabled={deleteConfirmText.trim().toUpperCase() !== "DELETE" || deleteUserMut.isPending}
               onClick={() => deleteUserMut.mutate()}
             >
-              {deleteUserMut.isPending ? "Removing User…" : "Confirm Account Deletion"}
+              {deleteUserMut.isPending ? "Removing User…" : "Confirm Role Removal"}
             </Button>
           </DialogFooter>
         </DialogContent>

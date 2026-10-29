@@ -17,18 +17,17 @@ import {
 const PERMANENT_SUPER_ADMIN_EMAIL = "mustydawuddaura@gmail.com";
 
 
-function isUserSuperAdmin(email?: string, roles?: string[]): boolean {
-  if (email && email.toLowerCase() === PERMANENT_SUPER_ADMIN_EMAIL.toLowerCase()) {
-    return true;
-  }
-  return Boolean(roles?.includes("super_admin"));
+async function isUserSuperAdmin(client: import('@supabase/supabase-js').SupabaseClient<import('@/integrations/supabase/types').Database>, userId: string): Promise<boolean> {
+  const { data, error } = await client.rpc('is_super_admin', { _user_id: userId });
+  if (error) throw error;
+  return Boolean(data);
 }
 
 export const getSuperAdminDashboardData = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const callerEmail = context.claims?.email?.toLowerCase();
-    const isSuper = isUserSuperAdmin(callerEmail);
+    const isSuper = await isUserSuperAdmin(context.supabase, context.userId);
 
     const schoolsList: SchoolRecord[] = getStoredSchools();
     try {
@@ -148,7 +147,7 @@ export const listRegistrationCodes = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const callerEmail = context.claims?.email?.toLowerCase();
-    const isSuper = isUserSuperAdmin(callerEmail);
+    const isSuper = await isUserSuperAdmin(context.supabase, context.userId);
     if (!isSuper) {
       throw new Error("Access Denied: Only the platform Super Admin can view or manage registration codes.");
     }
@@ -172,7 +171,7 @@ export const createRegistrationCode = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const callerEmail = context.claims?.email?.toLowerCase();
-    const isSuper = isUserSuperAdmin(callerEmail);
+    const isSuper = await isUserSuperAdmin(context.supabase, context.userId);
     if (!isSuper) {
       throw new Error("Security Violation: Only the platform Super Admin can create school registration codes.");
     }
@@ -224,7 +223,7 @@ export const revokeRegistrationCode = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const callerEmail = context.claims?.email?.toLowerCase();
-    const isSuper = isUserSuperAdmin(callerEmail);
+    const isSuper = await isUserSuperAdmin(context.supabase, context.userId);
     if (!isSuper) {
       throw new Error("Security Violation: Only the Super Admin can revoke registration codes.");
     }
@@ -536,7 +535,7 @@ export const createPlatformUser = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const callerEmail = context.claims?.email?.toLowerCase();
-    const isSuper = isUserSuperAdmin(callerEmail);
+    const isSuper = await isUserSuperAdmin(context.supabase, context.userId);
     const platformUsers = getStoredPlatformUsers();
     const callerUser = platformUsers.find((u) => u.email.toLowerCase() === callerEmail);
     const isSchoolAdmin =

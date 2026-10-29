@@ -51,6 +51,7 @@ Parent security decision: real-family phone-only access conflicts with the secur
 - [x] Attendance tracking upgrade: kiosk with live clock, PIN boxes, live on-site badge, Sign In/Sign Out, Today/Yesterday boards with late minutes and penalties; multiple geofence sites; per-minute late penalty. Unit tests pass; kiosk not yet clicked through in the browser.
 
 ## Open tasks
+- [x] Scaffold managed app email support for notify.alegacyng.com.ng; install rendering packages and preserve authenticated preview access. Sending awaits domain verification; no feature-specific email triggers were requested.
 - [x] Add administrator editing and rejection with reasons for pending classes, subjects and students; signed-in edits/rejections persist after reload, rejected entries stay inactive.
 - [x] Add existing class/subject/student editing, staff name/phone editing, custom-role name/permission editing, and school details shortcut; active-class and custom-role edits persist after reload, staff save and school form verified. Protected login identities and school affiliation remain unchanged. Fourteen regression tests pass; temporary records removed.
 - [x] Answered: database storage limits (DB healthy, 14.2 MB used, 14% disk; disk can grow on request)

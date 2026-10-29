@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Settings2, RefreshCw, Copy, Wand2, ExternalLink, Globe, Download } from "lucide-react";
 import { toast } from "sonner";
+import { schoolRegistrationSchema } from "@/lib/school-registration";
 
 // Build a school code like "HGA-001" from the school name.
 // Uses up to 3 initials + 3-digit random suffix, checks uniqueness in DB.
@@ -26,7 +27,8 @@ async function generateUniqueSchoolCode(name: string): Promise<string> {
   for (let attempt = 0; attempt < 12; attempt++) {
     const suffix = String(Math.floor(Math.random() * 900) + 100);
     const code = `${initials}-${suffix}`;
-    const { data } = await supabase.from("schools").select("id").eq("code", code).maybeSingle();
+    const { data, error } = await supabase.from("schools").select("id").eq("code", code).maybeSingle();
+    if (error) throw error;
     if (!data) return code;
   }
   return `${initials}-${Date.now().toString().slice(-4)}`;
@@ -70,10 +72,11 @@ async function uploadFile(file: File, prefix: string): Promise<string> {
 function SchoolsPage() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<School | null>(null);
   const [form, setForm] = useState({ name: "", code: "", address: "", phone: "", email: "", motto: "", current_session: "2025/2026" });
 
-  const { data: schools, isLoading } = useQuery({
+  const { data: schools, isLoading, error: schoolsError } = useQuery({
     queryKey: ["schools"],
     queryFn: async () => {
       const { data, error } = await supabase.from("schools").select("*").order("created_at", { ascending: false });
@@ -84,21 +87,35 @@ function SchoolsPage() {
 
   const create = async (e: React.FormEvent) => {
     e.preventDefault();
-    let code = form.code.trim().toUpperCase();
-    if (!code) code = await generateUniqueSchoolCode(form.name);
-    const { error } = await supabase.from("schools").insert({ ...form, code });
-    if (error) return toast.error(error.message);
-    toast.success(`School created · code ${code}`);
-    setOpen(false);
-    setForm({ name: "", code: "", address: "", phone: "", email: "", motto: "", current_session: "2025/2026" });
-    qc.invalidateQueries({ queryKey: ["schools"] });
-    qc.invalidateQueries({ queryKey: ["layout-schools"] });
+    if (creating) return;
+    setCreating(true);
+    try {
+      const { data: auth, error: authError } = await supabase.auth.getUser();
+      if (authError) throw authError;
+      if (!auth.user) throw new Error("Sign in with a registered Super Admin account to create a school.");
+      const { data: allowed, error: roleError } = await supabase.rpc("is_super_admin", { _user_id: auth.user.id });
+      if (roleError) throw roleError;
+      if (!allowed) throw new Error("Sign in with a registered Super Admin account to create a school.");
+      const code = form.code.trim() || await generateUniqueSchoolCode(form.name);
+      const payload = schoolRegistrationSchema.parse({ ...form, code });
+      const { data: saved, error } = await supabase.from("schools").insert(payload).select("id,code").single();
+      if (error) throw error;
+      if (!saved?.id) throw new Error("The school was not saved. Please try again.");
+      await Promise.all([qc.invalidateQueries({ queryKey: ["schools"] }), qc.invalidateQueries({ queryKey: ["layout-schools"] })]);
+      toast.success(`School created · code ${saved.code}`);
+      setOpen(false);
+      setForm({ name: "", code: "", address: "", phone: "", email: "", motto: "", current_session: "2025/2026" });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "School registration failed.");
+    } finally {
+      setCreating(false);
+    }
   };
 
   const regenerateCode = async (s: School) => {
     if (!confirm(`Regenerate code for ${s.name}? Users signing up with the old code (${s.code}) will fail.`)) return;
     const code = await generateUniqueSchoolCode(s.name);
-    const { error } = await supabase.from("schools").update({ code }).eq("id", s.id);
+    const { error } = await supabase.from("schools").update({ code }).eq("id", s.id).select("id").single();
     if (error) return toast.error(error.message);
     toast.success(`New code: ${code}`);
     qc.invalidateQueries({ queryKey: ["schools"] });
@@ -165,7 +182,6 @@ function SchoolsPage() {
                   <Label>Code</Label>
                   <div className="flex gap-1">
                     <Input
-                      required
                       placeholder="Auto-generated"
                       value={form.code}
                       onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
@@ -187,7 +203,7 @@ function SchoolsPage() {
                 <div className="col-span-2"><Label>Motto</Label><Input value={form.motto} onChange={(e) => setForm({ ...form, motto: e.target.value })} /></div>
                 <div><Label>Session</Label><Input value={form.current_session} onChange={(e) => setForm({ ...form, current_session: e.target.value })} /></div>
               </div>
-              <Button type="submit" className="w-full">Create</Button>
+              <Button type="submit" className="w-full" disabled={creating}>{creating ? "Saving…" : "Create"}</Button>
             </form>
           </DialogContent>
         </Dialog>
@@ -203,7 +219,7 @@ function SchoolsPage() {
       <Card>
         <CardHeader><CardTitle>All schools</CardTitle></CardHeader>
         <CardContent>
-          {isLoading ? <p className="text-muted-foreground">Loading…</p> : (
+          {schoolsError ? <p role="alert" className="text-destructive">Schools could not be loaded: {schoolsError.message}</p> : isLoading ? <p className="text-muted-foreground">Loading…</p> : (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -289,7 +305,7 @@ function EditBrandingDialog({ school, onClose, onSaved }: { school: School | nul
 
   const save = async () => {
     setSaving(true);
-    const { error } = await supabase.from("schools").update(draft).eq("id", school.id);
+    const { error } = await supabase.from("schools").update(draft).eq("id", school.id).select("id").single();
     setSaving(false);
     if (error) return toast.error(error.message);
     toast.success("Updated");

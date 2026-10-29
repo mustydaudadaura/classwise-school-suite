@@ -1,5 +1,13 @@
 {
   "version": "7",
   "dialect": "postgresql",
-  "entries": []
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1793250667516,
+      "tag": "0000_harden_database_access_and_validate_status",
+      "breakpoints": true
+    }
+  ]
 }

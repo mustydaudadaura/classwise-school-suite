@@ -14,3 +14,10 @@ for (const [name, path, method] of [
     assert.equal((await res.json()).code, "BACKEND_NOT_CONFIGURED");
   });
 }
+
+test("a populated school write cannot report a pretend save", async () => {
+  const res = await mockPostgrestFetch("https://example.invalid/rest/v1/schools", {
+    method: "POST", body: JSON.stringify({ name: "Test School", code: "TEST-001" }),
+  });
+  assert.equal(res.status, 503);
+});

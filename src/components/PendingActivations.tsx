@@ -31,7 +31,7 @@ export function PendingActivations({ students }: { students: Pending[] }) {
     <Card className="border-primary/40">
       <CardHeader className="pb-3">
         <CardTitle>Awaiting activation ({students.length})</CardTitle>
-        <CardDescription>Students admitted by form masters. Select and activate them to open their portal access.</CardDescription>
+        <CardDescription>Awaiting administrator approval</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="flex flex-wrap items-center gap-3">

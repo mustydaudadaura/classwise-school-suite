@@ -17,6 +17,7 @@ import { FileDown, Send, Scale } from "lucide-react";
 import { publishReportCards } from "@/lib/api/results.functions";
 import { scoreEntryClasses } from "@/lib/form-master";
 import { GeneralSubjectEntry } from "@/components/GeneralSubjectEntry";
+import { classSubjects } from '@/lib/broadsheet';
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   calculateGrade,
@@ -69,7 +70,7 @@ function ResultsPage() {
 
   const { data: classes, error: classAccessError } = useQuery({
     queryKey: ["res-classes", schoolId, user?.id, roles],
-    enabled: Boolean(schoolId),
+    enabled: Boolean(schoolId && user && !access.loading),
     queryFn: async () => {
       if (!schoolId || !user) return [];
       const { data, error } = await supabase.from("classes").select("id, name, level, section, arm, teacher_id").eq("school_id", schoolId).eq("active", true).eq("pending_activation", false).order("name");
@@ -95,7 +96,7 @@ function ResultsPage() {
 
   const { data: subjects, error: subjectsError, isPending: subjectsLoading } = useQuery({
     queryKey: ["res-subjects", filters.class_id, schoolId],
-    enabled: Boolean(schoolId),
+    enabled: Boolean(schoolId && filters.class_id),
     queryFn: async () => {
       if (!schoolId) return [];
       let q = supabase.from("subjects").select("id, name, class_id, school_id").eq("active", true).eq("pending_activation", false);
@@ -107,7 +108,7 @@ function ResultsPage() {
       }
       const { data, error } = await q.order("name");
       if (error) throw error;
-      return data ?? [];
+      return classSubjects(data ?? [], filters.class_id);
     },
   });
 
@@ -300,7 +301,7 @@ function ResultsPage() {
                 setScores({});
               }}
             >
-              <SelectTrigger><SelectValue placeholder="Choose Class" /></SelectTrigger>
+              <SelectTrigger aria-label="Result class"><SelectValue placeholder="Choose Class" /></SelectTrigger>
               <SelectContent>
                 {classes?.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
               </SelectContent>
@@ -312,7 +313,7 @@ function ResultsPage() {
               value={filters.subject_id}
               onValueChange={(v) => { setFilters({ ...filters, subject_id: v }); setScores({}); }}
             >
-              <SelectTrigger><SelectValue placeholder={subjects?.length ? "Choose Subject" : "No subjects available"} /></SelectTrigger>
+              <SelectTrigger aria-label="Result subject"><SelectValue placeholder={subjects?.length ? "Choose Subject" : "No subjects available"} /></SelectTrigger>
               <SelectContent>
                 {subjects?.length ? (
                   subjects.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)

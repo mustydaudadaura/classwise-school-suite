@@ -40,6 +40,7 @@ function ClassesPage() {
   const [cls, setCls] = useState<{ name: string; level: string; arm: string; section: "nursery" | "primary" | "secondary" | "" }>({ name: "", level: "", arm: "", section: "" });
   const [saving, setSaving] = useState(false);
   const [sub, setSub] = useState({ name: "", code: "", class_id: "" });
+  const [subjectClass, setSubjectClass] = useState('unassigned');
 
   const { data: classes, error: classesError, isLoading: classesLoading } = useQuery({
     queryKey: ["classes", schoolId],
@@ -91,7 +92,7 @@ function ClassesPage() {
     if (!schoolId) return toast.error("Select a school first");
     if (saving) return;
     if (!sub.name.trim()) return toast.error("Enter a subject name");
-    if (sub.class_id && !classes?.some(c => c.id === sub.class_id)) return toast.error("Choose a class in this school");
+    if (!sub.class_id || !classes?.some(c => c.id === sub.class_id)) return toast.error("Choose a class in this school");
     setSaving(true);
     try {
       if (!user) throw new Error("Sign in before registering a subject");
@@ -175,11 +176,10 @@ function ClassesPage() {
                 <div><Label>Name</Label><Input required placeholder="Mathematics" value={sub.name} onChange={(e) => setSub({ ...sub, name: e.target.value })} /></div>
                 <div><Label>Code</Label><Input placeholder="MTH" value={sub.code} onChange={(e) => setSub({ ...sub, code: e.target.value })} /></div>
                 <div>
-                  <Label>Class (optional)</Label>
-                  <Select value={sub.class_id || "all"} onValueChange={(v) => setSub({ ...sub, class_id: v === "all" ? "" : v })}>
-                    <SelectTrigger><SelectValue placeholder="All classes" /></SelectTrigger>
+                  <Label>Class</Label>
+                  <Select value={sub.class_id} onValueChange={(v) => setSub({ ...sub, class_id: v })}>
+                    <SelectTrigger><SelectValue placeholder="Choose class" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All classes</SelectItem>
                       {classes?.filter(c => c.active).map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
@@ -188,13 +188,14 @@ function ClassesPage() {
               </form>
             </CardContent>
           </Card>}
+          <div className="max-w-sm"><Label>Subjects for class</Label><Select value={subjectClass} onValueChange={setSubjectClass}><SelectTrigger aria-label="Subjects for class"><SelectValue /></SelectTrigger><SelectContent>{classes?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}<SelectItem value="unassigned">Unassigned subjects</SelectItem></SelectContent></Select></div>
           <Card>
             <CardContent className="pt-6">
               <Table>
                 <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Code</TableHead><TableHead>Class</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
                 <TableBody>
-                  {subjectsError ? <TableRow><TableCell colSpan={4} role="alert" className="text-destructive">Subjects could not be loaded: {subjectsError.message}</TableCell></TableRow> : subjectsLoading ? <TableRow><TableCell colSpan={4}>Loading subjects…</TableCell></TableRow> : subjects?.length ? subjects.map((s: any) => (
-                    <TableRow key={s.id}><TableCell className="font-medium">{s.name}</TableCell><TableCell>{s.code ?? "—"}</TableCell><TableCell>{s.classes?.name ?? "All"}</TableCell><TableCell>{s.rejected_at ? <div className="flex items-center gap-2"><span className="text-sm text-destructive">Rejected: {s.rejection_reason}</span>{isAdministrator && <RegistrationReview kind="subjects" id={s.id} name={s.name} editOnly />}</div> : s.pending_activation ? <span className="text-sm text-muted-foreground">Awaiting approval</span> : isAdministrator ? <RegistryActions table="subjects" id={s.id} name={s.name} active={s.active} /> : <span className="text-sm text-muted-foreground">{s.active ? "Active" : "Inactive"}</span>}</TableCell></TableRow>
+                  {subjectsError ? <TableRow><TableCell colSpan={4} role="alert" className="text-destructive">Subjects could not be loaded: {subjectsError.message}</TableCell></TableRow> : subjectsLoading ? <TableRow><TableCell colSpan={4}>Loading subjects…</TableCell></TableRow> : subjects?.filter(s => subjectClass === 'unassigned' ? !s.class_id : s.class_id === subjectClass).length ? subjects.filter(s => subjectClass === 'unassigned' ? !s.class_id : s.class_id === subjectClass).map((s: any) => (
+                    <TableRow key={s.id}><TableCell className="font-medium">{s.name}</TableCell><TableCell>{s.code ?? "—"}</TableCell><TableCell>{s.classes?.name ?? "Unassigned"}</TableCell><TableCell>{s.rejected_at ? <div className="flex items-center gap-2"><span className="text-sm text-destructive">Rejected: {s.rejection_reason}</span>{isAdministrator && <RegistrationReview kind="subjects" id={s.id} name={s.name} editOnly />}</div> : s.pending_activation ? <span className="text-sm text-muted-foreground">Awaiting approval</span> : isAdministrator ? <RegistryActions table="subjects" id={s.id} name={s.name} active={s.active} /> : <span className="text-sm text-muted-foreground">{s.active ? "Active" : "Inactive"}</span>}</TableCell></TableRow>
                   )) : <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground">No subjects yet</TableCell></TableRow>}
                 </TableBody>
               </Table>

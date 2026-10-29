@@ -1,6 +1,7 @@
 # School ERP upgrade roadmap
 
-- [ ] Repair password-reset email destination and provide a public new-password form; check recovery and expired-link handling.
+- [x] Repair password-reset email destination and provide a public new-password form; legacy routing and expired-link handling verified, six auth/recovery tests pass.
+- [ ] Confirm password update through a real emailed recovery link — requires the owner to open a fresh reset email; no recovery link is available for automated testing.
 
 - [x] Check and repair class, subject and student registration; verified all three persist after reload through the owner account, including the guardian link; six regression tests pass.
 

@@ -182,8 +182,9 @@ function ClassesPage() {
         </TabsContent>
 
         <TabsContent value="subjects" className="space-y-4">
+          <div className="max-w-sm"><Label htmlFor="subject-list-class">Subjects for class</Label><Select value={subjectClass} onValueChange={setSubjectClass}><SelectTrigger id="subject-list-class" aria-label="Subjects for class"><SelectValue placeholder="Choose class" /></SelectTrigger><SelectContent>{classes?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}<SelectItem value="unassigned">Unassigned subjects (needs class assignment)</SelectItem></SelectContent></Select></div>
           {isAdministrator && schoolId && !classesLoading && !subjectsLoading && !classesError && !subjectsError && <ClassImport kind="subjects" schoolId={schoolId} classes={classes ?? []} subjects={subjects ?? []} />}
-          {isAdministrator && <PendingClassActivations kind="subjects" classes={(subjects ?? []).filter(s => s.pending_activation)} />}
+          {isAdministrator && <PendingClassActivations kind="subjects" classes={(subjects ?? []).filter(s => s.pending_activation && (subjectClass === "unassigned" ? !s.class_id : s.class_id === subjectClass))} />}
           {canAddSubject && <Card>
             <CardHeader><CardTitle>Add subject</CardTitle></CardHeader>
             <CardContent>
@@ -204,7 +205,6 @@ function ClassesPage() {
               </form>
             </CardContent>
           </Card>}
-          <div className="max-w-sm"><Label htmlFor="subject-list-class">Subjects for class</Label><Select value={subjectClass} onValueChange={setSubjectClass}><SelectTrigger id="subject-list-class" aria-label="Subjects for class"><SelectValue placeholder="Choose class" /></SelectTrigger><SelectContent>{classes?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}<SelectItem value="unassigned">Unassigned subjects (needs class assignment)</SelectItem></SelectContent></Select></div>
           <Card>
             <CardContent className="pt-6">
               <Table>

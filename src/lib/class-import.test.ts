@@ -36,3 +36,12 @@ test('imports must confirm every saved row in the selected school', () => {
   assert.throws(() => verifyImportedRows([{ id: 'a', school_id: 'other' }], 1, 'school'));
   assert.doesNotThrow(() => verifyImportedRows([{ id: 'a', school_id: 'school' }], 1, 'school'));
 });
+for (const field of ['level', 'arm', 'section'] as const) {
+  test(`class import requires source ${field}`, () => {
+    assert.throws(() => prepareClassImport('Primary 2', 'school', [{ ...source, [field]: null }], 'source'));
+  });
+}
+test('subject copy requires source code and approved destination class', () => {
+  assert.throws(() => prepareSubjectCopy('school', 'source', ['target'], [source, target], [{ ...subject, code: null }]));
+  assert.throws(() => prepareSubjectCopy('school', 'source', ['target'], [source, { ...target, pending_activation: true }], [subject]));
+});

@@ -23,3 +23,4 @@
 - Bulk class and subject copying uses school-scoped RLS writes and shared tested preparation helpers; re-read before importing, skip existing names, and verify every returned row without cloning students, teachers or historical records.
 
 - Form masters admit students into their own class through a checked database function; those students stay inactive until a school admin activates them, so admin approval cannot be bypassed.
+- Class, subject and student registration controls use school_permission results for the selected school, with a separate assigned-class admission path for form masters; role labels alone can disagree with database policies.

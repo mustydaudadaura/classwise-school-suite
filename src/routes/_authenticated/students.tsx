@@ -17,6 +17,8 @@ import { hasRole } from "@/hooks/useAuth";
 import { requireSavedRecord } from "@/lib/registry-save";
 import { BulkImportDialog } from "@/components/BulkImportDialog";
 import { PendingActivations } from "@/components/PendingActivations";
+import { useSchoolAccess } from "@/hooks/useSchoolAccess";
+import { admissionMode } from "@/lib/registry-permissions";
 
 export const Route = createFileRoute("/_authenticated/students")({
   head: () => ({ meta: [{ title: "Students — Alegacy" }, { name: "description", content: "Students for authorized school accounts and families in Alegacy." }, { property: "og:title", content: "Students — Alegacy" }, { property: "og:description", content: "Students for authorized school accounts and families in Alegacy." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
@@ -25,15 +27,18 @@ export const Route = createFileRoute("/_authenticated/students")({
 
 function StudentsPage() {
   const { schoolId, roles, user } = useAuth();
-  const canManage = hasRole(roles, "super_admin", "school_admin");
+  const access = useSchoolAccess();
+  const canManage = access.schoolId === schoolId && access.can("students.edit");
+  const canActivate = canManage && hasRole(roles, "super_admin", "school_admin");
   const qc = useQueryClient();
-  const { data: formMasterClassIds } = useQuery({
+  const { data: formMasterClassIds, error: formMasterError } = useQuery({
     queryKey: ["form-master-classes", schoolId, user?.id],
     enabled: Boolean(schoolId && user?.id && !canManage),
     queryFn: async () => {
+      if (!user?.id || !schoolId) return [];
       const [own, alloc] = await Promise.all([
-        supabase.from("classes").select("id").eq("school_id", schoolId ?? "").eq("active", true).eq("teacher_id", user!.id),
-        supabase.from("teacher_allocations").select("class_id").eq("school_id", schoolId ?? "").eq("teacher_id", user!.id).eq("is_class_teacher", true),
+        supabase.from("classes").select("id").eq("school_id", schoolId).eq("active", true).eq("teacher_id", user.id),
+        supabase.from("teacher_allocations").select("class_id").eq("school_id", schoolId).eq("teacher_id", user.id).eq("is_class_teacher", true),
       ]);
       if (own.error) throw own.error;
       if (alloc.error) throw alloc.error;
@@ -41,7 +46,7 @@ function StudentsPage() {
     },
   });
   const isFormMaster = !canManage && (formMasterClassIds?.length ?? 0) > 0;
-  const canAdmit = canManage || isFormMaster;
+  const canAdmit = !access.loading && (canManage || isFormMaster);
   const [saving, setSaving] = useState(false);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
@@ -112,10 +117,10 @@ function StudentsPage() {
     if (saving) return;
     if (![form.admission_no, form.first_name, form.last_name].every(v => v.trim())) return toast.error("Enter the admission number and student names");
     if (form.class_id && !classes?.some(c => c.id === form.class_id)) return toast.error("Choose a class in this school");
-    if (!canManage && !admitClasses.some(c => c.id === form.class_id)) return toast.error("Choose your form class");
     setSaving(true);
     try {
-    if (!canManage) {
+    const mode = admissionMode(canManage, admitClasses.map(c => c.id), form.class_id);
+    if (mode === "form-master") {
       const { data: newId, error: fmErr } = await supabase.rpc("form_master_admit_student", {
         _class_id: form.class_id, _admission_no: form.admission_no, _first_name: form.first_name, _last_name: form.last_name,
         _middle_name: form.middle_name, _gender: form.gender, _dob: (form.dob || null) as string,
@@ -123,7 +128,12 @@ function StudentsPage() {
       });
       if (fmErr) throw fmErr;
       if (!newId) throw new Error("Student could not be saved");
+      const { data: saved, error: readError } = await supabase.from("students").select("id, school_id, class_id, active, pending_activation").eq("id", newId).single();
+      if (readError) throw readError;
+      requireSavedRecord(saved, schoolId);
+      if (saved.class_id !== form.class_id || saved.active || !saved.pending_activation) throw new Error("The admission approval status could not be confirmed. Ask the school administrator to check the student.");
       await qc.invalidateQueries({ queryKey: ["students"] });
+      clearFilters();
       toast.success("Student admitted — waiting for the school admin to activate");
       setOpen(false);
       setForm({ admission_no: "", first_name: "", last_name: "", middle_name: "", gender: "male", dob: "", class_id: "", parent_name: "", parent_phone: "", parent_email: "" });
@@ -269,8 +279,10 @@ function StudentsPage() {
       </div>
 
       {!schoolId && <p role="alert" className="text-destructive">Select a school from the school switcher before adding students.</p>}
+      {schoolId && !access.loading && !canAdmit && <p role="alert" className="text-muted-foreground">Student admission requires school editing permission or a form-master class assignment. Ask your school administrator to check your access.</p>}
+      {formMasterError && <p role="alert" className="text-destructive">Your form-master class assignment could not be loaded: {formMasterError.message}</p>}
       {classesError && <p role="alert" className="text-destructive">Classes could not be loaded: {classesError.message}</p>}
-      {canManage && <PendingActivations students={pendingStudents as any} />}
+      {canActivate && <PendingActivations students={pendingStudents as any} />}
       <Card>
         <CardHeader className="pb-3">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">

@@ -12,7 +12,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { RegistryActions } from "@/components/RegistryActions";
-import { hasRole } from "@/hooks/useAuth";
+import { useSchoolAccess } from "@/hooks/useSchoolAccess";
+import { requireRegistryPermission } from "@/lib/registry-permissions";
 import { requireSavedRecord } from "@/lib/registry-save";
 import { ClassImport } from "@/components/ClassImport";
 
@@ -22,8 +23,9 @@ export const Route = createFileRoute("/_authenticated/classes")({
 });
 
 function ClassesPage() {
-  const { schoolId, roles } = useAuth();
-  const canManage = hasRole(roles, "super_admin", "school_admin");
+  const { schoolId } = useAuth();
+  const access = useSchoolAccess();
+  const canManage = access.schoolId === schoolId && access.can("academics.edit");
   const qc = useQueryClient();
   const [cls, setCls] = useState<{ name: string; level: string; arm: string; section: "nursery" | "primary" | "secondary" | "" }>({ name: "", level: "", arm: "", section: "" });
   const [saving, setSaving] = useState(false);
@@ -56,6 +58,7 @@ function ClassesPage() {
     if (!cls.name.trim()) return toast.error("Enter a class name");
     setSaving(true);
     try {
+      requireRegistryPermission(canManage);
       const { data, error } = await supabase.from("classes").insert({
         name: cls.name.trim(), level: cls.level.trim() || null, arm: cls.arm.trim() || null,
         section: cls.section || null, school_id: schoolId,
@@ -79,6 +82,7 @@ function ClassesPage() {
     if (sub.class_id && !classes?.some(c => c.id === sub.class_id)) return toast.error("Choose a class in this school");
     setSaving(true);
     try {
+      requireRegistryPermission(canManage);
       const { data, error } = await supabase.from("subjects").insert({
         school_id: schoolId, name: sub.name.trim(), code: sub.code.trim() || null,
         class_id: sub.class_id || null,
@@ -101,6 +105,7 @@ function ClassesPage() {
       </div>
 
       {!schoolId && <p role="alert" className="text-destructive">Select a school from the school switcher before adding records.</p>}
+      {schoolId && !access.loading && !canManage && <p role="alert" className="text-muted-foreground">Your account can view classes and subjects. Ask your school administrator to register new ones.</p>}
       <Tabs defaultValue="classes">
         <TabsList>
           <TabsTrigger value="classes">Classes</TabsTrigger>
@@ -109,7 +114,7 @@ function ClassesPage() {
 
         <TabsContent value="classes" className="space-y-4">
           {canManage && schoolId && !classesLoading && !classesError && <ClassImport kind="classes" schoolId={schoolId} classes={classes ?? []} subjects={subjects ?? []} />}
-          <Card>
+          {canManage && <Card>
             <CardHeader><CardTitle>Add class</CardTitle></CardHeader>
             <CardContent>
               <form onSubmit={addClass} className="grid grid-cols-1 gap-3 sm:grid-cols-5">
@@ -118,7 +123,7 @@ function ClassesPage() {
                 <div><Label>Arm</Label><Input placeholder="A" value={cls.arm} onChange={(e) => setCls({ ...cls, arm: e.target.value })} /></div>
                 <div>
                   <Label>Section</Label>
-                  <Select value={cls.section || undefined} onValueChange={(v) => setCls({ ...cls, section: v as any })}>
+                  <Select value={cls.section} onValueChange={(v) => setCls({ ...cls, section: v as "nursery" | "primary" | "secondary" })}>
                     <SelectTrigger><SelectValue placeholder="Select section" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="nursery">Nursery</SelectItem>
@@ -130,7 +135,7 @@ function ClassesPage() {
                 <div className="flex items-end"><Button type="submit" disabled={saving || !schoolId} className="w-full">{saving ? "Saving…" : "Add"}</Button></div>
               </form>
             </CardContent>
-          </Card>
+          </Card>}
           <Card>
             <CardContent className="pt-6">
               <Table>
@@ -147,7 +152,7 @@ function ClassesPage() {
 
         <TabsContent value="subjects" className="space-y-4">
           {canManage && schoolId && !classesLoading && !subjectsLoading && !classesError && !subjectsError && <ClassImport kind="subjects" schoolId={schoolId} classes={classes ?? []} subjects={subjects ?? []} />}
-          <Card>
+          {canManage && <Card>
             <CardHeader><CardTitle>Add subject</CardTitle></CardHeader>
             <CardContent>
               <form onSubmit={addSubject} className="grid grid-cols-1 gap-3 sm:grid-cols-4">
@@ -166,7 +171,7 @@ function ClassesPage() {
                 <div className="flex items-end"><Button type="submit" disabled={saving || !schoolId} className="w-full">{saving ? "Saving…" : "Add"}</Button></div>
               </form>
             </CardContent>
-          </Card>
+          </Card>}
           <Card>
             <CardContent className="pt-6">
               <Table>

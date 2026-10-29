@@ -357,9 +357,7 @@ export const setPayrollStatus = createServerFn({ method: "POST" })
   });
 
 /** Kiosk wall board: today's and yesterday's attendance with late minutes and penalty, plus active sites for the live location badge. */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function buildBoard(db: any, schoolId: string) {
-  const db = await admin();
+async function buildBoard(db: Awaited<ReturnType<typeof admin>>, schoolId: string) {
   const s = await loadSettings(db, schoolId);
   const now = localParts(new Date());
   const y = new Date(`${now.date}T12:00:00Z`); y.setUTCDate(y.getUTCDate() - 1);
@@ -411,7 +409,7 @@ export const publicKioskBoard = createServerFn({ method: "POST" })
     return { today: b.today, yesterday: b.yesterday };
   });
 
-// ---------- Public kiosk (no sign-in). Staff identify only by PIN; no attendance board or personal data is returned. ----------
+// ---------- Public kiosk (no sign-in). Staff identify only by PIN; the school chose to show today/yesterday boards publicly. ----------
 export const publicKioskSchools = createServerFn({ method: "GET" }).handler(async () => {
   const db = await admin();
   const { data, error } = await db.from("schools").select("id,name,logo_url,motto").eq("active", true).order("name");

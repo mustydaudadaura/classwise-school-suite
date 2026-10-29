@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { GraduationCap, Phone, School, Users } from "lucide-react";
+import { Clock, GraduationCap, Phone, School, Users } from "lucide-react";
 import { startDemo } from "@/lib/api/demo.functions";
 
 import { useServerFn } from "@tanstack/react-start";
@@ -96,6 +96,9 @@ function AuthPage() {
             <span className="text-[10px] font-medium text-muted-foreground tracking-wide">School Management Platform</span>
           </div>
         </Link>
+        <Button asChild size="lg" className="mb-4 h-14 w-full rounded-2xl text-base font-semibold shadow-md shadow-primary/25">
+          <Link to="/attendance-kiosk"><Clock className="mr-2 h-5 w-5" /> Staff Attendance Kiosk</Link>
+        </Button>
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle>Welcome</CardTitle>

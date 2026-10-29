@@ -63,8 +63,9 @@ function ResultsPage() {
   const caRatioConfig = CA_RATIOS[academicConfig.caRatio] || CA_RATIOS["20_20_60"];
 
   const { data: classes } = useQuery({
-    queryKey: ["res-classes"],
-    queryFn: async () => (await supabase.from("classes").select("id, name, level, section, arm").order("name")).data ?? [],
+    queryKey: ["res-classes", schoolId],
+    enabled: Boolean(schoolId),
+    queryFn: async () => schoolId ? (await supabase.from("classes").select("id, name, level, section, arm").eq("school_id", schoolId).eq("active", true).eq("pending_activation", false).order("name")).data ?? [] : [],
   });
 
   const selectedClass = classes?.find((c: any) => c.id === filters.class_id);
@@ -74,8 +75,10 @@ function ResultsPage() {
 
   const { data: subjects } = useQuery({
     queryKey: ["res-subjects", filters.class_id, schoolId],
+    enabled: Boolean(schoolId),
     queryFn: async () => {
-      let q = supabase.from("subjects").select("id, name, class_id, school_id");
+      if (!schoolId) return [];
+      let q = supabase.from("subjects").select("id, name, class_id, school_id").eq("active", true).eq("pending_activation", false);
       if (schoolId) {
         q = q.eq("school_id", schoolId);
       }
@@ -85,7 +88,7 @@ function ResultsPage() {
       const { data, error } = await q.order("name");
       if (error) {
         console.warn("Could not fetch filtered subjects, falling back to all school subjects:", error);
-        const fallback = await supabase.from("subjects").select("id, name").order("name");
+        const fallback = await supabase.from("subjects").select("id, name").eq("school_id", schoolId).eq("active", true).eq("pending_activation", false).order("name");
         return fallback.data ?? [];
       }
       return data ?? [];
@@ -96,7 +99,7 @@ function ResultsPage() {
     queryKey: ["res-students", filters.class_id],
     enabled: !!filters.class_id,
     queryFn: async () => {
-      const { data } = await supabase.from("students").select("id, admission_no, first_name, last_name").eq("class_id", filters.class_id).order("last_name");
+      const { data } = await supabase.from("students").select("id, admission_no, first_name, last_name").eq("class_id", filters.class_id).eq("active", true).eq("pending_activation", false).order("last_name");
       return data ?? [];
     },
   });

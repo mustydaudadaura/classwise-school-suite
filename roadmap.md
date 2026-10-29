@@ -1,8 +1,8 @@
 # School ERP upgrade roadmap
 
-- [ ] Repair class/student registration permission mismatches and verify signed-in registration without weakening school access.
-- [ ] Allow teachers to submit inactive classes and student admissions for administrator approval and activation.
-- [ ] Include subject submissions for school staff, inactive until administrator activation.
+- [x] Repair class/student registration permission mismatches; signed-in teacher submissions and administrator approvals verified.
+- [x] Allow teachers to submit inactive classes and student admissions for administrator approval and activation; reload persistence verified and temporary test records removed.
+- [x] Include subject submissions for school staff, inactive until administrator activation; submission and approval verified, with pending records blocked from operational use.
 
 - [x] Add bulk class creation using an existing class's settings and copy subjects to multiple classes; nine tests pass and owner-session checks confirm two imported classes persist after reload, subject copies appear in both, and retries skip duplicates. Verification records remain in Registration Verification School.
 

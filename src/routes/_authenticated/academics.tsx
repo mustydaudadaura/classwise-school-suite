@@ -26,8 +26,8 @@ const DAYS = ["", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Satur
 const ALL = "__all";
 
 function useLookups(schoolId: string | null) {
-  const classes = useQuery({ queryKey: ["ac-classes", schoolId], enabled: !!schoolId, queryFn: async () => (await supabase.from("classes").select("id,name").eq("school_id", schoolId!).order("name")).data ?? [] });
-  const subjects = useQuery({ queryKey: ["ac-subjects", schoolId], enabled: !!schoolId, queryFn: async () => (await supabase.from("subjects").select("id,name,class_id").eq("school_id", schoolId!).order("name")).data ?? [] });
+  const classes = useQuery({ queryKey: ["ac-classes", schoolId], enabled: Boolean(schoolId), queryFn: async () => schoolId ? (await supabase.from("classes").select("id,name").eq("school_id", schoolId).eq("active", true).eq("pending_activation", false).order("name")).data ?? [] : [] });
+  const subjects = useQuery({ queryKey: ["ac-subjects", schoolId], enabled: Boolean(schoolId), queryFn: async () => schoolId ? (await supabase.from("subjects").select("id,name,class_id").eq("school_id", schoolId).eq("active", true).eq("pending_activation", false).order("name")).data ?? [] : [] });
   const teachers = useQuery({
     queryKey: ["ac-teachers", schoolId], enabled: !!schoolId,
     queryFn: async () => {

@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import { requireSavedRecord } from "@/lib/registry-save";
 
 export const Route = createFileRoute("/_authenticated/classes")({
   head: () => ({ meta: [{ title: "Classes & Subjects — Alegacy" }, { name: "description", content: "Classes & Subjects for authorized school accounts and families in Alegacy." }, { property: "og:title", content: "Classes & Subjects — Alegacy" }, { property: "og:description", content: "Classes & Subjects for authorized school accounts and families in Alegacy." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
@@ -21,21 +22,24 @@ function ClassesPage() {
   const { schoolId } = useAuth();
   const qc = useQueryClient();
   const [cls, setCls] = useState<{ name: string; level: string; arm: string; section: "nursery" | "primary" | "secondary" | "" }>({ name: "", level: "", arm: "", section: "" });
+  const [saving, setSaving] = useState(false);
   const [sub, setSub] = useState({ name: "", code: "", class_id: "" });
 
-  const { data: classes } = useQuery({
+  const { data: classes, error: classesError, isLoading: classesLoading } = useQuery({
     queryKey: ["classes", schoolId],
+    enabled: Boolean(schoolId),
     queryFn: async () => {
-      const { data, error } = await supabase.from("classes").select("*").order("name");
+      const { data, error } = await supabase.from("classes").select("*").eq("school_id", schoolId ?? "").order("name");
       if (error) throw error;
       return data;
     },
   });
 
-  const { data: subjects } = useQuery({
+  const { data: subjects, error: subjectsError, isLoading: subjectsLoading } = useQuery({
     queryKey: ["subjects", schoolId],
+    enabled: Boolean(schoolId),
     queryFn: async () => {
-      const { data, error } = await supabase.from("subjects").select("*, classes(name)").order("name");
+      const { data, error } = await supabase.from("subjects").select("*, classes(name)").eq("school_id", schoolId ?? "").order("name");
       if (error) throw error;
       return data;
     },
@@ -43,28 +47,46 @@ function ClassesPage() {
 
   const addClass = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!schoolId) return toast.error("Set up your school first");
-    const { error } = await supabase.from("classes").insert({
-      name: cls.name, level: cls.level || null, arm: cls.arm || null,
-      section: cls.section || null, school_id: schoolId,
-    });
-    if (error) return toast.error(error.message);
-    toast.success("Class created");
-    setCls({ name: "", level: "", arm: "", section: "" });
-    qc.invalidateQueries({ queryKey: ["classes"] });
+    if (!schoolId) return toast.error("Select a school first");
+    if (saving) return;
+    if (!cls.name.trim()) return toast.error("Enter a class name");
+    setSaving(true);
+    try {
+      const { data, error } = await supabase.from("classes").insert({
+        name: cls.name.trim(), level: cls.level.trim() || null, arm: cls.arm.trim() || null,
+        section: cls.section || null, school_id: schoolId,
+      }).select("id, school_id").single();
+      if (error) throw error;
+      requireSavedRecord(data, schoolId);
+      await qc.invalidateQueries({ queryKey: ["classes"] });
+      await qc.invalidateQueries({ queryKey: ["classes-for-students"] });
+      toast.success("Class created");
+      setCls({ name: "", level: "", arm: "", section: "" });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : (error as { message?: string }).message ?? "Class could not be saved");
+    } finally { setSaving(false); }
   };
 
   const addSubject = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!schoolId) return toast.error("Set up your school first");
-    const { error } = await supabase.from("subjects").insert({
-      school_id: schoolId, name: sub.name, code: sub.code || null,
-      class_id: sub.class_id || null,
-    });
-    if (error) return toast.error(error.message);
-    toast.success("Subject added");
-    setSub({ name: "", code: "", class_id: "" });
-    qc.invalidateQueries({ queryKey: ["subjects"] });
+    if (!schoolId) return toast.error("Select a school first");
+    if (saving) return;
+    if (!sub.name.trim()) return toast.error("Enter a subject name");
+    if (sub.class_id && !classes?.some(c => c.id === sub.class_id)) return toast.error("Choose a class in this school");
+    setSaving(true);
+    try {
+      const { data, error } = await supabase.from("subjects").insert({
+        school_id: schoolId, name: sub.name.trim(), code: sub.code.trim() || null,
+        class_id: sub.class_id || null,
+      }).select("id, school_id").single();
+      if (error) throw error;
+      requireSavedRecord(data, schoolId);
+      await qc.invalidateQueries({ queryKey: ["subjects"] });
+      toast.success("Subject added");
+      setSub({ name: "", code: "", class_id: "" });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : (error as { message?: string }).message ?? "Subject could not be saved");
+    } finally { setSaving(false); }
   };
 
   return (
@@ -74,6 +96,7 @@ function ClassesPage() {
         <p className="text-sm text-muted-foreground">Organize your school structure.</p>
       </div>
 
+      {!schoolId && <p role="alert" className="text-destructive">Select a school from the school switcher before adding records.</p>}
       <Tabs defaultValue="classes">
         <TabsList>
           <TabsTrigger value="classes">Classes</TabsTrigger>
@@ -99,7 +122,7 @@ function ClassesPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="flex items-end"><Button type="submit" className="w-full">Add</Button></div>
+                <div className="flex items-end"><Button type="submit" disabled={saving || !schoolId} className="w-full">{saving ? "Saving…" : "Add"}</Button></div>
               </form>
             </CardContent>
           </Card>
@@ -108,7 +131,7 @@ function ClassesPage() {
               <Table>
                 <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Level</TableHead><TableHead>Arm</TableHead><TableHead>Section</TableHead></TableRow></TableHeader>
                 <TableBody>
-                  {classes?.length ? classes.map((c: any) => (
+                  {classesError ? <TableRow><TableCell colSpan={4} role="alert" className="text-destructive">Classes could not be loaded: {classesError.message}</TableCell></TableRow> : classesLoading ? <TableRow><TableCell colSpan={4}>Loading classes…</TableCell></TableRow> : classes?.length ? classes.map((c: any) => (
                     <TableRow key={c.id}><TableCell className="font-medium">{c.name}</TableCell><TableCell>{c.level ?? "—"}</TableCell><TableCell>{c.arm ?? "—"}</TableCell><TableCell className="capitalize">{c.section ?? "—"}</TableCell></TableRow>
                   )) : <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground">No classes yet</TableCell></TableRow>}
                 </TableBody>
@@ -126,14 +149,15 @@ function ClassesPage() {
                 <div><Label>Code</Label><Input placeholder="MTH" value={sub.code} onChange={(e) => setSub({ ...sub, code: e.target.value })} /></div>
                 <div>
                   <Label>Class (optional)</Label>
-                  <Select value={sub.class_id} onValueChange={(v) => setSub({ ...sub, class_id: v })}>
+                  <Select value={sub.class_id || "all"} onValueChange={(v) => setSub({ ...sub, class_id: v === "all" ? "" : v })}>
                     <SelectTrigger><SelectValue placeholder="All classes" /></SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="all">All classes</SelectItem>
                       {classes?.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="flex items-end"><Button type="submit" className="w-full">Add</Button></div>
+                <div className="flex items-end"><Button type="submit" disabled={saving || !schoolId} className="w-full">{saving ? "Saving…" : "Add"}</Button></div>
               </form>
             </CardContent>
           </Card>
@@ -142,7 +166,7 @@ function ClassesPage() {
               <Table>
                 <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Code</TableHead><TableHead>Class</TableHead></TableRow></TableHeader>
                 <TableBody>
-                  {subjects?.length ? subjects.map((s: any) => (
+                  {subjectsError ? <TableRow><TableCell colSpan={3} role="alert" className="text-destructive">Subjects could not be loaded: {subjectsError.message}</TableCell></TableRow> : subjectsLoading ? <TableRow><TableCell colSpan={3}>Loading subjects…</TableCell></TableRow> : subjects?.length ? subjects.map((s: any) => (
                     <TableRow key={s.id}><TableCell className="font-medium">{s.name}</TableCell><TableCell>{s.code ?? "—"}</TableCell><TableCell>{s.classes?.name ?? "All"}</TableCell></TableRow>
                   )) : <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground">No subjects yet</TableCell></TableRow>}
                 </TableBody>

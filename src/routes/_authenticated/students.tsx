@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, UserPlus, Search, X, SlidersHorizontal, ArrowUpDown, Download } from "lucide-react";
 import { toast } from "sonner";
+import { requireSavedRecord } from "@/lib/registry-save";
 import { BulkImportDialog } from "@/components/BulkImportDialog";
 
 export const Route = createFileRoute("/_authenticated/students")({
@@ -22,6 +23,7 @@ export const Route = createFileRoute("/_authenticated/students")({
 function StudentsPage() {
   const { schoolId } = useAuth();
   const qc = useQueryClient();
+  const [saving, setSaving] = useState(false);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
     admission_no: "", first_name: "", last_name: "", middle_name: "",
@@ -33,12 +35,14 @@ function StudentsPage() {
   const [classFilter, setClassFilter] = useState("all");
   const [genderFilter, setGenderFilter] = useState("all");
 
-  const { data: students, isLoading } = useQuery({
+  const { data: students, error: studentsError, isLoading } = useQuery({
     queryKey: ["students", schoolId],
+    enabled: Boolean(schoolId),
     queryFn: async () => {
       const { data, error } = await supabase
         .from("students")
-        .select("id, admission_no, first_name, last_name, middle_name, gender, class_id, classes(name)")
+        .select("id, admission_no, first_name, last_name, middle_name, gender, dob, class_id, classes(name)")
+        .eq("school_id", schoolId ?? "")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
@@ -70,10 +74,11 @@ function StudentsPage() {
     setGenderFilter("all");
   };
 
-  const { data: classes } = useQuery({
+  const { data: classes, error: classesError } = useQuery({
     queryKey: ["classes-for-students", schoolId],
+    enabled: Boolean(schoolId),
     queryFn: async () => {
-      const { data, error } = await supabase.from("classes").select("id, name").order("name");
+      const { data, error } = await supabase.from("classes").select("id, name").eq("school_id", schoolId ?? "").order("name");
       if (error) throw error;
       return data;
     },
@@ -81,20 +86,27 @@ function StudentsPage() {
 
   const create = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!schoolId) return toast.error("Set up your school first");
+    if (!schoolId) return toast.error("Select a school first");
+    if (saving) return;
+    if (![form.admission_no, form.first_name, form.last_name].every(v => v.trim())) return toast.error("Enter the admission number and student names");
+    if (form.class_id && !classes?.some(c => c.id === form.class_id)) return toast.error("Choose a class in this school");
+    setSaving(true);
+    try {
 
     // Insert student
     const { data: student, error: sErr } = await supabase.from("students").insert({
       school_id: schoolId,
-      admission_no: form.admission_no,
-      first_name: form.first_name,
-      last_name: form.last_name,
+      admission_no: form.admission_no.trim(),
+      first_name: form.first_name.trim(),
+      last_name: form.last_name.trim(),
       middle_name: form.middle_name || null,
       gender: form.gender,
       dob: form.dob || null,
       class_id: form.class_id || null,
     }).select().single();
-    if (sErr) return toast.error(sErr.message);
+    if (sErr) throw sErr;
+    requireSavedRecord(student, schoolId);
+    let parentWarning = "";
 
     // Auto-create + link parent
     if (form.parent_name && student) {
@@ -104,19 +116,27 @@ function StudentsPage() {
         phone: form.parent_phone || null,
         email: form.parent_email || null,
       }).select().single();
-      if (!pErr && parent) {
-        await supabase.from("student_parents").insert({
+      if (pErr || !parent) {
+        parentWarning = "Student saved, but the guardian could not be saved. Open the student profile to add the guardian.";
+      } else {
+        const { error: linkError } = await supabase.from("student_parents").insert({
           student_id: student.id,
           parent_id: parent.id,
           is_primary: true,
         });
+        if (linkError) parentWarning = "Student saved, but the guardian could not be linked. Open the student profile to link the guardian.";
       }
     }
 
-    toast.success("Student admitted");
+    await qc.invalidateQueries({ queryKey: ["students"] });
+    clearFilters();
+    if (parentWarning) toast.warning(parentWarning);
+    else toast.success("Student admitted");
     setOpen(false);
     setForm({ admission_no: "", first_name: "", last_name: "", middle_name: "", gender: "male", dob: "", class_id: "", parent_name: "", parent_phone: "", parent_email: "" });
-    qc.invalidateQueries({ queryKey: ["students"] });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : (error as { message?: string }).message ?? "Student could not be saved");
+    } finally { setSaving(false); }
   };
 
   return (
@@ -204,13 +224,15 @@ function StudentsPage() {
                   <div><Label>Email</Label><Input type="email" value={form.parent_email} onChange={(e) => setForm({ ...form, parent_email: e.target.value })} /></div>
                 </div>
               </div>
-              <Button type="submit" className="w-full">Admit student</Button>
+              <Button type="submit" disabled={saving || !schoolId} className="w-full">{saving ? "Saving…" : "Admit student"}</Button>
             </form>
           </DialogContent>
         </Dialog>
         </div>
       </div>
 
+      {!schoolId && <p role="alert" className="text-destructive">Select a school from the school switcher before adding students.</p>}
+      {classesError && <p role="alert" className="text-destructive">Classes could not be loaded: {classesError.message}</p>}
       <Card>
         <CardHeader className="pb-3">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
@@ -296,7 +318,7 @@ function StudentsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {isLoading ? (
+                {studentsError ? (<TableRow><TableCell colSpan={5} role="alert" className="text-destructive">Students could not be loaded: {studentsError.message}</TableCell></TableRow>) : isLoading ? (
                   <TableRow>
                     <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
                       Loading students…

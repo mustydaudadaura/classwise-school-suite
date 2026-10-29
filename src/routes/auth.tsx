@@ -12,6 +12,7 @@ import { GraduationCap, Phone, School, Users } from "lucide-react";
 import { startDemo } from "@/lib/api/demo.functions";
 
 import { useServerFn } from "@tanstack/react-start";
+import { isPasswordRecoveryHash } from "@/lib/password-recovery";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({ meta: [{ title: "Sign in — Alegacy" }, { name: "description", content: "Sign in for authorized school accounts and families in Alegacy." }, { property: "og:title", content: "Sign in — Alegacy" }, { property: "og:description", content: "Sign in for authorized school accounts and families in Alegacy." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
@@ -26,10 +27,18 @@ function AuthPage() {
   const [parentPhone, setParentPhone] = useState("");
 
   useEffect(() => {
+    if (isPasswordRecoveryHash(window.location.hash)) {
+      window.location.replace(`/reset-password${window.location.hash}`);
+      return;
+    }
     supabase.auth.getSession().then(({ data }) => {
       if (data.session) navigate({ to: "/dashboard", replace: true });
     }).catch(() => {});
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
+      if (event === "PASSWORD_RECOVERY") {
+        window.location.replace(`/reset-password${window.location.hash}`);
+        return;
+      }
       if (s) navigate({ to: "/dashboard", replace: true });
     });
     return () => subscription.unsubscribe();
@@ -199,8 +208,9 @@ function AuthPage() {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <Label htmlFor="password">Password</Label>
-                      <button
+                      <Button
                         type="button"
+                        variant="link"
                         onClick={async () => {
                           if (!email.trim()) {
                             toast.error("Please enter your email address first.");
@@ -208,7 +218,7 @@ function AuthPage() {
                           }
                           try {
                             const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-                              redirectTo: `${window.location.origin}/auth`,
+                              redirectTo: `${window.location.origin}/reset-password`,
                             });
                             if (error) throw error;
                             toast.success("Password reset instructions sent to your email!");
@@ -219,7 +229,7 @@ function AuthPage() {
                         className="text-[11px] text-primary hover:underline font-medium"
                       >
                         Forgot password?
-                      </button>
+                      </Button>
                     </div>
                     <Input
                       id="password"

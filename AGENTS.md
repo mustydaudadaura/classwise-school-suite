@@ -1,5 +1,7 @@
 # Architecture rules
 
+- Password recovery uses the public /reset-password screen, separate from sign-in redirects; legacy recovery links on /auth are forwarded with their hash so users can choose a new password.
+
 - Extend existing TanStack Start screens and PostgreSQL tables additively; preserve historical records and working school workflows during phased upgrades.
 - Store school configuration, custom roles, permission assignments and audit records separately from user profiles; school affiliation never grants operational permissions.
 - Enforce module activation and school-scoped permissions in database policies and authenticated server functions; navigation visibility is not authorization.

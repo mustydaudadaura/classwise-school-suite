@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as PortalRouteImport } from './routes/portal'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as VerifyCredentialRouteImport } from './routes/verify-credential'
 import { Route as AuthenticatedAcademicsRouteImport } from './routes/_authenticated/academics'
 import { Route as AuthenticatedAdmissionsRouteImport } from './routes/_authenticated/admissions'
@@ -73,6 +74,11 @@ const AuthRoute = AuthRouteImport.update({
 const PortalRoute = PortalRouteImport.update({
   id: '/portal',
   path: '/portal',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const VerifyCredentialRoute = VerifyCredentialRouteImport.update({
@@ -268,6 +274,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/portal': typeof PortalRouteWithChildren
+  '/reset-password': typeof ResetPasswordRoute
   '/verify-credential': typeof VerifyCredentialRoute
   '/academics': typeof AuthenticatedAcademicsRoute
   '/admissions': typeof AuthenticatedAdmissionsRoute
@@ -309,6 +316,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/verify-credential': typeof VerifyCredentialRoute
   '/academics': typeof AuthenticatedAcademicsRoute
   '/admissions': typeof AuthenticatedAdmissionsRoute
@@ -353,6 +361,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/portal': typeof PortalRouteWithChildren
+  '/reset-password': typeof ResetPasswordRoute
   '/verify-credential': typeof VerifyCredentialRoute
   '/_authenticated/academics': typeof AuthenticatedAcademicsRoute
   '/_authenticated/admissions': typeof AuthenticatedAdmissionsRoute
@@ -397,6 +406,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/portal'
+    | '/reset-password'
     | '/verify-credential'
     | '/academics'
     | '/admissions'
@@ -438,6 +448,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/auth'
+    | '/reset-password'
     | '/verify-credential'
     | '/academics'
     | '/admissions'
@@ -481,6 +492,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/portal'
+    | '/reset-password'
     | '/verify-credential'
     | '/_authenticated/academics'
     | '/_authenticated/admissions'
@@ -525,6 +537,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   AuthRoute: typeof AuthRoute
   PortalRoute: typeof PortalRouteWithChildren
+  ResetPasswordRoute: typeof ResetPasswordRoute
   VerifyCredentialRoute: typeof VerifyCredentialRoute
   SSlugRoute: typeof SSlugRoute
   VerifyCodeRoute: typeof VerifyCodeRoute
@@ -568,6 +581,13 @@ declare module '@tanstack/react-router' {
       path: '/portal'
       fullPath: '/portal'
       preLoaderRoute: typeof PortalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/verify-credential': {
@@ -921,6 +941,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   AuthRoute: AuthRoute,
   PortalRoute: PortalRouteWithChildren,
+  ResetPasswordRoute: ResetPasswordRoute,
   VerifyCredentialRoute: VerifyCredentialRoute,
   SSlugRoute: SSlugRoute,
   VerifyCodeRoute: VerifyCodeRoute,

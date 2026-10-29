@@ -185,7 +185,7 @@ export const batchSaveAdmissions = createServerFn({ method: "POST" })
             const mime = mimeMatch ? mimeMatch[1] : "image/jpeg";
             const ext = mime.includes("png") ? "png" : "jpg";
             const buffer = Buffer.from(base64Data, "base64");
-            const storagePath = `passports/${data.school_id}/${Date.now()}-${i}.${ext}`;
+            const storagePath = `${data.school_id}/passports/${Date.now()}-${i}.${ext}`;
 
             const { error: uploadErr } = await supabase.storage
               .from("school-assets")

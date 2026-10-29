@@ -42,5 +42,5 @@ Current gate: approve phased upgrade scope before applying foundational access/s
 Parent security decision: real-family phone-only access conflicts with the secure-authentication brief; agree on OTP or another verification method before changing that experience.
 - [ ] Audit Google AI Studio imports, remove reproduced security/saving regressions, and test authenticated school workflows.
 
-- [ ] Form masters admit students; admin bulk-activates
-- [ ] Remove all schools except Assalam Tahfizul Qur'an Academy Limited
+- [x] Form masters admit students; admin bulk-activates
+- [x] Remove all schools except Assalam Tahfizul Qur'an Academy Limited

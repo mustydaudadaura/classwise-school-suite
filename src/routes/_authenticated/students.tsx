@@ -23,9 +23,24 @@ export const Route = createFileRoute("/_authenticated/students")({
 });
 
 function StudentsPage() {
-  const { schoolId, roles } = useAuth();
+  const { schoolId, roles, user } = useAuth();
   const canManage = hasRole(roles, "super_admin", "school_admin");
   const qc = useQueryClient();
+  const { data: formMasterClassIds } = useQuery({
+    queryKey: ["form-master-classes", schoolId, user?.id],
+    enabled: Boolean(schoolId && user?.id && !canManage),
+    queryFn: async () => {
+      const [own, alloc] = await Promise.all([
+        supabase.from("classes").select("id").eq("school_id", schoolId ?? "").eq("active", true).eq("teacher_id", user!.id),
+        supabase.from("teacher_allocations").select("class_id").eq("school_id", schoolId ?? "").eq("teacher_id", user!.id).eq("is_class_teacher", true),
+      ]);
+      if (own.error) throw own.error;
+      if (alloc.error) throw alloc.error;
+      return Array.from(new Set([...(own.data ?? []).map((c) => c.id), ...(alloc.data ?? []).map((a) => a.class_id)]));
+    },
+  });
+  const isFormMaster = !canManage && (formMasterClassIds?.length ?? 0) > 0;
+  const canAdmit = canManage || isFormMaster;
   const [saving, setSaving] = useState(false);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({

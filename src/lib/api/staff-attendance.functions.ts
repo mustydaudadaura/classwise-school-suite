@@ -395,3 +395,31 @@ export const kioskBoard = createServerFn({ method: "POST" })
     };
     return { today: day(now.date), yesterday: day(yesterday), sites, gps_kiosk: s.gps_kiosk };
   });
+
+// ---------- Public kiosk (no sign-in). Staff identify only by PIN; no attendance board or personal data is returned. ----------
+export const publicKioskSchools = createServerFn({ method: "GET" }).handler(async () => {
+  const db = await admin();
+  const { data, error } = await db.from("schools").select("id,name,logo_url,motto").eq("active", true).order("name");
+  if (error) throw new Error("Could not load schools");
+  return data ?? [];
+});
+
+export const publicKioskPunch = createServerFn({ method: "POST" })
+  .inputValidator(z.object({ school_id: z.string().uuid(), pin: z.string().regex(/^\d{4}$/), action: z.enum(["in", "out"]), ...GeoSchema }))
+  .handler(async ({ data }) => {
+    const db = await admin();
+    const { data: school } = await db.from("schools").select("id").eq("id", data.school_id).eq("active", true).maybeSingle();
+    if (!school) throw new Error("School not found");
+    const since = new Date(Date.now() - 10 * 60000).toISOString();
+    const { count } = await db.from("attendance_attempts").select("id", { count: "exact", head: true })
+      .eq("school_id", data.school_id).is("device_user_id", null).eq("result", "bad_pin").gte("created_at", since);
+    if ((count ?? 0) >= 10) throw new Error("Too many wrong PINs. The kiosk is locked for 10 minutes.");
+    const { data: sp } = await db.from("staff_profiles").select("user_id,active").eq("school_id", data.school_id).eq("pin_hash", await pinHash(data.school_id, data.pin)).maybeSingle();
+    if (!sp || !sp.active) {
+      await db.from("attendance_attempts").insert({ school_id: data.school_id, device_user_id: null, action: "pin", method: "kiosk", result: "bad_pin" });
+      throw new Error("PIN not recognised");
+    }
+    const { data: p } = await db.from("profiles").select("full_name").eq("user_id", sp.user_id).maybeSingle();
+    const r = await punch(data.school_id, sp.user_id, data.action, "kiosk", data, null as unknown as string);
+    return { ...r, name: p?.full_name ?? "Staff" };
+  });

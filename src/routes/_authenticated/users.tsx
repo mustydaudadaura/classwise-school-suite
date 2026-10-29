@@ -379,7 +379,7 @@ function UsersPage() {
             size="sm"
             className="font-semibold shadow-sm"
             onClick={() => {
-              const defaultSchool = mySchoolId || schools?.[0]?.id || "af91ff67-95eb-4b62-93a0-5617d23a2f1d";
+              const defaultSchool = mySchoolId || schools?.[0]?.id || "";
               if (isSuper) {
                 setNewUserForm((prev) => ({
                   ...prev,

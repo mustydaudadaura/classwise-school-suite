@@ -57,6 +57,24 @@ function StudentsPage() {
     gender: "male" as "male" | "female", dob: "", class_id: "",
     parent_name: "", parent_phone: "", parent_email: "",
   });
+  const nextAdm = useQuery({
+    queryKey: ["next-admission-no", schoolId],
+    enabled: Boolean(schoolId) && open,
+    staleTime: 0,
+    refetchInterval: open ? 15000 : false,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("next_admission_number", { _school_id: schoolId! });
+      if (error) throw error;
+      return data as { last: string | null; next: string };
+    },
+  });
+  const lastAutoAdm = React.useRef("");
+  React.useEffect(() => {
+    const next = nextAdm.data?.next;
+    if (!next) return;
+    setForm((f) => (f.admission_no === "" || f.admission_no === lastAutoAdm.current ? { ...f, admission_no: next } : f));
+    lastAutoAdm.current = next;
+  }, [nextAdm.data?.next]);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [classFilter, setClassFilter] = useState("all");
@@ -241,7 +259,14 @@ function StudentsPage() {
             <DialogHeader><DialogTitle>New student admission</DialogTitle></DialogHeader>
             <form onSubmit={create} className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
-                <div><Label>Admission No.</Label><Input required value={form.admission_no} onChange={(e) => setForm({ ...form, admission_no: e.target.value })} /></div>
+                <div className="col-span-2 sm:col-span-1">
+                  <Label>Admission No. (automatic)</Label>
+                  <Input required value={form.admission_no} onChange={(e) => setForm({ ...form, admission_no: e.target.value })} placeholder={nextAdm.isLoading ? "Generating…" : ""} />
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {nextAdm.data?.last ? <>Current (last used) admission no: <strong>{nextAdm.data.last}</strong>. </> : "No admission numbers used yet. "}
+                    Next is filled in for you.
+                  </p>
+                </div>
                 <div>
                   <Label>Gender</Label>
                   <Select value={form.gender} onValueChange={(v: any) => setForm({ ...form, gender: v })}>

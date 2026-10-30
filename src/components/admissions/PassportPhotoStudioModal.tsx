@@ -5,6 +5,8 @@ import { Slider } from "@/components/ui/slider";
 import { CameraCaptureModal } from "./CameraCaptureModal";
 import { Camera, Upload, RotateCw, ZoomIn, Check, X, User, Sparkles, ShieldCheck, Info } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { streamImage } from "@/lib/stream-image";
 
 interface PassportPhotoStudioModalProps {
   open: boolean;
@@ -76,7 +78,7 @@ export function PassportPhotoStudioModal({
         setRotation(0);
         setPan({ x: 0, y: 0 });
         setIsEnhanced(false);
-        toast.success("Passport photo loaded! Use Gemini Enhance to optimize for passport standards.");
+        void handleGeminiEnhance(ev.target.result);
       }
     };
     reader.readAsDataURL(file);
@@ -89,6 +91,7 @@ export function PassportPhotoStudioModal({
       setRotation(0);
       setPan({ x: 0, y: 0 });
       setIsEnhanced(false);
+      void handleGeminiEnhance(captures[0].dataUrl);
     }
   };
 
@@ -110,84 +113,38 @@ export function PassportPhotoStudioModal({
     setIsDragging(false);
   };
 
-  /**
-   * Gemini Standard Passport Enhancement:
-   * - Enforces 35x45mm / 450x550 aspect ratio standard
-   * - Normalizes background to neutral studio off-white
-   * - Balances lighting & contrast curve
-   * - 100% facial geometry & identity preservation (never altered)
-   */
-  const handleGeminiEnhance = async () => {
-    if (!imageSrc) return;
+  // AI passport enhancement: white background, centred head & shoulders, face preserved.
+  const handleGeminiEnhance = async (source?: string) => {
+    const src = source ?? imageSrc;
+    if (!src) return;
     setIsEnhancing(true);
-
     try {
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.src = imageSrc;
-      await new Promise((resolve) => {
-        img.onload = resolve;
-      });
-
-      const targetWidth = 450;
-      const targetHeight = 550;
-      const canvas = document.createElement("canvas");
-      canvas.width = targetWidth;
-      canvas.height = targetHeight;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) throw new Error("Canvas context failed");
-
-      // Neutral studio passport backdrop (#f3f4f6)
-      ctx.fillStyle = "#f3f4f6";
-      ctx.fillRect(0, 0, targetWidth, targetHeight);
-
-      // Centered framing with standard passport head proportions
-      const w = img.width || 300;
-      const h = img.height || 400;
-      const scale = Math.max(targetWidth / w, targetHeight / h) * 1.05;
-
-      ctx.save();
-      ctx.translate(targetWidth / 2, targetHeight / 2 - 10);
-      ctx.drawImage(img, (-w * scale) / 2, (-h * scale) / 2, w * scale, h * scale);
-      ctx.restore();
-
-      // Portrait lighting & contrast normalization (100% face preservation)
-      const imgData = ctx.getImageData(0, 0, targetWidth, targetHeight);
-      const data = imgData.data;
-
-      // Slight contrast stretch & exposure normalization
-      for (let i = 0; i < data.length; i += 4) {
-        let r = data[i];
-        let g = data[i + 1];
-        let b = data[i + 2];
-
-        // Gentle studio contrast curve
-        r = ((r - 128) * 1.06) + 128 + 4;
-        g = ((g - 128) * 1.06) + 128 + 4;
-        b = ((b - 128) * 1.06) + 128 + 4;
-
-        data[i] = Math.min(255, Math.max(0, r));
-        data[i + 1] = Math.min(255, Math.max(0, g));
-        data[i + 2] = Math.min(255, Math.max(0, b));
-      }
-      ctx.putImageData(imgData, 0, 0);
-
-      const enhancedDataUrl = canvas.toDataURL("image/jpeg", 0.95);
-      setImageSrc(enhancedDataUrl);
-      setZoom(1);
-      setPan({ x: 0, y: 0 });
-      setRotation(0);
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess.session?.access_token;
+      if (!token) throw new Error("Please sign in again");
+      const blob = await (await fetch(src)).blob();
+      const form = new FormData();
+      form.append("image", new File([blob], "passport.png", { type: blob.type || "image/png" }));
+      let final: string | null = null;
+      await streamImage("/api/passport-enhance", form, (frame, isFinal) => {
+        setImageSrc(frame);
+        if (isFinal) final = frame;
+      }, undefined, { Authorization: `Bearer ${token}` });
+      if (!final) throw new Error("No enhanced photo returned");
+      setZoom(1); setPan({ x: 0, y: 0 }); setRotation(0);
       setIsEnhanced(true);
-      toast.success("Enhanced to Official Passport Standard! 100% Facial Identity Preserved.");
+      toast.success("Passport enhanced: white background and centred face");
     } catch (err: any) {
-      toast.error(err.message || "Enhancement failed. Please try again.");
+      setImageSrc(src);
+      const msg = String(err?.message || "");
+      toast.error(msg.includes("402") ? "AI credits have run out. Photo kept as uploaded." : msg.includes("429") ? "AI is busy, try Enhance again shortly." : "AI enhancement failed. Photo kept as uploaded — you can try Enhance again.");
     } finally {
       setIsEnhancing(false);
     }
   };
 
   // Generate cropped standard 450x550 passport photo
-  const generateCroppedPassport = (): string | null => {
+  const generateCroppedPassport = async (): Promise<string | null> => {
     if (!imageSrc) return null;
 
     const canvas = document.createElement("canvas");
@@ -200,6 +157,7 @@ export function PassportPhotoStudioModal({
 
     const img = new Image();
     img.src = imageSrc;
+    await new Promise((res, rej) => { img.onload = res; img.onerror = rej; });
 
     // Background white fill
     ctx.fillStyle = "#ffffff";
@@ -219,8 +177,8 @@ export function PassportPhotoStudioModal({
     return canvas.toDataURL("image/jpeg", 0.92);
   };
 
-  const handleSave = () => {
-    const cropped = generateCroppedPassport();
+  const handleSave = async () => {
+    const cropped = await generateCroppedPassport();
     if (!cropped) {
       toast.error("Please take or upload a photo first.");
       return;
@@ -305,16 +263,16 @@ export function PassportPhotoStudioModal({
                   type="button"
                   variant="default"
                   size="sm"
-                  onClick={handleGeminiEnhance}
+                  onClick={() => handleGeminiEnhance()}
                   disabled={isEnhancing}
                   className="w-full bg-gradient-to-r from-blue-700 to-indigo-700 hover:from-blue-800 hover:to-indigo-800 text-white font-semibold text-xs shadow-xs"
                 >
                   <Sparkles className="h-3.5 w-3.5 mr-1.5" />
                   {isEnhancing
-                    ? "Standardizing with Gemini…"
+                    ? "AI is enhancing (white background)…"
                     : isEnhanced
-                    ? "Re-apply Gemini Passport Standard"
-                    : "Gemini Enhance (Passport Standard, 100% Face Preserved)"}
+                    ? "Enhance again with AI"
+                    : "AI Enhance (white background, centred)"}
                 </Button>
 
                 <div className="flex items-center gap-3">
@@ -401,7 +359,7 @@ export function PassportPhotoStudioModal({
             <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSave} size="sm" disabled={!imageSrc} className="font-semibold text-xs">
+            <Button onClick={handleSave} size="sm" disabled={!imageSrc || isEnhancing} className="font-semibold text-xs">
               <Check className="h-4 w-4 mr-1" /> Confirm Passport Photo
             </Button>
           </DialogFooter>

@@ -3251,6 +3251,7 @@ export type Database = {
         Args: { _school_id: string; _user_id: string }
         Returns: boolean
       }
+      next_admission_number: { Args: { _school_id: string }; Returns: Json }
       notify_fee_defaulters: {
         Args: { _created_by: string; _school_id: string }
         Returns: number

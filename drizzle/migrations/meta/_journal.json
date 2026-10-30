@@ -92,6 +92,13 @@
       "when": 1793302287610,
       "tag": "0012_form_master_class_assignment",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1793356831129,
+      "tag": "0013_next_admission_number",
+      "breakpoints": true
     }
   ]
 }

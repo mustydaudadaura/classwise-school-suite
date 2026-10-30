@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -153,7 +153,7 @@ function StudentsPage() {
       if (readError) throw readError;
       requireSavedRecord(saved, schoolId);
       if (saved.class_id !== form.class_id || saved.active || !saved.pending_activation) throw new Error("The admission approval status could not be confirmed. Ask the school administrator to check the student.");
-      await qc.invalidateQueries({ queryKey: ["students"] });
+      await qc.invalidateQueries({ queryKey: ["students"] }); qc.invalidateQueries({ queryKey: ["next-admission-no"] });
       clearFilters();
       toast.success("Student admitted — waiting for the school admin to activate");
       setOpen(false);
@@ -196,7 +196,7 @@ function StudentsPage() {
       }
     }
 
-    await qc.invalidateQueries({ queryKey: ["students"] });
+    await qc.invalidateQueries({ queryKey: ["students"] }); qc.invalidateQueries({ queryKey: ["next-admission-no"] });
     clearFilters();
     if (parentWarning) toast.warning(parentWarning);
     else toast.success("Student admitted");

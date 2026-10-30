@@ -99,6 +99,13 @@
       "when": 1793356831129,
       "tag": "0013_next_admission_number",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1793357084172,
+      "tag": "0014_admission_number_start",
+      "breakpoints": true
     }
   ]
 }

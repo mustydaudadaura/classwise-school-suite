@@ -2117,6 +2117,7 @@ export type Database = {
         Row: {
           active: boolean
           address: string | null
+          admission_no_start: string | null
           branch_name: string | null
           code: string
           created_at: string
@@ -2142,6 +2143,7 @@ export type Database = {
         Insert: {
           active?: boolean
           address?: string | null
+          admission_no_start?: string | null
           branch_name?: string | null
           code: string
           created_at?: string
@@ -2167,6 +2169,7 @@ export type Database = {
         Update: {
           active?: boolean
           address?: string | null
+          admission_no_start?: string | null
           branch_name?: string | null
           code?: string
           created_at?: string

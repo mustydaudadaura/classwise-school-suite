@@ -37,6 +37,7 @@ import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedStaffAttendanceRouteImport } from './routes/_authenticated/staff-attendance'
 import { Route as AuthenticatedStudentsRouteImport } from './routes/_authenticated/students'
 import { Route as AuthenticatedUsersRouteImport } from './routes/_authenticated/users'
+import { Route as ApiPassportEnhanceRouteImport } from './routes/api/passport-enhance'
 import { Route as PortalIndexRouteImport } from './routes/portal/index'
 import { Route as PortalAttendanceRouteImport } from './routes/portal/attendance'
 import { Route as PortalChildrenRouteImport } from './routes/portal/children'
@@ -198,6 +199,11 @@ const AuthenticatedUsersRoute = AuthenticatedUsersRouteImport.update({
   path: '/users',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const ApiPassportEnhanceRoute = ApiPassportEnhanceRouteImport.update({
+  id: '/api/passport-enhance',
+  path: '/api/passport-enhance',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PortalIndexRoute = PortalIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -310,6 +316,7 @@ export interface FileRoutesByFullPath {
   '/staff-attendance': typeof AuthenticatedStaffAttendanceRoute
   '/students': typeof AuthenticatedStudentsRouteWithChildren
   '/users': typeof AuthenticatedUsersRoute
+  '/api/passport-enhance': typeof ApiPassportEnhanceRoute
   '/portal/attendance': typeof PortalAttendanceRoute
   '/portal/children': typeof PortalChildrenRoute
   '/portal/fees': typeof PortalFeesRoute
@@ -354,6 +361,7 @@ export interface FileRoutesByTo {
   '/staff-attendance': typeof AuthenticatedStaffAttendanceRoute
   '/students': typeof AuthenticatedStudentsRouteWithChildren
   '/users': typeof AuthenticatedUsersRoute
+  '/api/passport-enhance': typeof ApiPassportEnhanceRoute
   '/portal/attendance': typeof PortalAttendanceRoute
   '/portal/children': typeof PortalChildrenRoute
   '/portal/fees': typeof PortalFeesRoute
@@ -401,6 +409,7 @@ export interface FileRoutesById {
   '/_authenticated/staff-attendance': typeof AuthenticatedStaffAttendanceRoute
   '/_authenticated/students': typeof AuthenticatedStudentsRouteWithChildren
   '/_authenticated/users': typeof AuthenticatedUsersRoute
+  '/api/passport-enhance': typeof ApiPassportEnhanceRoute
   '/portal/attendance': typeof PortalAttendanceRoute
   '/portal/children': typeof PortalChildrenRoute
   '/portal/fees': typeof PortalFeesRoute
@@ -448,6 +457,7 @@ export interface FileRouteTypes {
     | '/staff-attendance'
     | '/students'
     | '/users'
+    | '/api/passport-enhance'
     | '/portal/attendance'
     | '/portal/children'
     | '/portal/fees'
@@ -492,6 +502,7 @@ export interface FileRouteTypes {
     | '/staff-attendance'
     | '/students'
     | '/users'
+    | '/api/passport-enhance'
     | '/portal/attendance'
     | '/portal/children'
     | '/portal/fees'
@@ -538,6 +549,7 @@ export interface FileRouteTypes {
     | '/_authenticated/staff-attendance'
     | '/_authenticated/students'
     | '/_authenticated/users'
+    | '/api/passport-enhance'
     | '/portal/attendance'
     | '/portal/children'
     | '/portal/fees'
@@ -565,6 +577,7 @@ export interface RootRouteChildren {
   PortalRoute: typeof PortalRouteWithChildren
   ResetPasswordRoute: typeof ResetPasswordRoute
   VerifyCredentialRoute: typeof VerifyCredentialRoute
+  ApiPassportEnhanceRoute: typeof ApiPassportEnhanceRoute
   SSlugRoute: typeof SSlugRoute
   VerifyCodeRoute: typeof VerifyCodeRoute
   ApiPublicParentLoginRoute: typeof ApiPublicParentLoginRoute
@@ -770,6 +783,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/users'
       preLoaderRoute: typeof AuthenticatedUsersRouteImport
       parentRoute: typeof AuthenticatedRoute
+    }
+    '/api/passport-enhance': {
+      id: '/api/passport-enhance'
+      path: '/api/passport-enhance'
+      fullPath: '/api/passport-enhance'
+      preLoaderRoute: typeof ApiPassportEnhanceRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/portal/': {
       id: '/portal/'
@@ -985,6 +1005,7 @@ const rootRouteChildren: RootRouteChildren = {
   PortalRoute: PortalRouteWithChildren,
   ResetPasswordRoute: ResetPasswordRoute,
   VerifyCredentialRoute: VerifyCredentialRoute,
+  ApiPassportEnhanceRoute: ApiPassportEnhanceRoute,
   SSlugRoute: SSlugRoute,
   VerifyCodeRoute: VerifyCodeRoute,
   ApiPublicParentLoginRoute: ApiPublicParentLoginRoute,

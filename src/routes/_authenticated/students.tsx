@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, UserPlus, Search, X, SlidersHorizontal, ArrowUpDown, Download } from "lucide-react";
 import { toast } from "sonner";
+import { PassportPhotoStudioModal } from "@/components/admissions/PassportPhotoStudioModal";
 import { RegistryActions } from "@/components/RegistryActions";
 import { hasRole } from "@/hooks/useAuth";
 import { requireSavedRecord } from "@/lib/registry-save";
@@ -132,6 +133,15 @@ function StudentsPage() {
   const admitClasses = canActivate || teacherSubmission ? (classes ?? []) : (classes ?? []).filter((c) => formMasterClassIds?.includes(c.id));
   const pendingStudents = (students ?? []).filter((s: any) => s.pending_activation);
 
+  const [passport, setPassport] = useState<string | null>(null);
+  const [passportOpen, setPassportOpen] = useState(false);
+  const attachPassport = async (studentId: string) => {
+    if (!passport) return "";
+    const { data, error } = await supabase.from("students").update({ photo_url: passport }).eq("id", studentId).select("id");
+    setPassport(null);
+    return error || !data?.length ? " Passport photo could not be attached — the admin can add it from the student profile." : "";
+  };
+
   const create = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!schoolId) return toast.error("Select a school first");
@@ -155,7 +165,8 @@ function StudentsPage() {
       if (saved.class_id !== form.class_id || saved.active || !saved.pending_activation) throw new Error("The admission approval status could not be confirmed. Ask the school administrator to check the student.");
       await qc.invalidateQueries({ queryKey: ["students"] }); qc.invalidateQueries({ queryKey: ["next-admission-no"] });
       clearFilters();
-      toast.success("Student admitted — waiting for the school admin to activate");
+      const photoNote = await attachPassport(newId as string);
+      toast.success("Student admitted — waiting for the school admin to activate." + photoNote);
       setOpen(false);
       setForm({ admission_no: "", first_name: "", last_name: "", middle_name: "", gender: "male", dob: "", class_id: "", parent_name: "", parent_phone: "", parent_email: "" });
       return;
@@ -174,7 +185,7 @@ function StudentsPage() {
     }).select().single();
     if (sErr) throw sErr;
     requireSavedRecord(student, schoolId);
-    let parentWarning = "";
+    let parentWarning = await attachPassport(student.id);
 
     // Auto-create + link parent
     if (form.parent_name && student) {
@@ -299,6 +310,20 @@ function StudentsPage() {
                   <div><Label>Email</Label><Input type="email" value={form.parent_email} onChange={(e) => setForm({ ...form, parent_email: e.target.value })} /></div>
                 </div>
               </div>
+              <div className="flex items-center gap-3 rounded-lg border p-3">
+                <div className="h-20 w-16 shrink-0 overflow-hidden rounded border bg-muted">
+                  {passport && <img src={passport} alt="Passport" className="h-full w-full object-cover" />}
+                </div>
+                <div className="flex-1 space-y-1">
+                  <p className="text-sm font-medium">Passport photograph</p>
+                  <p className="text-xs text-muted-foreground">Take with camera or upload. AI sets a white background and centres the face.</p>
+                  <div className="flex gap-2">
+                    <Button type="button" size="sm" variant="outline" onClick={() => setPassportOpen(true)}>{passport ? "Change photo" : "Add passport"}</Button>
+                    {passport && <Button type="button" size="sm" variant="ghost" onClick={() => setPassport(null)}>Remove</Button>}
+                  </div>
+                </div>
+              </div>
+              <PassportPhotoStudioModal open={passportOpen} onOpenChange={setPassportOpen} studentName={`${form.first_name} ${form.last_name}`.trim() || "New student"} studentIdentifier={form.admission_no} currentPhotoUrl={passport ?? undefined} onSavePhoto={setPassport} />
               <Button type="submit" disabled={saving || !schoolId} className="w-full">{saving ? "Saving…" : "Admit student"}</Button>
             </form>
           </DialogContent>

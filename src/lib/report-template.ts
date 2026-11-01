@@ -23,6 +23,7 @@ export type ReportLayoutId =
   | 'modern_executive'       // Modern STEM / Executive Hybrid
   | 'ubec_basic'             // Universal Basic Education / State Ministry format
   | 'islamic_integrated'     // Islamic & Arabic Integrated Academy format
+  | 'islamiyya_arabic'
   | 'waec_senior';           // WAEC / NECO Senior Secondary format
 
 export interface ReportLayoutDefinition {
@@ -34,6 +35,13 @@ export interface ReportLayoutDefinition {
 }
 
 export const REPORT_LAYOUTS: ReportLayoutDefinition[] = [
+  {
+    id: 'islamiyya_arabic',
+    name: 'Islamiyya — Arabic Report Card',
+    tagline: 'بطاقة نتائج المدرسة الإسلامية',
+    description: 'Right-to-left Arabic report with subject results, Quran progress, attendance, remarks, school watermark and signatures.',
+    badge: 'العربية / Islamiyya'
+  },
   {
     id: 'classic_comprehensive',
     name: 'Classic Comprehensive Academy (Re-included)',
@@ -81,6 +89,8 @@ export const REPORT_LAYOUTS: ReportLayoutDefinition[] = [
 export type ReportTemplate = Partial<Record<ReportPart, ReportColour>> & {
   layout_id?: ReportLayoutId;
   positions?: 'none' | 'class' | 'subject' | 'both';
+  arabic_school_name?: string;
+  arabic_address?: string;
 };
 
 export function resolveReportTemplate(value: unknown, section?: string | null): Required<ReportTemplate> {
@@ -95,6 +105,7 @@ export function resolveReportTemplate(value: unknown, section?: string | null): 
     'modern_executive',
     'ubec_basic',
     'islamic_integrated',
+    'islamiyya_arabic',
     'waec_senior'
   ];
 
@@ -103,6 +114,8 @@ export function resolveReportTemplate(value: unknown, section?: string | null): 
     : 'classic_comprehensive';
 
   return {
+    arabic_school_name: typeof source.arabic_school_name === 'string' ? source.arabic_school_name : '',
+    arabic_address: typeof source.arabic_address === 'string' ? source.arabic_address : '',
     layout_id,
     border: colour('border'),
     heading: colour('heading'),

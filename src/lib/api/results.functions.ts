@@ -9,6 +9,13 @@ import {
   evaluatePromotion,
 } from "@/lib/grading";
 
+import {
+  canAccessReportCardRecord,
+  type HierarchyActor,
+  type ClassScopeRow,
+  type TeacherAllocationScopeRow,
+} from "@/lib/hierarchical-rbac";
+
 const PublishInput = z.object({
   class_id: z.string().uuid(),
   session: z.string().min(4).max(20),
@@ -20,10 +27,91 @@ const PublishInput = z.object({
 
 const ReportCardDetailInput = z.object({ id: z.string().min(1) });
 
+async function resolveCallerHierarchyContext(context: {
+  userId: string;
+  claims?: any;
+  supabase: any;
+}): Promise<{
+  actor: HierarchyActor;
+  classes: ClassScopeRow[];
+  allocations: TeacherAllocationScopeRow[];
+}> {
+  const { userId, claims, supabase: db } = context;
+  const claimRoles: string[] = Array.isArray(claims?.app_metadata?.roles)
+    ? claims.app_metadata.roles
+    : claims?.role && claims.role !== "authenticated"
+    ? [claims.role]
+    : [];
+  let roles = [...claimRoles];
+  let schoolId: string | null = claims?.user_metadata?.school_id ?? null;
+  let studentId: string | null = claims?.user_metadata?.student_id ?? null;
+  let linkedStudentIds: string[] = Array.isArray(claims?.user_metadata?.linked_student_ids)
+    ? claims.user_metadata.linked_student_ids
+    : [];
+  let classes: ClassScopeRow[] = [];
+  let allocations: TeacherAllocationScopeRow[] = [];
+
+  try {
+    const [rolesRes, profileRes] = await Promise.all([
+      db.from("user_roles").select("role, school_id").eq("user_id", userId).eq("active", true),
+      db.from("profiles").select("school_id").eq("user_id", userId).maybeSingle(),
+    ]);
+    if (rolesRes.data?.length) {
+      roles = Array.from(new Set([...roles, ...rolesRes.data.map((r: any) => r.role)]));
+      const roleSchool = rolesRes.data.find((r: any) => r.school_id)?.school_id;
+      if (roleSchool) schoolId = roleSchool;
+    }
+    if (profileRes.data?.school_id) {
+      schoolId = profileRes.data.school_id;
+    }
+
+    if (schoolId && (roles.includes("teacher") || roles.includes("form_master") || roles.includes("school_admin"))) {
+      const [clsRes, allocRes] = await Promise.all([
+        db.from("classes").select("id, name, school_id, teacher_id").eq("school_id", schoolId).eq("active", true),
+        db.from("teacher_allocations").select("id, school_id, teacher_id, class_id, subject_id, is_class_teacher").eq("school_id", schoolId).eq("teacher_id", userId),
+      ]);
+      classes = clsRes.data ?? [];
+      allocations = allocRes.data ?? [];
+    }
+
+    if (roles.includes("student")) {
+      const { data: st } = await db.from("students").select("id, school_id").eq("user_id", userId).eq("active", true).maybeSingle();
+      if (st?.id) {
+        studentId = st.id;
+        if (!schoolId) schoolId = st.school_id;
+      }
+    }
+
+    if (roles.includes("parent")) {
+      const { data: parentRow } = await db.from("parents").select("id, school_id").eq("user_id", userId).maybeSingle();
+      if (parentRow?.id) {
+        if (!schoolId) schoolId = parentRow.school_id;
+        const { data: links } = await db.from("student_parents").select("student_id").eq("parent_id", parentRow.id);
+        linkedStudentIds = Array.from(new Set([...linkedStudentIds, ...(links ?? []).map((l: any) => l.student_id)]));
+      }
+    }
+  } catch {
+    // Offline fallback uses token claims
+  }
+
+  return {
+    actor: {
+      userId,
+      roles,
+      schoolId,
+      studentId,
+      linkedStudentIds,
+    },
+    classes,
+    allocations,
+  };
+}
+
 export const getReportCardsList = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const db = context.supabase;
+    const { actor, classes: authClasses, allocations } = await resolveCallerHierarchyContext(context);
     let rows: any[] = [];
     try {
       const query = db.from("report_cards")
@@ -40,8 +128,38 @@ export const getReportCardsList = createServerFn({ method: "GET" })
 
     if (!rows.length) {
       const { ALL_DEMO_REPORT_CARDS } = await import("@/lib/demo-school-data");
+      const demoClasses: ClassScopeRow[] = authClasses.length
+        ? authClasses
+        : Array.from(
+            new Map(
+              ALL_DEMO_REPORT_CARDS.map((r) => [
+                r.class_id,
+                { id: r.class_id, name: r.classes.name, school_id: r.school_id, teacher_id: null },
+              ])
+            ).values()
+          );
+
+      const authorizedDemoCards = ALL_DEMO_REPORT_CARDS.filter((r) => {
+        if (!actor.roles.length) return false;
+        // If demo admin/super_admin, enforce school/role rules
+        if (actor.roles.includes("super_admin") || actor.roles.includes("school_admin")) {
+          return canAccessReportCardRecord(
+            { ...actor, schoolId: actor.schoolId ?? r.school_id },
+            { id: r.id, school_id: r.school_id, student_id: r.student_id, class_id: r.class_id, published: r.published },
+            demoClasses,
+            allocations
+          );
+        }
+        return canAccessReportCardRecord(
+          actor,
+          { id: r.id, school_id: r.school_id, student_id: r.student_id, class_id: r.class_id, published: r.published },
+          demoClasses,
+          allocations
+        );
+      });
+
       return {
-        cards: ALL_DEMO_REPORT_CARDS.map((r) => ({
+        cards: authorizedDemoCards.map((r) => ({
           id: r.id,
           school_id: r.school_id,
           student_id: r.student_id,
@@ -71,8 +189,12 @@ export const getReportCardsList = createServerFn({ method: "GET" })
       };
     }
 
-    const studentIds = Array.from(new Set((rows ?? []).map((r: any) => r.student_id).filter(Boolean)));
-    const classIds = Array.from(new Set((rows ?? []).map((r: any) => r.class_id).filter(Boolean)));
+    const authorizedRows = rows.filter((r: any) =>
+      canAccessReportCardRecord(actor, r, authClasses, allocations)
+    );
+
+    const studentIds = Array.from(new Set(authorizedRows.map((r: any) => r.student_id).filter(Boolean)));
+    const classIds = Array.from(new Set(authorizedRows.map((r: any) => r.class_id).filter(Boolean)));
     const [{ data: students }, { data: classes }] = await Promise.all([
       studentIds.length
         ? db.from("students").select("id, first_name, last_name, admission_no").in("id", studentIds)
@@ -85,7 +207,7 @@ export const getReportCardsList = createServerFn({ method: "GET" })
     const classMap = new Map((classes ?? []).map((c: any) => [c.id, c]));
 
     return {
-      cards: (rows ?? []).map((r: any) => ({
+      cards: authorizedRows.map((r: any) => ({
         ...r,
         students: studentMap.get(r.student_id) ?? null,
         classes: r.class_id ? classMap.get(r.class_id) ?? null : null,
@@ -97,7 +219,8 @@ export const getReportCardDetail = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => ReportCardDetailInput.parse(d))
   .handler(async ({ data, context }) => {
-    const { userId, supabase: db } = context;
+    const { supabase: db } = context;
+    const { actor, classes: authClasses, allocations } = await resolveCallerHierarchyContext(context);
     let rc: any = null;
     try {
       const res = await db.from("report_cards").select("*").eq("id", data.id).maybeSingle();
@@ -110,6 +233,27 @@ export const getReportCardDetail = createServerFn({ method: "GET" })
       const { findDemoReportCard } = await import("@/lib/demo-school-data");
       const demo = findDemoReportCard(data.id);
       if (demo) {
+        const effectiveActor =
+          actor.roles.includes("super_admin") || actor.roles.includes("school_admin")
+            ? { ...actor, schoolId: actor.schoolId ?? demo.school_id }
+            : actor;
+        const allowed = canAccessReportCardRecord(
+          effectiveActor,
+          {
+            id: demo.id,
+            school_id: demo.school_id,
+            student_id: demo.student_id,
+            class_id: demo.class_id,
+            published: demo.published,
+          },
+          authClasses.length
+            ? authClasses
+            : [{ id: demo.class_id, name: demo.classes.name, school_id: demo.school_id, teacher_id: null }],
+          allocations
+        );
+        if (!allowed) {
+          throw new Error("Access Denied: You are not authorized to view this report card.");
+        }
         return {
           rc: {
             ...demo,
@@ -134,6 +278,10 @@ export const getReportCardDetail = createServerFn({ method: "GET" })
         };
       }
       throw new Error("Report card not found");
+    }
+
+    if (!canAccessReportCardRecord(actor, rc, authClasses, allocations)) {
+      throw new Error("Access Denied: You are not authorized to view this report card.");
     }
 
     const [{ data: school }, { data: student }, { data: klass }, { data: rawAssessments }, { data: termReports }] = await Promise.all([

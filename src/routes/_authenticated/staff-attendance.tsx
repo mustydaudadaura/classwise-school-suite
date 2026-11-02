@@ -23,6 +23,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Download, Printer } from "lucide-react";
 import { toast } from "sonner";
+import { RegisteredDetailsEditor } from "@/components/RegisteredDetailsEditor";
 
 const TABS = ["dashboard", "records", "leave", "penalties", "payroll", "reports", "staff", "settings"] as const;
 export const Route = createFileRoute("/_authenticated/staff-attendance")({
@@ -427,15 +428,15 @@ function StaffSetup({ schoolId, me }: P) {
   return (
     <Card><CardHeader><CardTitle>Staff attendance profiles</CardTitle></CardHeader><CardContent className="overflow-x-auto">
       <p className="mb-3 text-sm text-muted-foreground">Uses your existing staff accounts. Set a staff ID, department and a 4-digit kiosk PIN for each person. PINs are stored scrambled and never shown again.</p>
-      <Table><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Staff ID</TableHead><TableHead>Department</TableHead><TableHead>Category</TableHead><TableHead>Active</TableHead><TableHead>Exempt</TableHead><TableHead>Kiosk PIN</TableHead></TableRow></TableHeader>
+      <Table><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Staff ID</TableHead><TableHead>Department</TableHead><TableHead>Category</TableHead><TableHead>Active</TableHead><TableHead>Exempt</TableHead><TableHead>Actions & PIN</TableHead></TableRow></TableHeader>
         <TableBody>{(staff.data ?? []).map((s) => <TableRow key={s.user_id}>
-          <TableCell>{s.name}<div className="text-xs text-muted-foreground">{s.role}</div></TableCell>
+          <TableCell><div className="flex items-center gap-2"><div>{s.name}<div className="text-xs text-muted-foreground">{s.role}</div></div></div></TableCell>
           <TableCell><Input className="w-24" defaultValue={s.staff_no ?? ""} aria-label={`${s.name} staff ID`} onBlur={(e) => e.target.value !== (s.staff_no ?? "") && save(s, { staff_no: e.target.value || null })} /></TableCell>
           <TableCell><Input className="w-32" defaultValue={s.department ?? ""} aria-label={`${s.name} department`} onBlur={(e) => e.target.value !== (s.department ?? "") && save(s, { department: e.target.value || null })} /></TableCell>
           <TableCell><Select value={s.category} onValueChange={(v) => save(s, { category: v })}><SelectTrigger className="w-32" aria-label={`${s.name} category`}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="teaching">Teaching</SelectItem><SelectItem value="non-teaching">Non-teaching</SelectItem><SelectItem value="management">Management</SelectItem><SelectItem value="support">Support</SelectItem></SelectContent></Select></TableCell>
           <TableCell><Switch checked={s.active} aria-label={`${s.name} active`} onCheckedChange={(v) => save(s, { active: v })} /></TableCell>
           <TableCell><Switch checked={s.attendance_exempt} disabled={s.user_id === me} aria-label={`${s.name} exempt`} onCheckedChange={(v) => save(s, { attendance_exempt: v })} /></TableCell>
-          <TableCell><Button size="sm" variant="outline" onClick={async () => { const pin = prompt(`New 4-digit kiosk PIN for ${s.name}`); if (!pin) return; try { await pinFn({ data: { school_id: schoolId, user_id: s.user_id, pin } }); toast.success("PIN set"); qc.invalidateQueries({ queryKey: ["sa-staff", schoolId] }); } catch (e) { toast.error((e as Error).message); } }}>Set PIN</Button></TableCell>
+          <TableCell><div className="flex items-center gap-1"><RegisteredDetailsEditor kind="profile" id={s.user_id} name={s.name} schoolId={schoolId} /><Button size="sm" variant="outline" onClick={async () => { const pin = prompt(`New 4-digit kiosk PIN for ${s.name}`); if (!pin) return; try { await pinFn({ data: { school_id: schoolId, user_id: s.user_id, pin } }); toast.success("PIN set"); qc.invalidateQueries({ queryKey: ["sa-staff", schoolId] }); } catch (e) { toast.error((e as Error).message); } }}>Set PIN</Button></div></TableCell>
         </TableRow>)}</TableBody></Table>
     </CardContent></Card>
   );

@@ -401,6 +401,7 @@ function EditBrandingDialog({ school, onClose, onSaved }: { school: School | nul
           </div>
 
           <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2"><Label>School name</Label><Input value={s.name ?? ""} onChange={(e) => setF("name", e.target.value)} /></div>
             <div><Label>Motto</Label><Input value={s.motto ?? ""} onChange={(e) => setF("motto", e.target.value)} /></div>
             <div><Label>Website</Label><Input value={s.website ?? ""} onChange={(e) => setF("website", e.target.value)} /></div>
             <div><Label>Branch name</Label><Input value={s.branch_name ?? ""} onChange={(e) => setF("branch_name", e.target.value)} /></div>

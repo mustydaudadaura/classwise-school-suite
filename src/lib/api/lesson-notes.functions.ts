@@ -1,7 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import type { LessonHeader, LessonPlan } from "@/lib/lesson-plan";
+import {
+  type LessonHeader,
+  type LessonPlan,
+  parseLessonPlanJson,
+  buildFallbackNerdcLessonPlan,
+} from "@/lib/lesson-plan";
 
 const Input = z.object({
   school_id: z.string().uuid(),
@@ -79,49 +84,75 @@ export const generateLessonNote = createServerFn({ method: "POST" })
     let text = "";
     const promptText = `Return json. Subject: ${header.subject}\nClass: ${header.class_name}${cls.data.section ? ` (${cls.data.section})` : ""}\nTerm: ${header.term} term, Week ${data.week}, ${header.session} session\nTopic: ${data.topic}\nDuration: ${header.duration} (${header.period})\nLearners: ${header.no_in_class || "unknown"}, ages ${header.average_age || "typical for class"}\n${data.extra ? `Teacher notes: ${data.extra}` : ""}`;
 
-    // Prefer GEMINI_API_KEY if configured in environment
+    // 1. Prefer GEMINI_API_KEY using approved model aliases ("gemini-3.8-flash" -> "gemini-3.1-flash-lite")
     if (process.env.GEMINI_API_KEY) {
       try {
         const { GoogleGenAI } = await import("@google/genai");
-        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-        const res = await ai.models.generateContent({
-          model: "gemini-3.5-flash-lite",
-          contents: `${INSTRUCTIONS}\n\n${promptText}`,
+        const ai = new GoogleGenAI({
+          apiKey: process.env.GEMINI_API_KEY,
+          httpOptions: {
+            headers: {
+              "User-Agent": "aistudio-build",
+            },
+          },
         });
-        text = res.text || "";
+        for (const modelName of ["gemini-3.8-flash", "gemini-3.1-flash-lite"]) {
+          try {
+            const res = await ai.models.generateContent({
+              model: modelName,
+              contents: promptText,
+              config: {
+                systemInstruction: INSTRUCTIONS,
+                responseMimeType: "application/json",
+              },
+            });
+            if (res.text?.trim()) {
+              text = res.text.trim();
+              break;
+            }
+          } catch (innerErr) {
+            console.warn(`Gemini model ${modelName} failed for lesson note, trying next:`, innerErr);
+          }
+        }
       } catch (geminiErr: any) {
         console.warn("Gemini lesson plan generation failed, checking alternatives:", geminiErr);
       }
     }
 
+    // 2. Try Lovable AI Gateway if configured and Gemini was not used
     if (!text && process.env.LOVABLE_API_KEY) {
-      const apiKey = process.env.LOVABLE_API_KEY;
-      const { createOpenAI } = await import("@ai-sdk/openai");
-      const { streamText } = await import("ai");
-      const provider = createOpenAI({ baseURL: "https://ai.gateway.lovable.dev/v1", apiKey, headers: { "Lovable-API-Key": apiKey, "X-Lovable-AIG-SDK": "vercel-ai-sdk" } });
-      let failure: unknown = null;
-      const result = streamText({
-        model: provider.responses("openai/gpt-6-astra"),
-        instructions: INSTRUCTIONS,
-        prompt: promptText,
-        onError: ({ error }) => { failure = error; },
-        providerOptions: { openai: { store: false, forceReasoning: true, reasoningEffort: "low", reasoningSummary: "auto", include: ["reasoning.encrypted_content"] } },
-      });
-      try { text = await result.text; } catch (e) { failure = e; }
-      const status = (failure as any)?.statusCode ?? (failure as any)?.status;
-      if (status === 429) throw new Error("The AI is busy right now. Please wait a minute and try again.");
-      if (status === 402 || status === 403) throw new Error("AI credits have run out. The workspace owner needs to add credits.");
+      try {
+        const apiKey = process.env.LOVABLE_API_KEY;
+        const { createOpenAI } = await import("@ai-sdk/openai");
+        const { streamText } = await import("ai");
+        const provider = createOpenAI({
+          baseURL: "https://ai.gateway.lovable.dev/v1",
+          apiKey,
+          headers: { "Lovable-API-Key": apiKey, "X-Lovable-AIG-SDK": "vercel-ai-sdk" },
+        });
+        const result = streamText({
+          model: provider.responses("openai/gpt-6-astra"),
+          instructions: INSTRUCTIONS,
+          prompt: promptText,
+          providerOptions: { openai: { store: false, forceReasoning: true, reasoningEffort: "low", reasoningSummary: "auto", include: ["reasoning.encrypted_content"] } },
+        });
+        text = await result.text;
+      } catch (lovableErr) {
+        console.warn("Lovable AI lesson plan generation failed, using NERDC structured fallback:", lovableErr);
+      }
     }
 
-    if (!text) {
-      throw new Error("AI is currently unavailable. Please check API key configuration.");
-    }
+    // 3. Parse LLM response or generate NERDC-compliant structured fallback when credits/keys are unavailable
+    const fallbackCtx = {
+      topic: data.topic,
+      subject: header.subject,
+      class_name: header.class_name,
+      extra: data.extra,
+    };
 
-    let plan: LessonPlan;
-    try {
-      const raw = text.replace(/^```(?:json)?\s*|\s*```$/g, "");
-      plan = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1));
-      if (!Array.isArray(plan.presentation)) throw new Error();
-    } catch { throw new Error("The AI could not write this lesson plan. Please try again."); }
+    const plan: LessonPlan = text
+      ? parseLessonPlanJson(text, fallbackCtx)
+      : buildFallbackNerdcLessonPlan(fallbackCtx);
+
     return { header, plan };
   });

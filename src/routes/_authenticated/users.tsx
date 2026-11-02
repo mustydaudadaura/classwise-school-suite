@@ -19,6 +19,7 @@ import {
   Eye, EyeOff,
 } from "lucide-react";
 import { StaffAccessRegistry } from "@/components/StaffAccessRegistry";
+import { RegisteredDetailsEditor } from "@/components/RegisteredDetailsEditor";
 import { toast } from "sonner";
 import { useAuth, hasRole } from "@/hooks/useAuth";
 import {
@@ -620,6 +621,14 @@ function UsersPage() {
                             {(isSuper || isSchoolAdmin) && (
                               <TableCell className="text-right">
                                 <div className="flex items-center justify-end gap-1.5">
+                                  {/* Edit Staff / Teacher Profile Details */}
+                                  <RegisteredDetailsEditor
+                                    kind="profile"
+                                    id={u.userId}
+                                    name={u.fullName}
+                                    schoolId={u.schoolId}
+                                  />
+
                                   {/* Change Role Button (Super Admin only) */}
                                   {isSuper && (
                                     <Button

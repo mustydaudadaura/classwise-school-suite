@@ -104,9 +104,25 @@ function AuthedLayout() {
     const permission = PAGE_ACCESS[n.to];
     return permission ? access.can(permission) : true;
   });
-  const permission = PAGE_ACCESS[location.pathname];
-  const ownReports = location.pathname === "/report-cards" && hasRole(roles, "parent", "student");
-  const denied = !isSuper && permission && !ownReports && !access.can(permission);
+  const matchedPageAccessKey = Object.keys(PAGE_ACCESS).find(
+    (path) => location.pathname === path || location.pathname.startsWith(`${path}/`)
+  );
+  const permission = matchedPageAccessKey
+    ? PAGE_ACCESS[matchedPageAccessKey]
+    : location.pathname.startsWith("/report-card/")
+    ? "results.view"
+    : undefined;
+  const isSuperOnlyRoute =
+    location.pathname === "/schools" ||
+    location.pathname.startsWith("/schools/") ||
+    location.pathname === "/diagnostics" ||
+    location.pathname.startsWith("/diagnostics/");
+  const ownReports =
+    (location.pathname === "/report-cards" || location.pathname.startsWith("/report-card/")) &&
+    hasRole(roles, "parent", "student");
+  const denied =
+    (isSuperOnlyRoute && !isSuper) ||
+    (!isSuper && Boolean(permission) && !ownReports && !access.can(permission!));
 
 
   return (

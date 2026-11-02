@@ -2,12 +2,14 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { GoogleGenAI } from "@google/genai";
+import { buildLocalStudioCalibration } from "@/lib/passport-photo-helper";
 
 const PassportEnhanceInput = z.object({
   school_id: z.string().uuid(),
   image_base64: z.string().min(1),
   target_type: z.enum(["student", "teacher", "applicant"]).default("student"),
   target_id: z.string().optional(),
+  mode: z.enum(["auto", "ai", "local"]).optional().default("auto"),
 });
 
 const UpdatePassportPhotoInput = z.object({
@@ -20,31 +22,30 @@ const UpdatePassportPhotoInput = z.object({
 export const enhancePassportPhotoWithGemini = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => PassportEnhanceInput.parse(d))
-  .handler(async ({ data, context }) => {
-    const { userId } = context;
+  .handler(async ({ data }) => {
+    // If the user explicitly selected local studio calibration, avoid any API call and use zero credits
+    if (data.mode === "local") {
+      return {
+        success: true,
+        analysis: buildLocalStudioCalibration("local_configured"),
+      };
+    }
 
     const apiKey = process.env.GEMINI_API_KEY;
     const cleanBase64 = data.image_base64.replace(/^data:[^;]+;base64,/, "");
 
-    // Default compliance analysis
-    let analysisResult = {
-      face_detected: true,
-      face_centered_score: 98,
-      eyes_level: true,
-      lighting_calibrated: true,
-      background_neutral: true,
-      standard_ratio_compliant: true,
-      guidance_notes: "100% authentic face preserved. Calibrated to Nigerian and international 35x45mm passport photograph standards.",
-      crop_recommendation: {
-        zoom: 1.05,
-        brightness_adjustment: 104,
-        contrast_adjustment: 108,
-      },
-    };
+    let analysisResult = buildLocalStudioCalibration("local_fallback");
 
     if (apiKey) {
       try {
-        const ai = new GoogleGenAI();
+        const ai = new GoogleGenAI({
+          apiKey,
+          httpOptions: {
+            headers: {
+              "User-Agent": "aistudio-build",
+            },
+          },
+        });
         const prompt = `You are a certified passport biometric and photograph compliance officer.
 Analyze this uploaded photograph for an official school student or teacher ID card / passport photograph.
 CRITICAL MANDATE:
@@ -81,6 +82,9 @@ Return ONLY a valid JSON object with the following schema:
             },
             { text: prompt },
           ],
+          config: {
+            responseMimeType: "application/json",
+          },
         });
 
         const textOutput = response.text || "";
@@ -94,6 +98,8 @@ Return ONLY a valid JSON object with the following schema:
             lighting_calibrated: Boolean(parsed.lighting_calibrated ?? true),
             background_neutral: Boolean(parsed.background_neutral ?? true),
             standard_ratio_compliant: Boolean(parsed.standard_ratio_compliant ?? true),
+            fallback_used: false,
+            mode_used: "ai",
             guidance_notes: String(parsed.guidance_notes || "100% face preserved. Passport standard calibrated."),
             crop_recommendation: {
               zoom: Number(parsed.crop_recommendation?.zoom ?? 1.05),
@@ -102,8 +108,9 @@ Return ONLY a valid JSON object with the following schema:
             },
           };
         }
-      } catch (err) {
-        // Fallback to intelligent local calibration
+      } catch {
+        // Graceful fallback to intelligent local studio calibration when API credits or quotas are exhausted
+        analysisResult = buildLocalStudioCalibration("local_fallback");
       }
     }
 
@@ -120,12 +127,14 @@ export const savePassportPhoto = createServerFn({ method: "POST" })
     const { supabase: db } = context;
 
     if (data.target_type === "student") {
-      const { error } = await db
+      const { data: saved, error } = await db
         .from("students")
         .update({ photo_url: data.photo_url })
         .eq("id", data.target_id)
-        .eq("school_id", data.school_id);
-      if (error) throw new Error(error.message);
+        .eq("school_id", data.school_id)
+        .select("id, photo_url")
+        .single();
+      if (error || !saved) throw new Error(error?.message || "Student passport photograph could not be saved");
       return { success: true, message: "Student passport photograph updated successfully" };
     }
 
@@ -134,7 +143,8 @@ export const savePassportPhoto = createServerFn({ method: "POST" })
       const p1 = db
         .from("profiles")
         .update({ avatar_url: data.photo_url })
-        .eq("user_id", data.target_id);
+        .eq("user_id", data.target_id)
+        .eq("school_id", data.school_id);
 
       const p2 = db
         .from("staff_profiles")

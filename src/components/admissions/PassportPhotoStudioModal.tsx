@@ -2,11 +2,20 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Slider } from "@/components/ui/slider";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CameraCaptureModal } from "./CameraCaptureModal";
-import { Camera, Upload, RotateCw, ZoomIn, Check, X, User, Sparkles, ShieldCheck, Info } from "lucide-react";
+import { Camera, Upload, RotateCw, ZoomIn, Check, X, User, Sparkles, ShieldCheck, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { streamImage } from "@/lib/stream-image";
+import {
+  type PassportEnhancementMode,
+  optimizePassportImageDataUrl,
+  applyLocalWhiteStudioEnhancement,
+  getCachedEnhancedPhoto,
+  setCachedEnhancedPhoto,
+  isCreditOrQuotaExhaustedError,
+} from "@/lib/passport-photo-helper";
 
 interface PassportPhotoStudioModalProps {
   open: boolean;
@@ -37,12 +46,15 @@ export function PassportPhotoStudioModal({
   const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [zoom, setZoom] = useState<number>(1);
   const [rotation, setRotation] = useState<number>(0);
+  const [brightness, setBrightness] = useState<number>(102);
+  const [contrast, setContrast] = useState<number>(105);
   const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [cameraOpen, setCameraOpen] = useState(false);
   const [isEnhancing, setIsEnhancing] = useState(false);
   const [isEnhanced, setIsEnhanced] = useState(false);
+  const [enhancementMode, setEnhancementMode] = useState<PassportEnhancementMode>("auto");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -51,6 +63,8 @@ export function PassportPhotoStudioModal({
       setImageSrc(currentPhotoUrl || null);
       setZoom(1);
       setRotation(0);
+      setBrightness(102);
+      setContrast(105);
       setPan({ x: 0, y: 0 });
       setIsEnhanced(false);
     }
@@ -71,27 +85,34 @@ export function PassportPhotoStudioModal({
     }
 
     const reader = new FileReader();
-    reader.onload = (ev) => {
+    reader.onload = async (ev) => {
       if (typeof ev.target?.result === "string") {
-        setImageSrc(ev.target.result);
+        // Optimize & downscale image locally first to avoid large payloads and unnecessary API calls
+        const optimized = await optimizePassportImageDataUrl(ev.target.result);
+        setImageSrc(optimized);
         setZoom(1);
         setRotation(0);
+        setBrightness(102);
+        setContrast(105);
         setPan({ x: 0, y: 0 });
         setIsEnhanced(false);
-        void handleGeminiEnhance(ev.target.result);
+        toast.success("Photo loaded. Click Enhance when ready or adjust framing directly.");
       }
     };
     reader.readAsDataURL(file);
   };
 
-  const handleCameraCapture = (captures: Array<{ dataUrl: string }>) => {
+  const handleCameraCapture = async (captures: Array<{ dataUrl: string }>) => {
     if (captures[0]) {
-      setImageSrc(captures[0].dataUrl);
+      const optimized = await optimizePassportImageDataUrl(captures[0].dataUrl);
+      setImageSrc(optimized);
       setZoom(1);
       setRotation(0);
+      setBrightness(102);
+      setContrast(105);
       setPan({ x: 0, y: 0 });
       setIsEnhanced(false);
-      void handleGeminiEnhance(captures[0].dataUrl);
+      toast.success("Photo captured. Click Enhance when ready or confirm framing.");
     }
   };
 
@@ -113,31 +134,102 @@ export function PassportPhotoStudioModal({
     setIsDragging(false);
   };
 
-  // AI passport enhancement: white background, centred head & shoulders, face preserved.
+  const applyLocalFallbackStudio = async (src: string, reason: "configured" | "fallback") => {
+    const localResult = await applyLocalWhiteStudioEnhancement(src, {
+      brightness: 105,
+      contrast: 108,
+      zoom: 1.04,
+    });
+    setCachedEnhancedPhoto(src, localResult);
+    setImageSrc(localResult);
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+    setRotation(0);
+    setBrightness(104);
+    setContrast(106);
+    setIsEnhanced(true);
+    if (reason === "configured") {
+      toast.success("Local Studio Calibration applied (zero API credits used).");
+    } else {
+      toast.success("AI credits unavailable — applied Local Studio white-background & exposure calibration.");
+    }
+  };
+
+  // Passport enhancement: supports AI Studio, Instant Local Studio (zero credits), and Auto Fallback.
   const handleGeminiEnhance = async (source?: string) => {
     const src = source ?? imageSrc;
-    if (!src) return;
+    if (!src || isEnhancing) return;
+
+    // 1. Check in-memory cache first to avoid duplicate API calls for the same photo
+    const cached = getCachedEnhancedPhoto(src);
+    if (cached && enhancementMode !== "local") {
+      setImageSrc(cached);
+      setZoom(1);
+      setPan({ x: 0, y: 0 });
+      setRotation(0);
+      setIsEnhanced(true);
+      toast.success("Restored cached enhanced passport photo (no extra API credits used).");
+      return;
+    }
+
     setIsEnhancing(true);
     try {
+      // 2. If user selected "Instant Local Studio", bypass remote API completely
+      if (enhancementMode === "local") {
+        await applyLocalFallbackStudio(src, "configured");
+        return;
+      }
+
       const { data: sess } = await supabase.auth.getSession();
       const token = sess.session?.access_token;
-      if (!token) throw new Error("Please sign in again");
-      const blob = await (await fetch(src)).blob();
+      if (!token) {
+        if (enhancementMode === "auto") {
+          await applyLocalFallbackStudio(src, "fallback");
+          return;
+        }
+        throw new Error("Please sign in again");
+      }
+
+      // 3. Optimize image payload before uploading to /api/passport-enhance
+      const optimizedSrc = await optimizePassportImageDataUrl(src, 1024, 0.86);
+      const blob = await (await fetch(optimizedSrc)).blob();
       const form = new FormData();
-      form.append("image", new File([blob], "passport.png", { type: blob.type || "image/png" }));
+      form.append("image", new File([blob], "passport.jpg", { type: blob.type || "image/jpeg" }));
+
       let final: string | null = null;
-      await streamImage("/api/passport-enhance", form, (frame, isFinal) => {
-        setImageSrc(frame);
-        if (isFinal) final = frame;
-      }, undefined, { Authorization: `Bearer ${token}` });
+      await streamImage(
+        "/api/passport-enhance",
+        form,
+        (frame, isFinal) => {
+          setImageSrc(frame);
+          if (isFinal) final = frame;
+        },
+        undefined,
+        { Authorization: `Bearer ${token}` }
+      );
+
       if (!final) throw new Error("No enhanced photo returned");
-      setZoom(1); setPan({ x: 0, y: 0 }); setRotation(0);
+      setCachedEnhancedPhoto(src, final);
+      setZoom(1);
+      setPan({ x: 0, y: 0 });
+      setRotation(0);
+      setBrightness(100);
+      setContrast(100);
       setIsEnhanced(true);
       toast.success("Passport enhanced: white background and centred face");
     } catch (err: any) {
-      setImageSrc(src);
-      const msg = String(err?.message || "");
-      toast.error(msg.includes("402") ? "AI credits have run out. Photo kept as uploaded." : msg.includes("429") ? "AI is busy, try Enhance again shortly." : "AI enhancement failed. Photo kept as uploaded — you can try Enhance again.");
+      // 4. Graceful fallback when API credits are exhausted (402), rate-limited (429), or unconfigured
+      if (enhancementMode === "auto" || isCreditOrQuotaExhaustedError(err)) {
+        await applyLocalFallbackStudio(src, "fallback");
+      } else {
+        setImageSrc(src);
+        const msg = String(err?.message || "");
+        toast.error(
+          msg.includes("402")
+            ? "AI credits have run out. Switch mode to Auto or Local Studio."
+            : "AI enhancement failed. Photo kept as uploaded."
+        );
+      }
     } finally {
       setIsEnhancing(false);
     }
@@ -157,13 +249,17 @@ export function PassportPhotoStudioModal({
 
     const img = new Image();
     img.src = imageSrc;
-    await new Promise((res, rej) => { img.onload = res; img.onerror = rej; });
+    await new Promise((res, rej) => {
+      img.onload = res;
+      img.onerror = rej;
+    });
 
     // Background white fill
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, targetWidth, targetHeight);
 
     ctx.save();
+    ctx.filter = `brightness(${brightness}%) contrast(${contrast}%)`;
     ctx.translate(targetWidth / 2 + pan.x, targetHeight / 2 + pan.y);
     ctx.rotate((rotation * Math.PI) / 180);
     ctx.scale(zoom, zoom);
@@ -207,7 +303,7 @@ export function PassportPhotoStudioModal({
           <div className="p-4 flex flex-col items-center gap-3 bg-muted/20">
             {/* Viewport Frame */}
             <div
-              className="relative w-60 h-76 rounded-2xl border-4 border-primary/60 bg-muted/60 overflow-hidden shadow-inner flex items-center justify-center cursor-move select-none"
+              className="relative w-60 h-76 rounded-2xl border-4 border-primary/60 bg-white overflow-hidden shadow-inner flex items-center justify-center cursor-move select-none"
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
@@ -220,6 +316,7 @@ export function PassportPhotoStudioModal({
                   draggable={false}
                   style={{
                     transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom}) rotate(${rotation}deg)`,
+                    filter: `brightness(${brightness}%) contrast(${contrast}%)`,
                     transformOrigin: "center center",
                     transition: isDragging ? "none" : "transform 0.05s ease-out",
                   }}
@@ -255,10 +352,27 @@ export function PassportPhotoStudioModal({
               <span>Photograph Passport Standard · Face 100% Preserved</span>
             </div>
 
+            {/* Configurable Enhancement Mode */}
+            <div className="w-full flex items-center justify-between gap-2 px-1">
+              <span className="text-[11px] font-medium text-muted-foreground flex items-center gap-1">
+                <SlidersHorizontal className="h-3 w-3" /> Enhancement Mode:
+              </span>
+              <Select value={enhancementMode} onValueChange={(v) => setEnhancementMode(v as PassportEnhancementMode)}>
+                <SelectTrigger className="h-7 w-52 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="auto">Auto (AI + Local Fallback)</SelectItem>
+                  <SelectItem value="local">Instant Local Studio (No Credits)</SelectItem>
+                  <SelectItem value="ai">Cloud AI Studio Only</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             {/* Controls if image loaded */}
             {imageSrc ? (
               <div className="w-full space-y-2.5 px-1">
-                {/* Gemini Enhance Action Button */}
+                {/* Enhance Action Button */}
                 <Button
                   type="button"
                   variant="default"
@@ -269,10 +383,12 @@ export function PassportPhotoStudioModal({
                 >
                   <Sparkles className="h-3.5 w-3.5 mr-1.5" />
                   {isEnhancing
-                    ? "AI is enhancing (white background)…"
+                    ? "Enhancing passport photo…"
+                    : enhancementMode === "local"
+                    ? "Apply Local Studio Calibration (Free)"
                     : isEnhanced
-                    ? "Enhance again with AI"
-                    : "AI Enhance (white background, centred)"}
+                    ? "Re-Apply Studio Enhancement"
+                    : "Enhance Photo (White Background & Centred)"}
                 </Button>
 
                 <div className="flex items-center gap-3">
@@ -287,6 +403,31 @@ export function PassportPhotoStudioModal({
                     className="flex-1"
                   />
                   <span className="text-xs font-mono w-10 text-right">{Math.round(zoom * 100)}%</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] text-muted-foreground w-14">Exposure</span>
+                    <Slider
+                      value={[brightness]}
+                      min={85}
+                      max={125}
+                      step={1}
+                      onValueChange={([v]) => setBrightness(v)}
+                      className="flex-1"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] text-muted-foreground w-14">Contrast</span>
+                    <Slider
+                      value={[contrast]}
+                      min={85}
+                      max={125}
+                      step={1}
+                      onValueChange={([v]) => setContrast(v)}
+                      className="flex-1"
+                    />
+                  </div>
                 </div>
 
                 <div className="flex items-center justify-between text-xs pt-0.5">
@@ -308,6 +449,8 @@ export function PassportPhotoStudioModal({
                       setZoom(1);
                       setPan({ x: 0, y: 0 });
                       setRotation(0);
+                      setBrightness(102);
+                      setContrast(105);
                     }}
                   >
                     Reset Framing

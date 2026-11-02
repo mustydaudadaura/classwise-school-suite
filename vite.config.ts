@@ -16,8 +16,11 @@ const appConfig = defineConfig({
   vite: {
     resolve: {
       alias: [
+        { find: "entities/decode", replacement: new URL('./node_modules/entities/lib/esm/decode.js', import.meta.url).pathname },
+        { find: "entities/escape", replacement: new URL('./node_modules/entities/lib/esm/escape.js', import.meta.url).pathname },
         { find: "entities/lib/decode.js", replacement: new URL('./node_modules/entities/lib/decode.js', import.meta.url).pathname },
         { find: "entities/lib/encode.js", replacement: new URL('./node_modules/entities/lib/encode.js', import.meta.url).pathname },
+        { find: "entities/lib/escape.js", replacement: new URL('./node_modules/entities/lib/escape.js', import.meta.url).pathname },
         // Do not alias the package root: each consumer must resolve its own
         // compatible entities version, including htmlparser2's modern exports.
         {

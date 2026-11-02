@@ -26,12 +26,23 @@ export const Route = createFileRoute("/api/passport-enhance")({
         const { data: roles } = await db.from("user_roles").select("role").eq("user_id", userData.user.id).limit(1);
         if (!roles?.length) return new Response("Only school staff can enhance passport photos", { status: 403 });
 
-        const apiKey = process.env.LOVABLE_API_KEY;
-        if (!apiKey) return new Response("AI is not configured", { status: 500 });
         const incoming = await request.formData();
         const image = incoming.get("image");
         if (!(image instanceof File) || !image.type.startsWith("image/")) return new Response("Upload a photo first", { status: 400 });
         if (image.size > 8 * 1024 * 1024) return new Response("Photo must be under 8 MB", { status: 400 });
+
+        const apiKey = process.env.LOVABLE_API_KEY;
+        if (!apiKey) {
+          return new Response(
+            JSON.stringify({
+              error: "AI image gateway key is not configured; using local studio calibration fallback.",
+              code: "AI_NOT_CONFIGURED",
+              fallbackAvailable: true,
+            }),
+            { status: 402, headers: { "Content-Type": "application/json", "Cache-Control": "no-cache" } }
+          );
+        }
+
         const form = new FormData();
         form.set("image", image);
         form.set("prompt", PROMPT);

@@ -124,7 +124,14 @@ export const analyzeAdmissionDocument = createServerFn({ method: "POST" })
     const apiKey = process.env.GEMINI_API_KEY;
     if (apiKey && (data.file_base64 || data.raw_text)) {
       try {
-        const ai = new GoogleGenAI();
+        const ai = new GoogleGenAI({
+          apiKey,
+          httpOptions: {
+            headers: {
+              "User-Agent": "aistudio-build",
+            },
+          },
+        });
         const contents: any[] = [];
 
         if (data.file_base64) {

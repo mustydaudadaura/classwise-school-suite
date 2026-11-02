@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "./test-compat";
 import { computeDashboardMetrics, pct, type RawDashboardData } from "./dashboard-metrics";
 
 const base: RawDashboardData = {

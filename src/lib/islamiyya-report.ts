@@ -35,7 +35,7 @@ export function arabicReportText(value: string | null | undefined) {
 export function arabicNumber(value: number | string | null | undefined) {
   if (value == null || value === '') return '—';
   const n = Number(value);
-  return Number.isFinite(n) ? new Intl.NumberFormat('ar-NG', { maximumFractionDigits: 2 }).format(n) : value;
+  return Number.isFinite(n) ? new Intl.NumberFormat('ar-EG', { maximumFractionDigits: 2 }).format(n) : value;
 }
 
 export function islamiyyaTotals(assessments: IslamiyyaAssessment[]) {

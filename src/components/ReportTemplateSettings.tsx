@@ -282,11 +282,11 @@ export function ReportTemplateSettings({ school }: { school: { id: string; name:
               Specialized Nigerian Report Sheet Templates
             </h3>
             <p className="text-xs text-muted-foreground">
-              Select from authentic Nigerian school formats. All templates fit strictly on a single A4 page and include analytical charts.
+              Select a report format.
             </p>
           </div>
           <Badge variant="outline" className="text-primary border-primary/30 bg-primary/5 text-xs font-mono">
-            6 Specialized Nigerian Templates
+            {REPORT_LAYOUTS.length} Report Templates
           </Badge>
         </div>
 
@@ -294,10 +294,13 @@ export function ReportTemplateSettings({ school }: { school: { id: string; name:
           {REPORT_LAYOUTS.map((layout) => {
             const isSelected = (draft.layout_id || resolved.layout_id) === layout.id;
             return (
-              <div
+              <Button
+                type="button"
+                variant="outline"
+                aria-pressed={isSelected}
                 key={layout.id}
                 onClick={() => setDraft({ ...draft, layout_id: layout.id })}
-                className={`relative rounded-lg border p-3.5 cursor-pointer transition-all ${
+                className={`relative block h-auto whitespace-normal rounded-lg border p-3.5 text-left transition-all ${
                   isSelected
                     ? "border-primary bg-primary/5 shadow-xs ring-1 ring-primary"
                     : "border-border hover:border-border/80 hover:bg-muted/30"
@@ -317,13 +320,17 @@ export function ReportTemplateSettings({ school }: { school: { id: string; name:
                   <span>{isSelected ? "Active Template" : "Click to select"}</span>
                   <span className="font-mono text-muted-foreground">Single A4</span>
                 </div>
-              </div>
+              </Button>
             );
           })}
         </div>
       </div>
 
       {/* SECTION 4: Template Colours & Position Options */}
+      {resolved.layout_id === 'islamiyya_arabic' && <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-2"><Label htmlFor="arabic-school-name">School name in Arabic / اسم المدرسة</Label><Input id="arabic-school-name" dir="rtl" lang="ar" value={draft.arabic_school_name ?? ''} onChange={e => setDraft({ ...draft, arabic_school_name: e.target.value })} /></div>
+        <div className="space-y-2"><Label htmlFor="arabic-school-address">Address in Arabic / العنوان</Label><Input id="arabic-school-address" dir="rtl" lang="ar" value={draft.arabic_address ?? ''} onChange={e => setDraft({ ...draft, arabic_address: e.target.value })} /></div>
+      </div>}
       <div className="rounded-xl border border-border bg-card p-4 space-y-4">
         <h3 className="text-sm font-semibold text-foreground">Color Palette & Ranking Format</h3>
         <div className="grid gap-4 sm:grid-cols-3">
@@ -398,13 +405,13 @@ export function ReportTemplateSettings({ school }: { school: { id: string; name:
       <div className="border-t border-border pt-5">
         <div className="flex items-center justify-between mb-2">
           <div>
-            <h3 className="font-semibold text-foreground">Single-Page A4 Live Render Preview</h3>
+            <h3 className="font-semibold text-foreground">Report Card Preview</h3>
             <p className="text-xs text-muted-foreground">
-              Guaranteed single-page A4 dimensions (210×297mm) with performance analytics (bar & pie charts).
+              Report preview
             </p>
           </div>
           <Badge variant="outline" className="text-emerald-700 border-emerald-300 bg-emerald-50 text-xs font-mono">
-            A4 Portrait (Strict 1 Page Fit)
+            A4 Portrait
           </Badge>
         </div>
 
@@ -416,43 +423,43 @@ export function ReportTemplateSettings({ school }: { school: { id: string; name:
               motto: motto || null,
               principal_name: principalName || "Principal / Head of School",
               address: address || null,
-              phone: phone || null,
-              email: email || null,
               logo_url: logoUrl,
               stamp_url: stampUrl,
               principal_signature_url: sigUrl,
               report_template: draft,
             },
             students: {
-              first_name: 'Zainab',
-              last_name: 'Bello',
-              middle_name: 'Musa',
+              first_name: resolved.layout_id === 'islamiyya_arabic' ? 'زينب' : 'Zainab',
+              last_name: resolved.layout_id === 'islamiyya_arabic' ? 'بلو' : 'Bello',
+              middle_name: resolved.layout_id === 'islamiyya_arabic' ? 'موسى' : 'Musa',
               admission_no: 'ADM/2026/014',
               gender: 'female',
               dob: '2014-06-18',
-              house: 'Blue Sapphire',
             },
             classes: {
-              name: section === 'secondary' ? 'JSS 2' : section === 'primary' ? 'Primary 5' : 'Nursery 2',
-              arm: 'Gold',
+              name: resolved.layout_id === 'islamiyya_arabic' ? 'المستوى الثاني' : section === 'secondary' ? 'JSS 2' : section === 'primary' ? 'Primary 5' : 'Nursery 2',
+              arm: resolved.layout_id === 'islamiyya_arabic' ? 'أ' : 'Gold',
               section,
             },
-            session: school.current_session ?? '2025/2026',
-            term: school.current_term ?? 'first',
+            session: typeof school.current_session === 'string' ? school.current_session : '2025/2026',
+            term: typeof school.current_term === 'string' ? school.current_term : 'first',
             position: 2,
             class_size: 32,
-            total_score: 512,
-            average: 85,
-            subjects_count: 6,
-            gpa: 4.8,
             days_total: 65,
             days_present: 63,
             days_absent: 2,
-            teacher_remark: 'An exceptional student with strong analytical skills and consistent dedication.',
-            principal_remark: 'Commended for academic excellence and outstanding character.',
+            teacher_remark: resolved.layout_id === 'islamiyya_arabic' ? 'طالب مجتهد، مواظب على الحفظ والمراجعة، وحسن الخلق.' : 'An exceptional student with strong analytical skills and consistent dedication.',
+            principal_remark: resolved.layout_id === 'islamiyya_arabic' ? 'بارك الله فيك، واصل الاجتهاد والتميز.' : 'Commended for academic excellence and outstanding character.',
             verification_code: 'VERIFY-2026-SAMPLE',
           }}
-          assessments={[
+          assessments={resolved.layout_id === 'islamiyya_arabic' ? [
+            { id: 'ar-1', ca1: 18, ca2: 19, exam: 54, total: 91, grade: 'A', remark: 'ممتاز', subjects: { name: 'القرآن الكريم', code: 'QUR' } },
+            { id: 'ar-2', ca1: 17, ca2: 18, exam: 50, total: 85, grade: 'A', remark: 'ممتاز', subjects: { name: 'التجويد', code: 'TAJ' } },
+            { id: 'ar-3', ca1: 16, ca2: 17, exam: 49, total: 82, grade: 'A', remark: 'جيد جداً', subjects: { name: 'اللغة العربية', code: 'ARA' } },
+            { id: 'ar-4', ca1: 15, ca2: 16, exam: 48, total: 79, grade: 'B', remark: 'جيد', subjects: { name: 'الفقه', code: 'FIQ' } },
+            { id: 'ar-5', ca1: 18, ca2: 18, exam: 52, total: 88, grade: 'A', remark: 'ممتاز', subjects: { name: 'العقيدة', code: 'AQD' } },
+            { id: 'ar-6', ca1: 17, ca2: 17, exam: 53, total: 87, grade: 'A', remark: 'ممتاز', subjects: { name: 'الحديث', code: 'HAD' } },
+          ] : [
             { id: 'sub-1', ca1: 18, ca2: 19, exam: 54, total: 91, grade: 'A', remark: 'Distinction', subject_position: 1, subjects: { name: 'Mathematics', code: 'MTH' } },
             { id: 'sub-2', ca1: 17, ca2: 18, exam: 50, total: 85, grade: 'A', remark: 'Excellent', subject_position: 2, subjects: { name: 'English Language', code: 'ENG' } },
             { id: 'sub-3', ca1: 16, ca2: 17, exam: 49, total: 82, grade: 'A', remark: 'Very Good', subject_position: 3, subjects: { name: 'Basic Science', code: 'BSC' } },

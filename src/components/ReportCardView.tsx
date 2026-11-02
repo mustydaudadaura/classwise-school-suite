@@ -1,5 +1,7 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import QRCode from "qrcode";
+import { IslamiyyaReportCard } from '@/components/IslamiyyaReportCard';
+import { resolveReportTemplate } from '@/lib/report-template';
 import {
   ShieldCheck,
   BarChart3,
@@ -288,6 +290,10 @@ export function ReportCardView({
   const schoolMotto = school?.motto || "";
   const schoolAddress = school?.address || "";
   const schoolContact = [school?.phone ? `Tel: ${school.phone}` : "", school?.email ? `Email: ${school.email}` : ""].filter(Boolean).join(" • ");
+
+  if (resolveReportTemplate(school.report_template, klass.section).layout_id === 'islamiyya_arabic') {
+    return <div className="space-y-4 pb-8"><div className="max-w-full overflow-x-auto"><IslamiyyaReportCard rc={rc} assessments={assessments} qrDataUrl={qrDataUrl} /></div></div>;
+  }
 
   return (
     <div className="space-y-4 pb-8">

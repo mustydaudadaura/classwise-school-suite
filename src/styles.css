@@ -328,3 +328,21 @@
   body:has(.print-doc) .print-doc { position: absolute; inset: 0 auto auto 0; width: 100%; }
 }
 .cert-frame { border: 6px double var(--report-colour-navy); background: var(--report-paper); color: var(--report-ink); }
+
+.islamiyya-sheet { width: 100%; max-width: 210mm; margin: 0 auto; padding: 8mm; position: relative; border: 4px double var(--rc-border); font-family: "Noto Naskh Arabic", serif; letter-spacing: 0; }
+.islamiyya-header { display: grid; grid-template-columns: 80px minmax(0, 1fr) 80px; gap: 16px; align-items: center; }
+.islamiyya-watermark { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 55%; max-height: 70%; object-fit: contain; opacity: .055; pointer-events: none; }
+.islamiyya-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.islamiyya-table td, .islamiyya-table th { border: 1px solid var(--report-grid); padding: 7px 5px; text-align: center; overflow-wrap: anywhere; }
+.islamiyya-table td:first-child { text-align: right; }
+@media (max-width: 640px) { .islamiyya-sheet { padding: 14px; } .islamiyya-header { grid-template-columns: 1fr; justify-items: center; } .islamiyya-table { font-size: 12px; } .islamiyya-table td, .islamiyya-table th { padding: 5px 2px; } }
+@media print {
+  @page { size: A4 portrait; margin: 10mm; }
+  body:has(.islamiyya-sheet) .print-doc { position: static; }
+  body:has(.islamiyya-sheet) { background: var(--report-paper); }
+  body:has(.islamiyya-sheet) nav, body:has(.islamiyya-sheet) aside, body:has(.islamiyya-sheet) header, body:has(.islamiyya-sheet) .print\:hidden { display: none !important; }
+  .islamiyya-sheet { max-width: 100%; padding: 5mm; }
+  .islamiyya-header { grid-template-columns: 80px minmax(0, 1fr) 80px; }
+  .islamiyya-sheet tr, .islamiyya-sheet section, .islamiyya-header { break-inside: avoid; }
+  .islamiyya-sheet thead { display: table-header-group; }
+}

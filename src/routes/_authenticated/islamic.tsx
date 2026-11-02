@@ -14,6 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { MoonStar, Printer } from 'lucide-react';
 import { toast } from 'sonner';
+import { IslamiyyaReports } from '@/components/IslamiyyaReports';
 
 export const Route = createFileRoute('/_authenticated/islamic')({
   head: () => ({ meta: [
@@ -54,7 +55,8 @@ function Islamic({ schoolId, canEdit }: { schoolId: string; canEdit: boolean }) 
       supabase.from('students').select('id,first_name,middle_name,last_name,admission_no,class_id,status').eq('school_id', schoolId).order('last_name'),
     ]);
     const err = [school, programmes, enrollments, records, students].find(r => r.error)?.error; if (err) throw err;
-    return { school: school.data!, programmes: (programmes.data ?? []) as Programme[], enrollments: (enrollments.data ?? []) as Enrollment[], records: (records.data ?? []) as TahfizRecord[], students: (students.data ?? []) as Student[] };
+    if (!school.data) throw new Error('School not found');
+    return { school: school.data, programmes: (programmes.data ?? []) as Programme[], enrollments: (enrollments.data ?? []) as Enrollment[], records: (records.data ?? []) as TahfizRecord[], students: (students.data ?? []) as Student[] };
   } });
   if (base.isPending) return <p>Loading…</p>;
   if (base.error) return <p role="alert">{base.error.message}</p>;
@@ -63,8 +65,8 @@ function Islamic({ schoolId, canEdit }: { schoolId: string; canEdit: boolean }) 
   const studentName = (id: string) => { const s = students.find(x => x.id === id); return s ? [s.first_name, s.middle_name, s.last_name].filter(Boolean).join(' ') : '—'; };
   const programmeName = (id: string) => programmes.find(p => p.id === id)?.name ?? '—';
 
-  if (printStudent) {
-    const st = students.find(s => s.id === printStudent)!;
+  if (printStudent && students.some(s => s.id === printStudent)) {
+    const st = students.find(s => s.id === printStudent);
     const stuRecords = records.filter(r => r.student_id === printStudent);
     return <div className="space-y-4">
       <div className="flex gap-2 print:hidden"><Button variant="outline" onClick={() => setPrintStudent(null)}>Back</Button><Button onClick={() => window.print()}><Printer className="mr-2 h-4 w-4" />Print / Save PDF</Button></div>
@@ -73,7 +75,7 @@ function Islamic({ schoolId, canEdit }: { schoolId: string; canEdit: boolean }) 
           {school.logo_url && <img src={school.logo_url} alt="" className="h-14 w-14 object-contain" />}
           <div><h2 className="text-xl font-bold">{school.name}</h2><p className="text-sm text-muted-foreground">Tahfiz progress report — {school.current_session ?? ''}</p></div>
         </div>
-        <p className="font-semibold">{studentName(printStudent)} <span className="font-normal text-muted-foreground">({st.admission_no})</span></p>
+        <p className="font-semibold">{studentName(printStudent)} <span className="font-normal text-muted-foreground">({st?.admission_no})</span></p>
         <Table><TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Portion</TableHead><TableHead>Type</TableHead><TableHead>Score</TableHead><TableHead>Grade</TableHead><TableHead>Remarks</TableHead></TableRow></TableHeader><TableBody>
           {stuRecords.map(r => <TableRow key={r.id}><TableCell>{new Date(r.record_date).toLocaleDateString('en-NG')}</TableCell><TableCell>{r.surah_from} {r.ayah_from} – {r.surah_to} {r.ayah_to}</TableCell><TableCell className="capitalize">{r.assessment_type}</TableCell><TableCell>{r.score ?? '—'}</TableCell><TableCell>{r.grade ?? '—'}</TableCell><TableCell>{r.remarks ?? ''}</TableCell></TableRow>)}
           {!stuRecords.length && <TableRow><TableCell colSpan={6} className="text-muted-foreground">No records yet</TableCell></TableRow>}
@@ -88,13 +90,15 @@ function Islamic({ schoolId, canEdit }: { schoolId: string; canEdit: boolean }) 
       <div><h1 className="text-2xl font-bold">Islamic programmes</h1><p className="text-sm text-muted-foreground">Tahfiz, Arabic and Islamiyya programmes, enrolment and memorisation records.</p></div>
     </div>
     <Tabs defaultValue="programmes" className="space-y-6">
-      <TabsList className="grid h-auto w-full grid-cols-2 sm:grid-cols-4">
+      <TabsList className="grid h-auto w-full grid-cols-2 sm:grid-cols-5">
         <TabsTrigger value="programmes">Programmes</TabsTrigger>
         <TabsTrigger value="enrolment">Enrolment</TabsTrigger>
         <TabsTrigger value="tahfiz">Tahfiz records</TabsTrigger>
         <TabsTrigger value="progress">Progress</TabsTrigger>
+        <TabsTrigger value="arabic-reports">Islamiyya reports / العربية</TabsTrigger>
       </TabsList>
 
+      <TabsContent value="arabic-reports"><IslamiyyaReports schoolId={schoolId} currentSession={school.current_session} students={students} records={records} /></TabsContent>
       <TabsContent value="programmes" className="space-y-4">
         {canEdit && <ProgrammeForm schoolId={schoolId} onSaved={refresh} />}
         <div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Type</TableHead><TableHead>Description</TableHead><TableHead>Status</TableHead>{canEdit && <TableHead />}</TableRow></TableHeader><TableBody>

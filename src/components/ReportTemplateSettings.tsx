@@ -286,7 +286,7 @@ export function ReportTemplateSettings({ school }: { school: { id: string; name:
             </p>
           </div>
           <Badge variant="outline" className="text-primary border-primary/30 bg-primary/5 text-xs font-mono">
-            6 Specialized Nigerian Templates
+            {REPORT_LAYOUTS.length} Report Templates
           </Badge>
         </div>
 
@@ -324,6 +324,10 @@ export function ReportTemplateSettings({ school }: { school: { id: string; name:
       </div>
 
       {/* SECTION 4: Template Colours & Position Options */}
+      {resolved.layout_id === 'islamiyya_arabic' && <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-2"><Label htmlFor="arabic-school-name">School name in Arabic / اسم المدرسة</Label><Input id="arabic-school-name" dir="rtl" lang="ar" value={draft.arabic_school_name ?? ''} onChange={e => setDraft({ ...draft, arabic_school_name: e.target.value })} /></div>
+        <div className="space-y-2"><Label htmlFor="arabic-school-address">Address in Arabic / العنوان</Label><Input id="arabic-school-address" dir="rtl" lang="ar" value={draft.arabic_address ?? ''} onChange={e => setDraft({ ...draft, arabic_address: e.target.value })} /></div>
+      </div>}
       <div className="rounded-xl border border-border bg-card p-4 space-y-4">
         <h3 className="text-sm font-semibold text-foreground">Color Palette & Ranking Format</h3>
         <div className="grid gap-4 sm:grid-cols-3">

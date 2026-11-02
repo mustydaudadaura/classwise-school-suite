@@ -335,6 +335,30 @@
 .islamiyya-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .islamiyya-table td, .islamiyya-table th { border: 1px solid var(--report-grid); padding: 7px 5px; text-align: center; overflow-wrap: anywhere; }
 .islamiyya-table td:first-child { text-align: right; }
+.school-report-sheet { width: 100%; max-width: 210mm; margin: 0 auto; padding: 8mm; position: relative; border: 4px double var(--rc-border); }
+.school-report-header { display: grid; grid-template-columns: 80px minmax(0, 1fr) 80px; align-items: center; gap: 16px; border-bottom: 2px solid var(--rc-heading); padding-bottom: 18px; }
+.school-report-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.school-report-table td, .school-report-table th { border: 1px solid var(--report-grid); padding: 7px 5px; text-align: center; overflow-wrap: anywhere; }
+.school-report-table td:first-child, .school-report-table th:first-child { text-align: left; }
+.school-report-classic-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 1fr); gap: 16px; }
+.layout-classic_comprehensive { font-family: Georgia, serif; }
+.layout-premier_standard { border-style: solid; border-width: 1px; }
+.layout-modern_executive { border: 0; border-top: 8px solid var(--rc-border); }
+.layout-modern_executive .school-report-summary dl { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.school-report-bar-row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) 40px; gap: 12px; align-items: center; }
+.school-report-bar-row progress { width: 100%; height: 12px; accent-color: var(--rc-heading); }
+.layout-ubec_basic .school-report-header { border-bottom-style: double; border-bottom-width: 4px; }
+.layout-islamic_integrated { border-width: 6px; font-family: Georgia, "Noto Naskh Arabic", serif; }
+.layout-waec_senior { border: 2px solid var(--rc-border); font-family: Georgia, serif; }
+.layout-waec_senior .school-report-header { text-transform: uppercase; }
+@media (max-width: 640px) {
+  .school-report-sheet { padding: 14px; }
+  .school-report-header { grid-template-columns: 1fr; justify-items: center; }
+  .school-report-classic-grid { grid-template-columns: 1fr; }
+  .school-report-table { font-size: 11px; }
+  .school-report-table td, .school-report-table th { padding: 5px 2px; }
+  .layout-modern_executive .school-report-summary dl { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 @media (max-width: 640px) { .islamiyya-sheet { padding: 14px; } .islamiyya-header { grid-template-columns: 1fr; justify-items: center; } .islamiyya-table { font-size: 12px; } .islamiyya-table td, .islamiyya-table th { padding: 5px 2px; } }
 @media print {
   @page { size: A4 portrait; margin: 10mm; }
@@ -345,4 +369,11 @@
   .islamiyya-header { grid-template-columns: 80px minmax(0, 1fr) 80px; }
   .islamiyya-sheet tr, .islamiyya-sheet section, .islamiyya-header { break-inside: avoid; }
   .islamiyya-sheet thead { display: table-header-group; }
+  body:has(.school-report-sheet) .print-doc { position: static; }
+  body:has(.school-report-sheet) nav, body:has(.school-report-sheet) aside, body:has(.school-report-sheet) header, body:has(.school-report-sheet) .print\:hidden { display: none !important; }
+  .school-report-sheet { max-width: 100%; padding: 5mm; }
+  .school-report-header { grid-template-columns: 80px minmax(0, 1fr) 80px; }
+  .school-report-classic-grid { grid-template-columns: minmax(0, 3fr) minmax(0, 1fr); }
+  .school-report-sheet tr, .school-report-header, .school-report-sheet section { break-inside: avoid; }
+  .school-report-sheet thead { display: table-header-group; }
 }

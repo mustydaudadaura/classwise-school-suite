@@ -51,6 +51,7 @@ Parent security decision: real-family phone-only access conflicts with the secur
 - [x] Attendance tracking upgrade: kiosk with live clock, PIN boxes, live on-site badge, Sign In/Sign Out, Today/Yesterday boards with late minutes and penalties; multiple geofence sites; per-minute late penalty. Unit tests pass; kiosk not yet clicked through in the browser.
 
 ## Open tasks
+- [ ] Fix all report template selections so saved settings and previews display distinct matching layouts, not just two reports.
 - [ ] Add researched Arabic Islamiyya report template, programme access and print verification without changing existing reports.
 - [x] Require complete class/subject creation details, enforce class-first subject registration, and align import validation and class selection; 22 tests pass, signed-in phone-sized class/subject saves persist after reload, temporary records removed, and automatic build passes.
 - [x] Separate subjects by registered class in both score-entry modes and class registry selector; unassigned subjects remain preserved separately. Class-isolation tests pass.

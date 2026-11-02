@@ -13,7 +13,7 @@
 - Enforce module activation and school-scoped permissions in database policies and authenticated server functions; navigation visibility is not authorization.
 - Use authenticated RLS clients for ordinary operations; dynamically import privileged clients only inside authorized handlers for true administrative work.
 - Keep audit records append-only and write them in database triggers so direct client mutations are covered.
-- Store report presentation choices on the school and resolve them through one shared report renderer for staff, families and printing; keep colour values in global CSS tokens and compute subject ranks in an authorized database function.
+- Resolve saved report layouts through one staff/family/print renderer with CSS colour tokens and authorized subject ranks; Arabic Islamiyya reuses existing report data and never fabricates missing scores or translations.
 - Preserve compatibility with existing assessment and report structures until a separately verified data migration replaces them.
 - AI features run in authenticated server functions that check school permissions before calling Lovable AI; prompts and keys never reach the browser.
 - Keep money maths (invoice balance, waivable discount) in one shared browser-safe module that screens, server functions and reports all use, and unit-test it, so collected/outstanding figures never disagree.

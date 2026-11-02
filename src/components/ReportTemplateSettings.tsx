@@ -282,7 +282,7 @@ export function ReportTemplateSettings({ school }: { school: { id: string; name:
               Specialized Nigerian Report Sheet Templates
             </h3>
             <p className="text-xs text-muted-foreground">
-              Select from authentic Nigerian school formats. All templates fit strictly on a single A4 page and include analytical charts.
+              Select a report format.
             </p>
           </div>
           <Badge variant="outline" className="text-primary border-primary/30 bg-primary/5 text-xs font-mono">
@@ -294,10 +294,13 @@ export function ReportTemplateSettings({ school }: { school: { id: string; name:
           {REPORT_LAYOUTS.map((layout) => {
             const isSelected = (draft.layout_id || resolved.layout_id) === layout.id;
             return (
-              <div
+              <Button
+                type="button"
+                variant="outline"
+                aria-pressed={isSelected}
                 key={layout.id}
                 onClick={() => setDraft({ ...draft, layout_id: layout.id })}
-                className={`relative rounded-lg border p-3.5 cursor-pointer transition-all ${
+                className={`relative block h-auto whitespace-normal rounded-lg border p-3.5 text-left transition-all ${
                   isSelected
                     ? "border-primary bg-primary/5 shadow-xs ring-1 ring-primary"
                     : "border-border hover:border-border/80 hover:bg-muted/30"
@@ -317,7 +320,7 @@ export function ReportTemplateSettings({ school }: { school: { id: string; name:
                   <span>{isSelected ? "Active Template" : "Click to select"}</span>
                   <span className="font-mono text-muted-foreground">Single A4</span>
                 </div>
-              </div>
+              </Button>
             );
           })}
         </div>
@@ -402,13 +405,13 @@ export function ReportTemplateSettings({ school }: { school: { id: string; name:
       <div className="border-t border-border pt-5">
         <div className="flex items-center justify-between mb-2">
           <div>
-            <h3 className="font-semibold text-foreground">Single-Page A4 Live Render Preview</h3>
+            <h3 className="font-semibold text-foreground">Report Card Preview</h3>
             <p className="text-xs text-muted-foreground">
-              Guaranteed single-page A4 dimensions (210×297mm) with performance analytics (bar & pie charts).
+              Report preview
             </p>
           </div>
           <Badge variant="outline" className="text-emerald-700 border-emerald-300 bg-emerald-50 text-xs font-mono">
-            A4 Portrait (Strict 1 Page Fit)
+            A4 Portrait
           </Badge>
         </div>
 

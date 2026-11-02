@@ -364,14 +364,16 @@
 @media (max-width: 640px) { .islamiyya-sheet { padding: 14px; } .islamiyya-header { grid-template-columns: 1fr; justify-items: center; } .islamiyya-table { font-size: 12px; } .islamiyya-table td, .islamiyya-table th { padding: 5px 2px; } }
 @media print {
   @page { size: A4 portrait; margin: 10mm; }
-  body:has(.islamiyya-sheet) .print-doc { position: static; }
+  body:has(.islamiyya-sheet) .print-doc { position: absolute; }
   body:has(.islamiyya-sheet) { background: var(--report-paper); }
   body:has(.islamiyya-sheet) nav, body:has(.islamiyya-sheet) aside, body:has(.islamiyya-sheet) header, body:has(.islamiyya-sheet) .print\:hidden { display: none !important; }
   .islamiyya-sheet { max-width: 100%; padding: 5mm; }
   .islamiyya-header { grid-template-columns: 80px minmax(0, 1fr) 80px; }
   .islamiyya-sheet tr, .islamiyya-sheet section, .islamiyya-header { break-inside: avoid; }
   .islamiyya-sheet thead { display: table-header-group; }
-  body:has(.school-report-sheet) .print-doc { position: static; }
+  body:has(.school-report-sheet) .print-doc { position: absolute; }
+  body:has(.school-report-sheet) *:not(:has(.print-doc)):not(.print-doc):not(.print-doc *), body:has(.islamiyya-sheet) *:not(:has(.print-doc)):not(.print-doc):not(.print-doc *) { display: none !important; }
+  body:has(.print-doc) *:has(.print-doc) { position: static !important; margin: 0 !important; padding: 0 !important; min-height: 0 !important; overflow: visible !important; }
   body:has(.school-report-sheet) nav, body:has(.school-report-sheet) aside, body:has(.school-report-sheet) header, body:has(.school-report-sheet) .print\:hidden { display: none !important; }
   .school-report-sheet { max-width: 100%; padding: 5mm; }
   .school-report-header { grid-template-columns: 80px minmax(0, 1fr) 80px; }

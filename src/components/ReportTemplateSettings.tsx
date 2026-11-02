@@ -429,16 +429,16 @@ export function ReportTemplateSettings({ school }: { school: { id: string; name:
               report_template: draft,
             },
             students: {
-              first_name: 'Zainab',
-              last_name: 'Bello',
-              middle_name: 'Musa',
+              first_name: resolved.layout_id === 'islamiyya_arabic' ? 'زينب' : 'Zainab',
+              last_name: resolved.layout_id === 'islamiyya_arabic' ? 'بلو' : 'Bello',
+              middle_name: resolved.layout_id === 'islamiyya_arabic' ? 'موسى' : 'Musa',
               admission_no: 'ADM/2026/014',
               gender: 'female',
               dob: '2014-06-18',
             },
             classes: {
-              name: section === 'secondary' ? 'JSS 2' : section === 'primary' ? 'Primary 5' : 'Nursery 2',
-              arm: 'Gold',
+              name: resolved.layout_id === 'islamiyya_arabic' ? 'المستوى الثاني' : section === 'secondary' ? 'JSS 2' : section === 'primary' ? 'Primary 5' : 'Nursery 2',
+              arm: resolved.layout_id === 'islamiyya_arabic' ? 'أ' : 'Gold',
               section,
             },
             session: typeof school.current_session === 'string' ? school.current_session : '2025/2026',
@@ -448,11 +448,18 @@ export function ReportTemplateSettings({ school }: { school: { id: string; name:
             days_total: 65,
             days_present: 63,
             days_absent: 2,
-            teacher_remark: 'An exceptional student with strong analytical skills and consistent dedication.',
-            principal_remark: 'Commended for academic excellence and outstanding character.',
+            teacher_remark: resolved.layout_id === 'islamiyya_arabic' ? 'طالب مجتهد، مواظب على الحفظ والمراجعة، وحسن الخلق.' : 'An exceptional student with strong analytical skills and consistent dedication.',
+            principal_remark: resolved.layout_id === 'islamiyya_arabic' ? 'بارك الله فيك، واصل الاجتهاد والتميز.' : 'Commended for academic excellence and outstanding character.',
             verification_code: 'VERIFY-2026-SAMPLE',
           }}
-          assessments={[
+          assessments={resolved.layout_id === 'islamiyya_arabic' ? [
+            { id: 'ar-1', ca1: 18, ca2: 19, exam: 54, total: 91, grade: 'A', remark: 'ممتاز', subjects: { name: 'القرآن الكريم', code: 'QUR' } },
+            { id: 'ar-2', ca1: 17, ca2: 18, exam: 50, total: 85, grade: 'A', remark: 'ممتاز', subjects: { name: 'التجويد', code: 'TAJ' } },
+            { id: 'ar-3', ca1: 16, ca2: 17, exam: 49, total: 82, grade: 'A', remark: 'جيد جداً', subjects: { name: 'اللغة العربية', code: 'ARA' } },
+            { id: 'ar-4', ca1: 15, ca2: 16, exam: 48, total: 79, grade: 'B', remark: 'جيد', subjects: { name: 'الفقه', code: 'FIQ' } },
+            { id: 'ar-5', ca1: 18, ca2: 18, exam: 52, total: 88, grade: 'A', remark: 'ممتاز', subjects: { name: 'العقيدة', code: 'AQD' } },
+            { id: 'ar-6', ca1: 17, ca2: 17, exam: 53, total: 87, grade: 'A', remark: 'ممتاز', subjects: { name: 'الحديث', code: 'HAD' } },
+          ] : [
             { id: 'sub-1', ca1: 18, ca2: 19, exam: 54, total: 91, grade: 'A', remark: 'Distinction', subject_position: 1, subjects: { name: 'Mathematics', code: 'MTH' } },
             { id: 'sub-2', ca1: 17, ca2: 18, exam: 50, total: 85, grade: 'A', remark: 'Excellent', subject_position: 2, subjects: { name: 'English Language', code: 'ENG' } },
             { id: 'sub-3', ca1: 16, ca2: 17, exam: 49, total: 82, grade: 'A', remark: 'Very Good', subject_position: 3, subjects: { name: 'Basic Science', code: 'BSC' } },

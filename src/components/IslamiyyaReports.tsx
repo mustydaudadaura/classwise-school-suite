@@ -18,7 +18,7 @@ export function IslamiyyaReports({ schoolId, currentSession, students, records }
 }) {
   const [studentId, setStudentId] = useState('');
   const [session, setSession] = useState(currentSession ?? '');
-  const [term, setTerm] = useState('First Term');
+  const [term, setTerm] = useState<'first' | 'second' | 'third'>('first');
   const loadReport = useServerFn(getReportCardDetail);
   const reports = useQuery({
     queryKey: ['islamiyya-report', schoolId, studentId, session, term],
@@ -33,10 +33,10 @@ export function IslamiyyaReports({ schoolId, currentSession, students, records }
     <div className="flex flex-wrap items-end gap-3 print:hidden">
       <div className="min-w-0 w-full space-y-2 sm:w-72"><Label htmlFor="islamiyya-student">Student / الطالب</Label><Select value={studentId} onValueChange={setStudentId}><SelectTrigger id="islamiyya-student"><SelectValue placeholder="Select student" /></SelectTrigger><SelectContent>{students.map(s => <SelectItem key={s.id} value={s.id}>{[s.first_name, s.middle_name, s.last_name].filter(Boolean).join(' ')} ({s.admission_no})</SelectItem>)}</SelectContent></Select></div>
       <div className="space-y-2"><Label htmlFor="islamiyya-session">Session / العام الدراسي</Label><Input id="islamiyya-session" value={session} onChange={e => setSession(e.target.value)} /></div>
-      <div className="space-y-2"><Label htmlFor="islamiyya-term">Term / الفصل الدراسي</Label><Select value={term} onValueChange={setTerm}><SelectTrigger id="islamiyya-term"><SelectValue /></SelectTrigger><SelectContent>{['First Term', 'Second Term', 'Third Term'].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent></Select></div>
+      <div className="space-y-2"><Label htmlFor="islamiyya-term">Term / الفصل الدراسي</Label><Select value={term} onValueChange={value => { if (value === 'first' || value === 'second' || value === 'third') setTerm(value); }}><SelectTrigger id="islamiyya-term"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="first">First Term</SelectItem><SelectItem value="second">Second Term</SelectItem><SelectItem value="third">Third Term</SelectItem></SelectContent></Select></div>
       <Button disabled={!reports.data?.rc} onClick={() => window.print()}><Printer className="mr-2 h-4 w-4" />طباعة / حفظ PDF</Button>
     </div>
     {!studentId ? <p className="text-muted-foreground">Select a student.</p> : reports.isFetching ? <p role="status">Loading report…</p> : reports.error ? <p role="alert" className="text-destructive">{reports.error.message}</p> : !reports.data?.rc ? <p role="status" className="text-muted-foreground">No report card saved for this student, session and term.</p> :
-      <div className="max-w-full overflow-x-auto"><IslamiyyaReportCard rc={reports.data.rc} assessments={reports.data.assessments as IslamiyyaAssessment[]} progress={records.filter(r => r.student_id === studentId && r.session === session.trim() && r.term === term)} /></div>}
+      <div className="max-w-full overflow-x-auto"><IslamiyyaReportCard rc={reports.data.rc} assessments={reports.data.assessments as IslamiyyaAssessment[]} progress={records.filter(r => r.student_id === studentId && r.session === session.trim() && (r.term === term || r.term.toLowerCase() === `${term} term`))} /></div>}
   </div>;
 }

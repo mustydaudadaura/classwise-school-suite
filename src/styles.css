@@ -368,6 +368,11 @@
   body:has(.islamiyya-sheet) { background: var(--report-paper); }
   body:has(.islamiyya-sheet) nav, body:has(.islamiyya-sheet) aside, body:has(.islamiyya-sheet) header, body:has(.islamiyya-sheet) .print\:hidden { display: none !important; }
   .islamiyya-sheet { max-width: 100%; padding: 5mm; }
+  .islamiyya-sheet > .space-y-5, .school-report-sheet > .space-y-5 { gap: 0; }
+  .islamiyya-sheet > .space-y-5 > *, .school-report-sheet > .space-y-5 > * { margin-block: 0 10px !important; }
+  .islamiyya-sheet .islamiyya-table td, .islamiyya-sheet .islamiyya-table th, .school-report-sheet .school-report-table td, .school-report-sheet .school-report-table th { padding: 4px; }
+  .islamiyya-sheet h2, .school-report-sheet h2 { font-size: 20px; }
+  .islamiyya-sheet .report-comments > div, .school-report-sheet .report-comments > div { padding: 6px; }
   .islamiyya-header { grid-template-columns: 80px minmax(0, 1fr) 80px; }
   .islamiyya-sheet tr, .islamiyya-sheet section, .islamiyya-header { break-inside: avoid; }
   .islamiyya-sheet thead { display: table-header-group; }

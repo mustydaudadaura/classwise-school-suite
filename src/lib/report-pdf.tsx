@@ -6,7 +6,7 @@
 import QRCode from "qrcode";
 import { IslamiyyaReportCard } from "@/components/IslamiyyaReportCard";
 import { SchoolReportLayouts, type SchoolReport } from "@/components/SchoolReportLayouts";
-import { resolveReportTemplate } from "@/lib/report-template";
+import { resolveReportTemplate, islamiyyaLanguage } from "@/lib/report-template";
 import type { IslamiyyaAssessment } from "@/lib/islamiyya-report";
 
 export type ReportDetail = { rc: SchoolReport & { verification_code?: string | null }; assessments: IslamiyyaAssessment[] };
@@ -49,8 +49,8 @@ async function renderCanvas(detail: ReportDetail): Promise<HTMLCanvasElement> {
   try {
     flushSync(() => {
       root.render(
-        layout === "islamiyya_arabic"
-          ? <IslamiyyaReportCard rc={detail.rc as any} assessments={detail.assessments} qrDataUrl={qrDataUrl} />
+        islamiyyaLanguage(layout)
+          ? <IslamiyyaReportCard rc={detail.rc as any} assessments={detail.assessments} qrDataUrl={qrDataUrl} language={islamiyyaLanguage(layout)!} />
           : <SchoolReportLayouts rc={detail.rc} assessments={detail.assessments} qrDataUrl={qrDataUrl} />,
       );
     });

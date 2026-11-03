@@ -330,7 +330,7 @@ export function ReportTemplateSettings({ school }: { school: { id: string; name:
       </div>
 
       {/* SECTION 4: Template Colours & Position Options */}
-      {resolved.layout_id === 'islamiyya_arabic' && <div className="grid gap-4 sm:grid-cols-2">
+      {(resolved.layout_id === 'islamiyya_arabic' || resolved.layout_id === 'islamiyya_arabic_hausa') && <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2"><Label htmlFor="arabic-school-name">School name in Arabic / اسم المدرسة</Label><Input id="arabic-school-name" dir="rtl" lang="ar" value={draft.arabic_school_name ?? ''} onChange={e => setDraft({ ...draft, arabic_school_name: e.target.value })} /></div>
         <div className="space-y-2"><Label htmlFor="arabic-school-address">Address in Arabic / العنوان</Label><Input id="arabic-school-address" dir="rtl" lang="ar" value={draft.arabic_address ?? ''} onChange={e => setDraft({ ...draft, arabic_address: e.target.value })} /></div>
       </div>}

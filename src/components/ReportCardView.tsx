@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { IslamiyyaReportCard } from '@/components/IslamiyyaReportCard';
 import { SchoolReportLayouts, type SchoolReport } from '@/components/SchoolReportLayouts';
-import { REPORT_LAYOUTS, resolveReportTemplate, type ReportLayoutId } from '@/lib/report-template';
+import { REPORT_LAYOUTS, resolveReportTemplate, islamiyyaLanguage, type ReportLayoutId } from '@/lib/report-template';
 import type { IslamiyyaAssessment } from '@/lib/islamiyya-report';
 
 export function ReportCardView({ rc, assessments }: { rc: SchoolReport; assessments: IslamiyyaAssessment[] }) {
@@ -32,6 +32,6 @@ export function ReportCardView({ rc, assessments }: { rc: SchoolReport; assessme
       </Select>
       <Button onClick={() => window.print()}><Printer className="mr-2 h-4 w-4" />{layout === 'islamiyya_arabic' ? 'طباعة / حفظ PDF' : 'Print / Save PDF'}</Button>
     </div>
-    <div className="max-w-full overflow-x-auto">{layout === 'islamiyya_arabic' ? <IslamiyyaReportCard rc={report} assessments={assessments} qrDataUrl={qrDataUrl} /> : <SchoolReportLayouts rc={report} assessments={assessments} qrDataUrl={qrDataUrl} />}</div>
+    <div className="max-w-full overflow-x-auto">{islamiyyaLanguage(layout) ? <IslamiyyaReportCard rc={report} assessments={assessments} qrDataUrl={qrDataUrl} language={islamiyyaLanguage(layout)!} /> : <SchoolReportLayouts rc={report} assessments={assessments} qrDataUrl={qrDataUrl} />}</div>
   </div>;
 }

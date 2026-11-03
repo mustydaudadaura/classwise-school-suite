@@ -1,3 +1,4 @@
+import { computePositions, resolveRanking } from "@/lib/position-ranking";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -430,11 +431,13 @@ export const publishReportCards = createServerFn({ method: "POST" })
     const gradeToGpa = (avg: number) => calculateGrade(avg, scaleType).gpa;
 
     const classSize = ranked.length;
+    const rankingConfig = resolveRanking(school?.report_template);
+    const positions = computePositions(ranked, rankingConfig.method, rankingConfig.ranges);
     let written = 0;
 
     for (let i = 0; i < ranked.length; i++) {
       const r = ranked[i];
-      const position = i + 1;
+      const position = positions.get(r.student_id) ?? null;
       const payload = {
         school_id: cls.school_id,
         student_id: r.student_id,

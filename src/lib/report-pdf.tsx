@@ -4,9 +4,8 @@
  * Libraries are loaded on demand so they never reach the server bundle.
  */
 import QRCode from "qrcode";
-import { IslamiyyaReportCard } from "@/components/IslamiyyaReportCard";
-import { SchoolReportLayouts, type SchoolReport } from "@/components/SchoolReportLayouts";
-import { resolveReportTemplate, islamiyyaLanguage } from "@/lib/report-template";
+import type { SchoolReport } from "@/components/SchoolReportLayouts";
+import { NigerianReportSheet } from "@/components/NigerianReportSheets";
 import type { IslamiyyaAssessment } from "@/lib/islamiyya-report";
 
 export type ReportDetail = { rc: SchoolReport & { verification_code?: string | null }; assessments: IslamiyyaAssessment[] };
@@ -40,7 +39,6 @@ async function renderCanvas(detail: ReportDetail): Promise<HTMLCanvasElement> {
   const qrDataUrl = detail.rc.verification_code
     ? await QRCode.toDataURL(`${window.location.origin}/verify/${encodeURIComponent(detail.rc.verification_code)}`, { width: 120, margin: 1 }).catch(() => "")
     : "";
-  const layout = resolveReportTemplate(detail.rc.schools?.report_template, detail.rc.classes?.section).layout_id;
   const host = document.createElement("div");
   host.setAttribute("aria-hidden", "true");
   host.style.cssText = "position:fixed;left:-12000px;top:0;width:820px;background:#fff;z-index:-1;";
@@ -49,9 +47,7 @@ async function renderCanvas(detail: ReportDetail): Promise<HTMLCanvasElement> {
   try {
     flushSync(() => {
       root.render(
-        islamiyyaLanguage(layout)
-          ? <IslamiyyaReportCard rc={detail.rc as any} assessments={detail.assessments} qrDataUrl={qrDataUrl} language={islamiyyaLanguage(layout)!} />
-          : <SchoolReportLayouts rc={detail.rc} assessments={detail.assessments} qrDataUrl={qrDataUrl} />,
+        <NigerianReportSheet rc={detail.rc} assessments={detail.assessments} qrDataUrl={qrDataUrl} />,
       );
     });
     await waitForImages(host);

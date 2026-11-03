@@ -9,20 +9,18 @@ describe('school report configuration', () => {
   it('supports no positions', () => { assert.deepEqual(positionVisibility('none'),{ class: false, subject: false }); });
   it('supports class-only positions', () => { assert.deepEqual(positionVisibility('class'),{ class: true, subject: false }); });
   it('supports subject-only positions', () => { assert.deepEqual(positionVisibility('subject'),{ class: false, subject: true }); });
-  it('provides at least 5 Nigerian report layouts including classic comprehensive reincluded', () => {
-    assert.ok(REPORT_LAYOUTS.length >= 5);
-    const ids = REPORT_LAYOUTS.map((l: any) => l.id);
-    assert.ok(ids.includes('classic_comprehensive'));
-    assert.ok(ids.includes('premier_standard'));
-    assert.ok(ids.includes('modern_executive'));
-    assert.ok(ids.includes('ubec_basic'));
-    assert.ok(ids.includes('islamic_integrated'));
-    assert.ok(ids.includes('waec_senior'));
+  it('offers exactly the four report sheet designs', () => {
+    assert.deepEqual(REPORT_LAYOUTS.map(l => l.id), ['sheet_alqalam', 'sheet_emerald', 'sheet_hisgrace', 'sheet_fmp']);
   });
-  it('resolves layout_id defaulting to classic_comprehensive', () => {
+  it('defaults to the first design in English and maps removed designs to it', () => {
     const c1 = resolveReportTemplate({});
-    assert.equal(c1.layout_id, 'classic_comprehensive');
-    const c2 = resolveReportTemplate({ layout_id: 'waec_senior' });
-    assert.equal(c2.layout_id, 'waec_senior');
+    assert.equal(c1.layout_id, 'sheet_alqalam');
+    assert.equal(c1.report_language, 'en');
+    assert.equal(resolveReportTemplate({ layout_id: 'waec_senior' }).layout_id, 'sheet_alqalam');
+    assert.equal(resolveReportTemplate({ layout_id: 'sheet_fmp', report_language: 'ha' }).report_language, 'ha');
+  });
+  it('keeps the language of a removed Arabic or Hausa design', () => {
+    assert.equal(resolveReportTemplate({ layout_id: 'islamiyya_arabic' }).report_language, 'ar');
+    assert.equal(resolveReportTemplate({ layout_id: 'islamiyya_hausa' }).report_language, 'ha');
   });
 });

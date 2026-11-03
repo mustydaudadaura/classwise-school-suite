@@ -23,7 +23,7 @@ const translations: Record<string, string> = {
   'fiqh': 'الفقه', 'aqeedah': 'العقيدة', 'aqidah': 'العقيدة', 'hadith': 'الحديث',
   'seerah': 'السيرة النبوية', 'sirah': 'السيرة النبوية', 'adab': 'الآداب', 'akhlaq': 'الأخلاق',
   'duas': 'الأدعية', 'dua': 'الدعاء', 'excellent': 'ممتاز', 'distinction': 'ممتاز',
-  'very good': 'جيد جداً', 'good': 'جيد', 'pass': 'مقبول', 'fail': 'راسب',
+  'very good': 'جيد جداً', 'good': 'جيد', 'fair': 'متوسط', 'credit': 'جيد', 'pass': 'مقبول', 'fail': 'راسب',
 };
 
 // Preserve unrecognised school-entered content rather than inventing a translation.
@@ -51,7 +51,7 @@ const hausaTranslations: Record<string, string> = {
   'third term': 'Zango na Uku', third: 'Zango na Uku',
   memorization: 'Haddar', tajweed: 'Tajwidi', revision: 'Bitarwa',
   excellent: 'Kyakkyawa ƙwarai', distinction: 'Kyakkyawa ƙwarai', 'very good': 'Mai kyau sosai',
-  good: 'Mai kyau', credit: 'Matsakaici', pass: 'Ya wuce', fail: 'Bai wuce ba',
+  good: 'Mai kyau', fair: 'Matsakaici', credit: 'Matsakaici', pass: 'Ya wuce', fail: 'Bai wuce ba',
 };
 
 /** Hausa labels for terms and common remarks; school-entered text is kept as written. */

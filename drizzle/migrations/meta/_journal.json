@@ -148,6 +148,13 @@
       "when": 1793683012370,
       "tag": "0020_id_cards",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1793684913017,
+      "tag": "0021_staff_signature",
+      "breakpoints": true
     }
   ]
 }

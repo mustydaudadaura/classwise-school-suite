@@ -2760,7 +2760,9 @@ export type Database = {
           id: string
           photo_url: string | null
           pin_hash: string | null
+          position: string | null
           school_id: string
+          signature_url: string | null
           staff_no: string | null
           updated_at: string
           user_id: string
@@ -2774,7 +2776,9 @@ export type Database = {
           id?: string
           photo_url?: string | null
           pin_hash?: string | null
+          position?: string | null
           school_id: string
+          signature_url?: string | null
           staff_no?: string | null
           updated_at?: string
           user_id: string
@@ -2788,7 +2792,9 @@ export type Database = {
           id?: string
           photo_url?: string | null
           pin_hash?: string | null
+          position?: string | null
           school_id?: string
+          signature_url?: string | null
           staff_no?: string | null
           updated_at?: string
           user_id?: string

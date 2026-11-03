@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
+import { StaffIdDetails } from "@/components/StaffIdDetails";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -123,6 +124,7 @@ function UsersPage() {
 
   // Modals state
   const [createUserOpen, setCreateUserOpen] = useState(false);
+  const [staffDetailsFor, setStaffDetailsFor] = useState<{ userId: string; schoolId: string; name: string } | null>(null);
   const [newUserForm, setNewUserForm] = useState({
     fullName: "",
     email: "",
@@ -259,6 +261,9 @@ function UsersPage() {
       toast.success(res.message);
       setCreateUserOpen(false);
       // Only show a login slip when the password on it is really the account's password.
+      if (res.user?.userId && res.user?.schoolId && res.user.role !== "super_admin") {
+        setStaffDetailsFor({ userId: res.user.userId, schoolId: res.user.schoolId, name: res.user.fullName });
+      }
       if (res.user && res.initialPassword) {
         setCreatedCreds({
           user: res.user,
@@ -628,6 +633,10 @@ function UsersPage() {
                                     name={u.fullName}
                                     schoolId={u.schoolId}
                                   />
+
+                                  {u.role !== "super_admin" && u.role !== "parent" && u.role !== "student" && (
+                                    <StaffIdDetails userId={u.userId} schoolId={u.schoolId ?? null} name={u.fullName} />
+                                  )}
 
                                   {/* Change Role Button (Super Admin only) */}
                                   {isSuper && (
@@ -1176,6 +1185,9 @@ function UsersPage() {
       </Dialog>
 
       {/* MODAL 4: Create Login Credentials (Super Admin or School Admin) */}
+      {staffDetailsFor && (
+        <StaffIdDetails hideTrigger open userId={staffDetailsFor.userId} schoolId={staffDetailsFor.schoolId} name={staffDetailsFor.name} onOpenChange={(o) => { if (!o) setStaffDetailsFor(null); }} />
+      )}
       <Dialog open={createUserOpen} onOpenChange={setCreateUserOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>

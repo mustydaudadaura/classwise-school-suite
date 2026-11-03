@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useParentAuth } from "@/hooks/useParentAuth";
 import { getActiveChildId } from "@/routes/portal";
-import { getPortalContext, getPortalReportCards } from "@/lib/api/portal.functions";
+import { getPortalContext, getPortalReportCards, getPortalAccessRules } from "@/lib/api/portal.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -43,6 +43,11 @@ function Page() {
     enabled: !!token && !!sid,
   });
 
+  const { data: rules } = useQuery({
+    queryKey: ["portal-access-rules", token],
+    queryFn: () => getPortalAccessRules({ data: { token: token! } }),
+    enabled: !!token,
+  });
   const allRows = data?.rows ?? [];
   const rows = selectedSession === "all" ? allRows : allRows.filter((r: any) => r.session === selectedSession);
 
@@ -52,7 +57,9 @@ function Page() {
         <div>
           <h2 className="text-lg font-bold">Academic Report Cards</h2>
           <p className="text-xs text-muted-foreground">
-            Official terminal results across 2 full sessions and 3 terms
+            {rules?.mode === "scratch"
+              ? `A scratch card is needed to open a report: ₦${rules.price.toLocaleString()} per card, ${rules.max_views} view(s), valid ${rules.validity_days} days.`
+              : "Published terminal results for your child."}
           </p>
         </div>
 

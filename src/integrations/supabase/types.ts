@@ -898,6 +898,79 @@ export type Database = {
           },
         ]
       }
+      id_card_settings: {
+        Row: {
+          school_id: string
+          staff_design: Json
+          student_design: Json
+          updated_at: string
+        }
+        Insert: {
+          school_id: string
+          staff_design?: Json
+          student_design?: Json
+          updated_at?: string
+        }
+        Update: {
+          school_id?: string
+          staff_design?: Json
+          student_design?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "id_card_settings_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: true
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      id_cards: {
+        Row: {
+          code: string
+          holder_id: string
+          id: string
+          issued_at: string
+          issued_by: string | null
+          kind: string
+          revoked: boolean
+          school_id: string
+          session: string | null
+        }
+        Insert: {
+          code: string
+          holder_id: string
+          id?: string
+          issued_at?: string
+          issued_by?: string | null
+          kind: string
+          revoked?: boolean
+          school_id: string
+          session?: string | null
+        }
+        Update: {
+          code?: string
+          holder_id?: string
+          id?: string
+          issued_at?: string
+          issued_by?: string | null
+          kind?: string
+          revoked?: boolean
+          school_id?: string
+          session?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "id_cards_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       islamic_enrollments: {
         Row: {
           enrolled_at: string
@@ -3578,6 +3651,18 @@ export type Database = {
       teaches_class: {
         Args: { _class_id: string; _user_id: string }
         Returns: boolean
+      }
+      verify_id_card: {
+        Args: { _code: string }
+        Returns: {
+          detail: string
+          holder_name: string
+          id_number: string
+          issued_at: string
+          kind: string
+          school_name: string
+          valid: boolean
+        }[]
       }
       verify_report_card: {
         Args: { _code: string }

@@ -141,6 +141,13 @@
       "when": 1793682827283,
       "tag": "0019_scratch_card_report_access",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1793683012370,
+      "tag": "0020_id_cards",
+      "breakpoints": true
     }
   ]
 }

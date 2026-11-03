@@ -302,7 +302,7 @@ function Landing() {
                           Publish Results →
                         </span>
                       </div>
-
+                    </div>
                   </div>
                 </div>
               </div>

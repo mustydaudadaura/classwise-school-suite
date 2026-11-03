@@ -3,6 +3,16 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { type LessonHeader, type LessonPlan, parseLessonPlanJson } from "@/lib/lesson-plan";
 
+const Input = z.object({
+  school_id: z.string().uuid(),
+  class_id: z.string().uuid(),
+  subject_id: z.string().uuid(),
+  topic: z.string().trim().min(2).max(200),
+  week: z.number().int().min(1).max(15),
+  week_start: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  extra: z.string().max(1000).optional(),
+});
+
 const LessonPlanSchema = z.object({
   sub_topics: z.array(z.string()),
   specific_objectives: z.array(z.string()),

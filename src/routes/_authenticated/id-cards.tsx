@@ -30,7 +30,7 @@ export const Route = createFileRoute("/_authenticated/id-cards")({
   component: IdCardsPage,
 });
 
-type Holder = { id: string; name: string; number: string; detail: string; extra: string; photo: string | null };
+type Holder = { id: string; name: string; number: string; detail: string; extra: string; photo: string | null; signature?: string | null };
 type School = { id: string; name: string; logo_url: string | null; address: string | null; current_session: string | null };
 
 function IdCardsPage() {
@@ -142,6 +142,7 @@ function IdCardFace({ school, design, holder, qr, labels }: { school: School; de
         <div style={{ flex: 1, minWidth: 0, fontSize: 9, textAlign: vertical ? "center" : "left" }}>
           <div style={{ fontWeight: 700, fontSize: 11.5, color: design.primary, lineHeight: 1.15, marginBottom: 3 }}>{holder.name}</div>
           {rows.map(([l, v]) => <div key={l} style={{ lineHeight: 1.35 }}><span style={{ color: "#6b7280" }}>{l}: </span><strong>{v || "—"}</strong></div>)}
+          {holder.signature && <div style={{ marginTop: 3 }}><img src={holder.signature} alt="" crossOrigin="anonymous" style={{ height: 20, maxWidth: 90, objectFit: "contain", display: vertical ? "inline-block" : "block" }} /><div style={{ fontSize: 7, color: "#6b7280", borderTop: "1px solid #9ca3af", width: 90, margin: vertical ? "0 auto" : undefined }}>Holder's signature</div></div>}
         </div>
         {qr && <img src={qr} alt="" style={{ width: vertical ? 54 : 58, height: vertical ? 54 : 58, alignSelf: vertical ? "center" : "flex-end", marginBottom: 6 }} />}
       </div>
@@ -266,7 +267,7 @@ function StaffCards({ school, design }: { school: School; design: IdDesign }) {
   const staffQ = useQuery({
     queryKey: ["idcard-staff", school.id],
     queryFn: async () => {
-      const { data: sp, error } = await supabase.from("staff_profiles").select("user_id, staff_no, department, category, photo_url").eq("school_id", school.id).eq("active", true);
+      const { data: sp, error } = await supabase.from("staff_profiles").select("user_id, staff_no, department, category, photo_url, position, signature_url").eq("school_id", school.id).eq("active", true);
       if (error) throw error;
       const ids = (sp ?? []).map((s) => s.user_id);
       if (!ids.length) return [] as Holder[];
@@ -277,8 +278,8 @@ function StaffCards({ school, design }: { school: School; design: IdDesign }) {
       const pm = new Map((profiles ?? []).map((p) => [p.user_id, p]));
       return (sp ?? []).map((s) => {
         const r = (roles ?? []).filter((x) => x.user_id === s.user_id).map((x) => x.role);
-        const designation = r.includes("school_admin") ? ROLE_NAMES.school_admin : r.includes("accountant") ? ROLE_NAMES.accountant : r.includes("teacher") ? ROLE_NAMES.teacher : s.category || "Staff";
-        return { id: s.user_id, name: pm.get(s.user_id)?.full_name || "Staff member", number: s.staff_no ?? "", detail: designation, extra: s.department ?? "", photo: s.photo_url || pm.get(s.user_id)?.avatar_url || null };
+        const designation = s.position || (r.includes("school_admin") ? ROLE_NAMES.school_admin : r.includes("accountant") ? ROLE_NAMES.accountant : r.includes("teacher") ? ROLE_NAMES.teacher : s.category || "Staff");
+        return { id: s.user_id, name: pm.get(s.user_id)?.full_name || "Staff member", number: s.staff_no ?? "", detail: designation, extra: s.department ?? "", photo: s.photo_url || pm.get(s.user_id)?.avatar_url || null, signature: s.signature_url };
       }).sort((a, b) => a.name.localeCompare(b.name));
     },
   });

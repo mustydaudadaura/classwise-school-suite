@@ -3263,6 +3263,10 @@ export type Database = {
         Args: { _class_id: string; _user_id: string }
         Returns: boolean
       }
+      registry_purge_rows: {
+        Args: { _cond: string; _depth: number; _rel: unknown }
+        Returns: undefined
+      }
       report_subject_positions: {
         Args: { _report_id: string }
         Returns: {

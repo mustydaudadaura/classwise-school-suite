@@ -16,11 +16,13 @@ import { isPasswordRecoveryHash } from "@/lib/password-recovery";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({ meta: [{ title: "Sign in — Alegacy" }, { name: "description", content: "Sign in for authorized school accounts and families in Alegacy." }, { property: "og:title", content: "Sign in — Alegacy" }, { property: "og:description", content: "Sign in for authorized school accounts and families in Alegacy." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
+  validateSearch: (s: Record<string, unknown>): { portal?: "parent" } => (s.portal === "parent" ? { portal: "parent" } : {}),
   component: AuthPage,
 });
 
 function AuthPage() {
   const navigate = useNavigate();
+  const { portal } = Route.useSearch();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -176,7 +178,7 @@ function AuthPage() {
                 </Button>
               </div>
             </div>
-            <Tabs defaultValue="signin">
+            <Tabs defaultValue={portal === "parent" ? "parent" : "signin"}>
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="signin">
                   <School className="mr-1.5 h-3.5 w-3.5" />

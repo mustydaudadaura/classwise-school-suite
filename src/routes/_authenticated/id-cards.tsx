@@ -176,9 +176,10 @@ function useCodes(schoolId: string, kind: "student" | "staff") {
     if (holderIds.length - missing.length > 0) {
       await supabase.from("id_cards").update({ issued_at: new Date().toISOString(), session }).eq("school_id", schoolId).eq("kind", kind).in("holder_id", holderIds.filter((id) => existing.has(id)));
     }
-    const fresh = await qc.fetchQuery({ queryKey: ["id-codes", schoolId, kind], queryFn: q.refetch as any, staleTime: 0 });
-    const { data } = await supabase.from("id_cards").select("holder_id, code").eq("school_id", schoolId).eq("kind", kind).in("holder_id", holderIds);
-    void fresh;
+    const { data, error: readErr } = await supabase.from("id_cards").select("holder_id, code").eq("school_id", schoolId).eq("kind", kind).in("holder_id", holderIds);
+    if (readErr) throw new Error(readErr.message);
+    if ((data ?? []).length !== holderIds.length) throw new Error("Some ID card numbers are missing; please try again");
+    await qc.invalidateQueries({ queryKey: ["id-codes", schoolId, kind] });
     return new Map((data ?? []).map((r) => [r.holder_id, r.code]));
   }
   return { codes: q.data, ensure };

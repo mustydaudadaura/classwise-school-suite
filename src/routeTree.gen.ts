@@ -26,6 +26,7 @@ import { Route as AuthenticatedDashboardRouteImport } from './routes/_authentica
 import { Route as AuthenticatedDiagnosticsRouteImport } from './routes/_authenticated/diagnostics'
 import { Route as AuthenticatedDocumentsRouteImport } from './routes/_authenticated/documents'
 import { Route as AuthenticatedFeesRouteImport } from './routes/_authenticated/fees'
+import { Route as AuthenticatedIdCardsRouteImport } from './routes/_authenticated/id-cards'
 import { Route as AuthenticatedIslamicRouteImport } from './routes/_authenticated/islamic'
 import { Route as AuthenticatedKioskRouteImport } from './routes/_authenticated/kiosk'
 import { Route as AuthenticatedMyAttendanceRouteImport } from './routes/_authenticated/my-attendance'
@@ -47,6 +48,7 @@ import { Route as PortalFeesRouteImport } from './routes/portal/fees'
 import { Route as PortalNotificationsRouteImport } from './routes/portal/notifications'
 import { Route as PortalReportCardsRouteImport } from './routes/portal/report-cards'
 import { Route as SSlugRouteImport } from './routes/s.$slug'
+import { Route as VerifyIdCodeRouteImport } from './routes/verify-id.$code'
 import { Route as VerifyCodeRouteImport } from './routes/verify.$code'
 import { Route as AuthenticatedReportCardIdRouteImport } from './routes/_authenticated/report-card.$id'
 import { Route as AuthenticatedStudentsIdRouteImport } from './routes/_authenticated/students.$id'
@@ -141,6 +143,11 @@ const AuthenticatedDocumentsRoute = AuthenticatedDocumentsRouteImport.update({
 const AuthenticatedFeesRoute = AuthenticatedFeesRouteImport.update({
   id: '/fees',
   path: '/fees',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedIdCardsRoute = AuthenticatedIdCardsRouteImport.update({
+  id: '/id-cards',
+  path: '/id-cards',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedIslamicRoute = AuthenticatedIslamicRouteImport.update({
@@ -253,6 +260,11 @@ const SSlugRoute = SSlugRouteImport.update({
   path: '/s/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const VerifyIdCodeRoute = VerifyIdCodeRouteImport.update({
+  id: '/verify-id/$code',
+  path: '/verify-id/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const VerifyCodeRoute = VerifyCodeRouteImport.update({
   id: '/verify/$code',
   path: '/verify/$code',
@@ -319,6 +331,7 @@ export interface FileRoutesByFullPath {
   '/diagnostics': typeof AuthenticatedDiagnosticsRoute
   '/documents': typeof AuthenticatedDocumentsRoute
   '/fees': typeof AuthenticatedFeesRoute
+  '/id-cards': typeof AuthenticatedIdCardsRoute
   '/islamic': typeof AuthenticatedIslamicRoute
   '/kiosk': typeof AuthenticatedKioskRoute
   '/my-attendance': typeof AuthenticatedMyAttendanceRoute
@@ -339,6 +352,7 @@ export interface FileRoutesByFullPath {
   '/portal/notifications': typeof PortalNotificationsRoute
   '/portal/report-cards': typeof PortalReportCardsRoute
   '/s/$slug': typeof SSlugRoute
+  '/verify-id/$code': typeof VerifyIdCodeRoute
   '/verify/$code': typeof VerifyCodeRoute
   '/portal/': typeof PortalIndexRoute
   '/report-card/$id': typeof AuthenticatedReportCardIdRoute
@@ -366,6 +380,7 @@ export interface FileRoutesByTo {
   '/diagnostics': typeof AuthenticatedDiagnosticsRoute
   '/documents': typeof AuthenticatedDocumentsRoute
   '/fees': typeof AuthenticatedFeesRoute
+  '/id-cards': typeof AuthenticatedIdCardsRoute
   '/islamic': typeof AuthenticatedIslamicRoute
   '/kiosk': typeof AuthenticatedKioskRoute
   '/my-attendance': typeof AuthenticatedMyAttendanceRoute
@@ -386,6 +401,7 @@ export interface FileRoutesByTo {
   '/portal/notifications': typeof PortalNotificationsRoute
   '/portal/report-cards': typeof PortalReportCardsRoute
   '/s/$slug': typeof SSlugRoute
+  '/verify-id/$code': typeof VerifyIdCodeRoute
   '/verify/$code': typeof VerifyCodeRoute
   '/portal': typeof PortalIndexRoute
   '/report-card/$id': typeof AuthenticatedReportCardIdRoute
@@ -416,6 +432,7 @@ export interface FileRoutesById {
   '/_authenticated/diagnostics': typeof AuthenticatedDiagnosticsRoute
   '/_authenticated/documents': typeof AuthenticatedDocumentsRoute
   '/_authenticated/fees': typeof AuthenticatedFeesRoute
+  '/_authenticated/id-cards': typeof AuthenticatedIdCardsRoute
   '/_authenticated/islamic': typeof AuthenticatedIslamicRoute
   '/_authenticated/kiosk': typeof AuthenticatedKioskRoute
   '/_authenticated/my-attendance': typeof AuthenticatedMyAttendanceRoute
@@ -436,6 +453,7 @@ export interface FileRoutesById {
   '/portal/notifications': typeof PortalNotificationsRoute
   '/portal/report-cards': typeof PortalReportCardsRoute
   '/s/$slug': typeof SSlugRoute
+  '/verify-id/$code': typeof VerifyIdCodeRoute
   '/verify/$code': typeof VerifyCodeRoute
   '/portal/': typeof PortalIndexRoute
   '/_authenticated/report-card/$id': typeof AuthenticatedReportCardIdRoute
@@ -466,6 +484,7 @@ export interface FileRouteTypes {
     | '/diagnostics'
     | '/documents'
     | '/fees'
+    | '/id-cards'
     | '/islamic'
     | '/kiosk'
     | '/my-attendance'
@@ -486,6 +505,7 @@ export interface FileRouteTypes {
     | '/portal/notifications'
     | '/portal/report-cards'
     | '/s/$slug'
+    | '/verify-id/$code'
     | '/verify/$code'
     | '/portal/'
     | '/report-card/$id'
@@ -513,6 +533,7 @@ export interface FileRouteTypes {
     | '/diagnostics'
     | '/documents'
     | '/fees'
+    | '/id-cards'
     | '/islamic'
     | '/kiosk'
     | '/my-attendance'
@@ -533,6 +554,7 @@ export interface FileRouteTypes {
     | '/portal/notifications'
     | '/portal/report-cards'
     | '/s/$slug'
+    | '/verify-id/$code'
     | '/verify/$code'
     | '/portal'
     | '/report-card/$id'
@@ -562,6 +584,7 @@ export interface FileRouteTypes {
     | '/_authenticated/diagnostics'
     | '/_authenticated/documents'
     | '/_authenticated/fees'
+    | '/_authenticated/id-cards'
     | '/_authenticated/islamic'
     | '/_authenticated/kiosk'
     | '/_authenticated/my-attendance'
@@ -582,6 +605,7 @@ export interface FileRouteTypes {
     | '/portal/notifications'
     | '/portal/report-cards'
     | '/s/$slug'
+    | '/verify-id/$code'
     | '/verify/$code'
     | '/portal/'
     | '/_authenticated/report-card/$id'
@@ -605,6 +629,7 @@ export interface RootRouteChildren {
   VerifyCredentialRoute: typeof VerifyCredentialRoute
   ApiPassportEnhanceRoute: typeof ApiPassportEnhanceRoute
   SSlugRoute: typeof SSlugRoute
+  VerifyIdCodeRoute: typeof VerifyIdCodeRoute
   VerifyCodeRoute: typeof VerifyCodeRoute
   ApiPublicParentLoginRoute: typeof ApiPublicParentLoginRoute
   ApiPublicVirtualAccountWebhookRoute: typeof ApiPublicVirtualAccountWebhookRoute
@@ -731,6 +756,13 @@ declare module '@tanstack/react-router' {
       path: '/fees'
       fullPath: '/fees'
       preLoaderRoute: typeof AuthenticatedFeesRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/id-cards': {
+      id: '/_authenticated/id-cards'
+      path: '/id-cards'
+      fullPath: '/id-cards'
+      preLoaderRoute: typeof AuthenticatedIdCardsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/islamic': {
@@ -880,6 +912,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/verify-id/$code': {
+      id: '/verify-id/$code'
+      path: '/verify-id/$code'
+      fullPath: '/verify-id/$code'
+      preLoaderRoute: typeof VerifyIdCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/verify/$code': {
       id: '/verify/$code'
       path: '/verify/$code'
@@ -969,6 +1008,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedDiagnosticsRoute: typeof AuthenticatedDiagnosticsRoute
   AuthenticatedDocumentsRoute: typeof AuthenticatedDocumentsRoute
   AuthenticatedFeesRoute: typeof AuthenticatedFeesRoute
+  AuthenticatedIdCardsRoute: typeof AuthenticatedIdCardsRoute
   AuthenticatedIslamicRoute: typeof AuthenticatedIslamicRoute
   AuthenticatedKioskRoute: typeof AuthenticatedKioskRoute
   AuthenticatedMyAttendanceRoute: typeof AuthenticatedMyAttendanceRoute
@@ -995,6 +1035,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedDiagnosticsRoute: AuthenticatedDiagnosticsRoute,
   AuthenticatedDocumentsRoute: AuthenticatedDocumentsRoute,
   AuthenticatedFeesRoute: AuthenticatedFeesRoute,
+  AuthenticatedIdCardsRoute: AuthenticatedIdCardsRoute,
   AuthenticatedIslamicRoute: AuthenticatedIslamicRoute,
   AuthenticatedKioskRoute: AuthenticatedKioskRoute,
   AuthenticatedMyAttendanceRoute: AuthenticatedMyAttendanceRoute,
@@ -1051,6 +1092,7 @@ const rootRouteChildren: RootRouteChildren = {
   VerifyCredentialRoute: VerifyCredentialRoute,
   ApiPassportEnhanceRoute: ApiPassportEnhanceRoute,
   SSlugRoute: SSlugRoute,
+  VerifyIdCodeRoute: VerifyIdCodeRoute,
   VerifyCodeRoute: VerifyCodeRoute,
   ApiPublicParentLoginRoute: ApiPublicParentLoginRoute,
   ApiPublicVirtualAccountWebhookRoute: ApiPublicVirtualAccountWebhookRoute,

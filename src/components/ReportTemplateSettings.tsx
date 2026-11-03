@@ -49,6 +49,9 @@ export function ReportTemplateSettings({ school }: { school: { id: string; name:
   async function save() {
     setBusy(true);
     try {
+      const { data: latest } = await supabase.from('schools').select('report_template').eq('id', school.id).maybeSingle();
+      const latestTpl = (latest?.report_template && typeof latest.report_template === 'object' ? latest.report_template : {}) as Record<string, unknown>;
+      const keep = Object.fromEntries(['ranking_method', 'ranking_ranges'].filter(k => k in latestTpl).map(k => [k, latestTpl[k]]));
       const { data, error } = await supabase
         .from('schools')
         .update({
@@ -58,7 +61,7 @@ export function ReportTemplateSettings({ school }: { school: { id: string; name:
           address: address.trim() || null,
           phone: phone.trim() || null,
           email: email.trim() || null,
-          report_template: draft,
+          report_template: { ...draft, ...keep } as any,
           logo_url: logoUrl,
           stamp_url: stampUrl,
           principal_signature_url: sigUrl,

@@ -17,6 +17,7 @@ import { Save, Trash2, ShieldCheck, Settings2, History, Palette, GraduationCap, 
 import { toast } from 'sonner';
 import { CampusManager } from '@/components/CampusManager';
 import { ReportTemplateSettings } from '@/components/ReportTemplateSettings';
+import { PositionRankingSettings } from '@/components/PositionRankingSettings';
 import { Settings as ThemeSettings } from '@/components/Settings';
 import { AcademicSettings } from '@/components/AcademicSettings';
 import { RegistryActions } from '@/components/RegistryActions';
@@ -98,6 +99,7 @@ function SchoolSettings({ schoolId }: { schoolId: string }) {
       <TabsTrigger value="modules">Modules</TabsTrigger>
       <TabsTrigger value="campuses">Campuses</TabsTrigger>
       <TabsTrigger value="reports">Report template</TabsTrigger>
+      <TabsTrigger value="positions">Positions</TabsTrigger>
       <TabsTrigger value="permissions"><ShieldCheck className="mr-2 h-4 w-4" />Permissions</TabsTrigger>
       <TabsTrigger value="history"><History className="mr-2 h-4 w-4" />History</TabsTrigger>
     </TabsList>
@@ -106,6 +108,7 @@ function SchoolSettings({ schoolId }: { schoolId: string }) {
     <TabsContent value="themes"><ThemeSettings schoolId={schoolId} initialTheme={school.theme_color} /></TabsContent>
     <TabsContent value="campuses"><CampusManager schoolId={schoolId} /></TabsContent>
     <TabsContent value="reports"><ReportTemplateSettings key={school.id} school={school} /></TabsContent>
+    <TabsContent value="positions"><PositionRankingSettings key={school.id} school={school} /></TabsContent>
     <TabsContent value="details">
       <form key={school.updated_at} className="space-y-6" onSubmit={e => {
         e.preventDefault(); const form = new FormData(e.currentTarget);

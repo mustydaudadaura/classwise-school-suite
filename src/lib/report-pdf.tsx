@@ -122,3 +122,30 @@ export function downloadBlob(blob: Blob, name: string) {
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 30_000);
 }
+
+/** Renders each A4 page node (794×1123 px) to one PDF page — used for ID card sheets. */
+export async function pagesToPdf(pages: import("react").ReactNode[], onProgress?: (done: number, total: number) => void): Promise<Blob> {
+  const [{ createRoot }, { default: html2canvas }, { flushSync }, { jsPDF }] = await Promise.all([
+    import("react-dom/client"), import("html2canvas-pro"), import("react-dom"), import("jspdf"),
+  ]);
+  const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait", compress: true });
+  for (let i = 0; i < pages.length; i++) {
+    const host = document.createElement("div");
+    host.setAttribute("aria-hidden", "true");
+    host.style.cssText = "position:fixed;left:-12000px;top:0;width:794px;height:1123px;background:#fff;z-index:-1;";
+    document.body.appendChild(host);
+    const root = createRoot(host);
+    try {
+      flushSync(() => root.render(pages[i]));
+      await waitForImages(host);
+      const canvas = await html2canvas(host, { scale: 2, useCORS: true, backgroundColor: "#ffffff", logging: false, width: 794, height: 1123 });
+      if (i > 0) pdf.addPage();
+      pdf.addImage(canvas.toDataURL("image/jpeg", 0.93), "JPEG", 0, 0, A4_W, A4_H);
+      onProgress?.(i + 1, pages.length);
+    } finally {
+      root.unmount();
+      host.remove();
+    }
+  }
+  return pdf.output("blob");
+}

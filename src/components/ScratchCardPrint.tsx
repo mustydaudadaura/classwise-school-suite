@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 
-export type ScratchSchool = { name: string; logo_url: string | null; address: string | null; phone: string | null; theme_color: string | null };
+export type ScratchSchool = { name: string; logo_url: string | null; address: string | null; phone: string | null; theme_color: string | null; email?: string | null; website?: string | null; motto?: string | null };
 export type ScratchPrintCard = { serial_no: string; pin: string };
 
 // Printed cards use the school's own brand colour as inline values so they print identically.
@@ -36,7 +36,34 @@ export function ScratchCardFace({ school, card, price, views, validUntil, portal
   );
 }
 
-/** One A4 sheet (794×1123 px) holding up to 10 ID-card-size scratch cards with cutting gaps. */
+/** Back of the card: school contacts, the portal address and a step-by-step guide for parents. */
+export function ScratchCardBack({ school, portalUrl, views }: { school: ScratchSchool; portalUrl: string; views: number }) {
+  const primary = school.theme_color || "#0a6d3b";
+  const steps = [
+    `Visit ${portalUrl} on your phone or computer.`,
+    "Sign in with the phone number you gave the school.",
+    "Choose your child, then open Report Cards.",
+    "Gently scratch the card and type the Serial and PIN.",
+    `View, download or print the result (${views} view${views === 1 ? "" : "s"}).`,
+  ];
+  return (
+    <div style={{ width: 324, height: 204, borderRadius: 12, overflow: "hidden", position: "relative", background: "#fff", color: "#111", border: `2px solid ${primary}`, fontFamily: "inherit" }}>
+      {school.logo_url && <img src={school.logo_url} alt="" crossOrigin="anonymous" style={{ position: "absolute", inset: 0, margin: "auto", width: 120, opacity: 0.06 }} />}
+      <div style={{ background: primary, color: "#fff", padding: "4px 10px", fontSize: 8.5, fontWeight: 800, letterSpacing: 1 }}>HOW TO CHECK YOUR CHILD'S RESULT</div>
+      <ol style={{ margin: 0, padding: "4px 10px 0 22px", fontSize: 7.6, lineHeight: 1.35 }}>
+        {steps.map((t) => <li key={t}>{t}</li>)}
+      </ol>
+      <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, background: "#f5f5f4", borderTop: `2px solid #d4a017`, padding: "4px 10px", fontSize: 7, lineHeight: 1.35 }}>
+        <div style={{ fontWeight: 800, color: primary, fontSize: 8 }}>{school.name}{school.motto ? ` — ${school.motto}` : ""}</div>
+        {school.address && <div>{school.address}</div>}
+        <div>{[school.phone && `Tel: ${school.phone}`, school.email && `Email: ${school.email}`].filter(Boolean).join(" · ")}</div>
+        <div><strong>Portal:</strong> {portalUrl}{school.website ? ` · Website: ${school.website}` : ""}</div>
+      </div>
+    </div>
+  );
+}
+
+/** One A4 sheet (794×1123 px): each row is a card front (left) and its back (right) for fold-and-laminate printing. */
 export function ScratchSheet({ children }: { children: React.ReactNode }) {
   return <div style={{ width: 794, height: 1123, padding: "34px 50px", display: "grid", gridTemplateColumns: "repeat(2, 324px)", gap: "14px 46px", justifyContent: "center", alignContent: "start", background: "#fff" }}>{children}</div>;
 }

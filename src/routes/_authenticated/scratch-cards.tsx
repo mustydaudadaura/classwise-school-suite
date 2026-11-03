@@ -9,7 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { generateScratchCards } from "@/lib/api/scratch-cards.functions";
 import { DEFAULT_SCRATCH_SETTINGS, cardState, formatPin, scratchStats, type ScratchSettings } from "@/lib/scratch-cards";
 import { downloadBlob, pagesToPdf } from "@/lib/report-pdf";
-import { ScratchCardFace, ScratchSheet, type ScratchSchool } from "@/components/ScratchCardPrint";
+import { ScratchCardBack, ScratchCardFace, ScratchSheet, type ScratchSchool } from "@/components/ScratchCardPrint";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,7 +54,7 @@ function ScratchCardsAdmin({ schoolId }: { schoolId: string }) {
   const schoolQ = useQuery({
     queryKey: ["scratch-school", schoolId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("schools").select("name, logo_url, address, phone, theme_color").eq("id", schoolId).maybeSingle();
+      const { data, error } = await supabase.from("schools").select("name, logo_url, address, phone, theme_color, email, website, motto").eq("id", schoolId).maybeSingle();
       if (error) throw error;
       return data as ScratchSchool | null;
     },
@@ -112,11 +112,14 @@ function ScratchCardsAdmin({ schoolId }: { schoolId: string }) {
       downloadBlob(new Blob([csv], { type: "text/csv" }), `scratch_cards_${res.batch_id.slice(0, 8)}.csv`);
       await qc.invalidateQueries({ queryKey: ["scratch-cards", schoolId] });
       const school = schoolQ.data ?? { name: "School", logo_url: null, address: null, phone: null, theme_color: null };
-      const portal = typeof window !== "undefined" ? window.location.host + "/portal" : "";
+      const portal = typeof window !== "undefined" ? window.location.host + "/auth" : "";
       const valid = new Date(res.valid_until).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" });
       const pages: React.ReactNode[] = [];
-      for (let i = 0; i < res.cards.length; i += 10) {
-        pages.push(<ScratchSheet key={i}>{res.cards.slice(i, i + 10).map((c) => <ScratchCardFace key={c.serial_no} school={school} card={{ serial_no: c.serial_no, pin: formatPin(c.pin) }} price={res.price} views={res.max_views} validUntil={valid} portalUrl={portal} />)}</ScratchSheet>);
+      for (let i = 0; i < res.cards.length; i += 5) {
+        pages.push(<ScratchSheet key={i}>{res.cards.slice(i, i + 5).flatMap((c) => [
+          <ScratchCardFace key={c.serial_no} school={school} card={{ serial_no: c.serial_no, pin: formatPin(c.pin) }} price={res.price} views={res.max_views} validUntil={valid} portalUrl={portal} />,
+          <ScratchCardBack key={c.serial_no + "-b"} school={school} portalUrl={portal} views={res.max_views} />,
+        ])}</ScratchSheet>);
       }
       toast.message("Designing printable cards…");
       const pdf = await pagesToPdf(pages);
@@ -180,7 +183,7 @@ function ScratchCardsAdmin({ schoolId }: { schoolId: string }) {
         <CardContent className="flex flex-wrap items-end gap-3">
           <div><Label>How many</Label><Input className="w-32" type="number" min={1} max={1000} value={count} onChange={(e) => setCount(Math.max(1, Math.min(1000, Number(e.target.value) || 1)))} /></div>
           <Button onClick={makeCards} disabled={busy || !settingsQ.data}><KeyRound className="mr-2 h-4 w-4" />{busy ? "Working…" : `Generate ${count} card(s)`}</Button>
-          <p className="w-full text-xs text-muted-foreground">Printable ID-card-size cards (10 per A4 page, PDF) and a PIN spreadsheet download once. For security PINs are stored scrambled and cannot be shown again.</p>
+          <p className="w-full text-xs text-muted-foreground">Printable ID-card-size cards (front with PIN + back with school details and a how-to guide, 5 per A4 page, PDF) and a PIN spreadsheet download once. For security PINs are stored scrambled and cannot be shown again.</p>
         </CardContent>
       </Card>
 

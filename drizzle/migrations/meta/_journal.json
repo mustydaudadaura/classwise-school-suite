@@ -120,6 +120,13 @@
       "when": 1793679316513,
       "tag": "0016_registry_permanent_purge",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1793682274256,
+      "tag": "0017_report_ranking_and_whatsapp_delivery",
+      "breakpoints": true
     }
   ]
 }

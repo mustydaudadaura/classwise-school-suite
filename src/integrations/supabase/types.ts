@@ -1757,6 +1757,80 @@ export type Database = {
           },
         ]
       }
+      report_deliveries: {
+        Row: {
+          channel: string
+          created_at: string
+          id: string
+          note: string | null
+          parent_id: string | null
+          phone: string | null
+          report_card_id: string
+          school_id: string
+          status: string
+          student_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          channel?: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          parent_id?: string | null
+          phone?: string | null
+          report_card_id: string
+          school_id: string
+          status?: string
+          student_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          parent_id?: string | null
+          phone?: string | null
+          report_card_id?: string
+          school_id?: string
+          status?: string
+          student_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_deliveries_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "parents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_deliveries_report_card_id_fkey"
+            columns: ["report_card_id"]
+            isOneToOne: true
+            referencedRelation: "report_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_deliveries_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_deliveries_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       scheme_items: {
         Row: {
           class_id: string | null

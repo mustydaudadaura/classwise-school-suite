@@ -23,7 +23,8 @@ export function RegistryActions({
   onDeleted?: () => void;
 }) {
   const qc = useQueryClient();
-  const [action, setAction] = useState<'delete' | 'deactivate' | 'reactivate' | null>(null);
+  const [action, setAction] = useState<'delete' | 'purge' | 'deactivate' | 'reactivate' | null>(null);
+  const [typed, setTyped] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -34,6 +35,7 @@ export function RegistryActions({
     try {
       // Data-integrity safeguard for student deletion: if the student has no academic, attendance, or fee history,
       // unlink non-historical guardian/enrollment join rows first so manage_registry_item can complete cleanly.
+      if (action === 'purge' && typed.trim().toUpperCase() !== 'DELETE') throw new Error('Type DELETE to confirm permanent deletion.');
       if (table === 'students' && action === 'delete') {
         const [ass, rep, att, inv, pay] = await Promise.all([
           supabase.from('assessments').select('id', { count: 'exact', head: true }).eq('student_id', id),
@@ -66,18 +68,23 @@ export function RegistryActions({
       await qc.invalidateQueries();
       window.dispatchEvent(new Event('school-selection'));
       toast.success(
-        action === 'delete'
+        action === 'delete' || action === 'purge'
           ? 'Record permanently deleted'
           : action === 'deactivate'
           ? 'Record deactivated'
           : 'Record reactivated'
       );
       setAction(null);
-      if (action === 'delete' && onDeleted) {
+      if ((action === 'delete' || action === 'purge') && onDeleted) {
         onDeleted();
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not update this item');
+      const msg = e instanceof Error ? e.message : 'Could not update this item';
+      if (action === 'delete' && /linked records/i.test(msg)) {
+        setTyped('');
+        setAction('purge');
+        setError('');
+      } else setError(msg);
     } finally {
       setBusy(false);
     }
@@ -123,16 +130,29 @@ export function RegistryActions({
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {action === 'delete' ? 'Delete' : action === 'deactivate' ? 'Deactivate' : 'Reactivate'} {name}?
+              {action === 'purge' ? 'Permanently delete' : action === 'delete' ? 'Delete' : action === 'deactivate' ? 'Deactivate' : 'Reactivate'} {name}?
             </DialogTitle>
             <DialogDescription>
-              {action === 'delete'
+              {action === 'purge'
+                ? 'This item has linked records (scores, attendance, fees, history). Deleting it permanently will also erase every record that belongs to it. Linked classes or students elsewhere are kept but unlinked. This cannot be undone.'
+                : action === 'delete'
                 ? 'Deletion is permanent. Records with academic, attendance, or financial history cannot be deleted; deactivate them instead to preserve school records.'
                 : action === 'deactivate'
                 ? 'The record will become inactive. Existing school records will be preserved.'
                 : 'The record will become active again.'}
             </DialogDescription>
           </DialogHeader>
+          {action === 'purge' && (
+            <label className="grid gap-1 text-sm">
+              Type DELETE to confirm
+              <input
+                className="h-9 rounded-md border border-input bg-background px-3"
+                value={typed}
+                onChange={(e) => setTyped(e.target.value)}
+                aria-label="Type DELETE to confirm"
+              />
+            </label>
+          )}
           {error && (
             <p role="alert" className="text-sm text-destructive">
               {error}
@@ -142,8 +162,8 @@ export function RegistryActions({
             <Button variant="outline" disabled={busy} onClick={() => setAction(null)}>
               Cancel
             </Button>
-            <Button variant={action === 'delete' ? 'destructive' : 'default'} disabled={busy} onClick={confirm}>
-              {busy ? 'Saving…' : 'Confirm'}
+            <Button variant={action === 'delete' || action === 'purge' ? 'destructive' : 'default'} disabled={busy || (action === 'purge' && typed.trim().toUpperCase() !== 'DELETE')} onClick={confirm}>
+              {busy ? 'Saving…' : action === 'purge' ? 'Delete permanently' : 'Confirm'}
             </Button>
           </div>
         </DialogContent>

@@ -1,21 +1,26 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import {
-  type LessonHeader,
-  type LessonPlan,
-  parseLessonPlanJson,
-  buildFallbackNerdcLessonPlan,
-} from "@/lib/lesson-plan";
+import { type LessonHeader, type LessonPlan, parseLessonPlanJson } from "@/lib/lesson-plan";
 
-const Input = z.object({
-  school_id: z.string().uuid(),
-  class_id: z.string().uuid(),
-  subject_id: z.string().uuid(),
-  topic: z.string().trim().min(2).max(200),
-  week: z.number().int().min(1).max(15),
-  week_start: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  extra: z.string().max(1000).optional(),
+const LessonPlanSchema = z.object({
+  sub_topics: z.array(z.string()),
+  specific_objectives: z.array(z.string()),
+  rationale: z.string(),
+  previous_knowledge: z.string(),
+  instructional_materials: z.array(z.string()),
+  reference_materials: z.array(z.string()),
+  presentation: z.array(z.object({
+    stage: z.string(),
+    teacher_activities: z.string(),
+    learning_activities: z.string(),
+    learning_point: z.string(),
+  })),
+  evaluation: z.array(z.string()),
+  summary: z.string(),
+  assignment: z.array(z.string()),
+  lesson_note: z.string(),
+  video_searches: z.array(z.string()),
 });
 
 const TERMS: Record<string, string> = { first: "1ST", second: "2ND", third: "3RD" };
@@ -23,20 +28,22 @@ const DAYS = ["", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Satur
 const fmtDate = (d: Date) => d.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
 const mins = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
 
-const INSTRUCTIONS = `You are an experienced Nigerian teacher writing an official government-format lesson plan (NERDC curriculum, as inspected by State Ministries of Education).
-Return ONLY a JSON object (no code fences) with exactly these keys:
-{"sub_topics": string[] (3-6),
- "specific_objectives": string[] (3-5 measurable, action verbs; do not include the lead-in sentence),
- "rationale": string,
- "previous_knowledge": string,
- "instructional_materials": string[],
- "reference_materials": string[],
- "presentation": [{"stage": "INTRODUCTION"|"STEP I"|"STEP II"|..., "teacher_activities": string, "learning_activities": string, "learning_point": string}] (introduction plus one step per sub-topic, then "CONCLUSION"),
- "evaluation": string[] (4-5 questions),
- "summary": string,
- "assignment": string[],
- "lesson_note": string (detailed board note in Markdown with headings per sub-topic, Nigerian examples),
- "video_searches": string[] (3-4 short YouTube search phrases a teacher could use to find good explainer videos on this topic and its sub-topics, e.g. "electoral process in Nigeria explained")}
+const INSTRUCTIONS = `You are an experienced Nigerian subject specialist teacher writing an official government-format lesson plan and lesson note (NERDC curriculum, UBE / WAEC / NECO standards, as inspected by State Ministries of Education).
+Accuracy rules:
+- Teach the actual subject matter of the given topic. Use correct facts, definitions, formulas, rules, grammar, dates and names. Never invent facts; if unsure, use the standard textbook position.
+- Mathematics/sciences: include formulas, units and fully worked examples with correct answers.
+- Languages (English, Hausa, Yoruba, Igbo, French, Arabic): give real example words/sentences in that language.
+- Religious subjects (IRS/CRS/Islamic Studies/Arabic): quote real verses/hadith/passages with correct references only.
+- Social studies, civic, history, business: use real Nigerian institutions, laws, places and examples.
+- Never use placeholder text such as "meaning of the topic", "key features of the topic" or "solve the exercise on the board".
+Fields:
+- sub_topics: 3-6 real sub-topics of this topic.
+- specific_objectives: 3-5 measurable objectives with action verbs (no lead-in sentence).
+- presentation: "INTRODUCTION", then "STEP I", "STEP II"... one per sub-topic, then "CONCLUSION". Teacher activities must contain the actual content being taught.
+- evaluation: 4-5 real questions on the content taught.
+- assignment: 1-3 concrete tasks.
+- lesson_note: a detailed board note in Markdown with a heading per sub-topic, containing definitions, explanations, examples (with answers) and Nigerian context — the full note learners copy.
+- video_searches: 3-4 short YouTube search phrases for explainer videos on this topic.
 Match the language level to the class.`;
 
 export const generateLessonNote = createServerFn({ method: "POST" })
@@ -81,78 +88,55 @@ export const generateLessonNote = createServerFn({ method: "POST" })
       teacher: prof.data?.full_name ?? "",
     };
 
-    let text = "";
-    const promptText = `Return json. Subject: ${header.subject}\nClass: ${header.class_name}${cls.data.section ? ` (${cls.data.section})` : ""}\nTerm: ${header.term} term, Week ${data.week}, ${header.session} session\nTopic: ${data.topic}\nDuration: ${header.duration} (${header.period})\nLearners: ${header.no_in_class || "unknown"}, ages ${header.average_age || "typical for class"}\n${data.extra ? `Teacher notes: ${data.extra}` : ""}`;
+    const apiKey = process.env.LOVABLE_API_KEY;
+    if (!apiKey) throw new Error("The lesson AI is not configured. Please contact the school administrator.");
 
-    // 1. Prefer GEMINI_API_KEY using approved model aliases ("gemini-3.8-flash" -> "gemini-3.1-flash-lite")
-    if (process.env.GEMINI_API_KEY) {
-      try {
-        const { GoogleGenAI } = await import("@google/genai");
-        const ai = new GoogleGenAI({
-          apiKey: process.env.GEMINI_API_KEY,
-          httpOptions: {
-            headers: {
-              "User-Agent": "aistudio-build",
-            },
-          },
-        });
-        for (const modelName of ["gemini-3.8-flash", "gemini-3.1-flash-lite"]) {
-          try {
-            const res = await ai.models.generateContent({
-              model: modelName,
-              contents: promptText,
-              config: {
-                systemInstruction: INSTRUCTIONS,
-                responseMimeType: "application/json",
-              },
-            });
-            if (res.text?.trim()) {
-              text = res.text.trim();
-              break;
-            }
-          } catch (innerErr) {
-            console.warn(`Gemini model ${modelName} failed for lesson note, trying next:`, innerErr);
-          }
-        }
-      } catch (geminiErr: any) {
-        console.warn("Gemini lesson plan generation failed, checking alternatives:", geminiErr);
+    const promptText = `Subject: ${header.subject}
+Class: ${header.class_name}${cls.data.section ? ` (${cls.data.section} section)` : ""}
+Term: ${header.term} term, Week ${data.week}, ${header.session} session
+Topic: ${data.topic}
+Duration: ${header.duration} (${header.period})
+Learners: ${header.no_in_class || "unknown"}, ages ${header.average_age || "typical for this class"}
+${data.extra ? `Teacher notes: ${data.extra}` : ""}
+
+Write the real subject content for THIS topic: correct definitions, facts, formulas, rules, worked examples with answers, dates, names and diagrams descriptions as a ${header.subject} specialist would teach them. Do not write generic filler such as "the meaning of the topic" or "key features of the topic" — every sentence must be specific to "${data.topic}".`;
+
+    const { createOpenAI } = await import("@ai-sdk/openai");
+    const { streamText, Output, NoObjectGeneratedError } = await import("ai");
+    const provider = createOpenAI({
+      baseURL: "https://ai.gateway.lovable.dev/v1",
+      apiKey,
+      headers: { "Lovable-API-Key": apiKey, "X-Lovable-AIG-SDK": "vercel-ai-sdk" },
+    });
+
+    let plan: LessonPlan;
+    try {
+      const result = streamText({
+        model: provider.responses("openai/gpt-6-astra"),
+        instructions: INSTRUCTIONS,
+        prompt: promptText,
+        output: Output.object({ schema: LessonPlanSchema }),
+        providerOptions: {
+          openai: { store: false, forceReasoning: true, reasoningEffort: "medium", reasoningSummary: "auto", include: ["reasoning.encrypted_content"] },
+        },
+      });
+      const out = await result.output;
+      plan = { ...out, lesson_note: out.lesson_note.trim() };
+    } catch (err: any) {
+      if (NoObjectGeneratedError.isInstance(err) && err.text) {
+        // Model answered but slightly off-shape: keep its real content, no template filler.
+        plan = parseLessonPlanJson(err.text);
+      } else {
+        const status = err?.statusCode ?? err?.status;
+        console.error("Lesson AI failed:", status, err?.message);
+        if (status === 402) throw new Error("AI credits have run out. Please top up credits and try again.");
+        if (status === 429) throw new Error("The lesson AI is busy right now. Please wait a minute and try again.");
+        throw new Error("The lesson AI could not write this lesson right now. Please try again.");
       }
     }
 
-    // 2. Try Lovable AI Gateway if configured and Gemini was not used
-    if (!text && process.env.LOVABLE_API_KEY) {
-      try {
-        const apiKey = process.env.LOVABLE_API_KEY;
-        const { createOpenAI } = await import("@ai-sdk/openai");
-        const { streamText } = await import("ai");
-        const provider = createOpenAI({
-          baseURL: "https://ai.gateway.lovable.dev/v1",
-          apiKey,
-          headers: { "Lovable-API-Key": apiKey, "X-Lovable-AIG-SDK": "vercel-ai-sdk" },
-        });
-        const result = streamText({
-          model: provider.responses("openai/gpt-6-astra"),
-          instructions: INSTRUCTIONS,
-          prompt: promptText,
-          providerOptions: { openai: { store: false, forceReasoning: true, reasoningEffort: "low", reasoningSummary: "auto", include: ["reasoning.encrypted_content"] } },
-        });
-        text = await result.text;
-      } catch (lovableErr) {
-        console.warn("Lovable AI lesson plan generation failed, using NERDC structured fallback:", lovableErr);
-      }
+    if (!plan.lesson_note?.trim() || plan.presentation.length === 0) {
+      throw new Error("The AI returned an incomplete lesson. Please try again.");
     }
-
-    // 3. Parse LLM response or generate NERDC-compliant structured fallback when credits/keys are unavailable
-    const fallbackCtx = {
-      topic: data.topic,
-      subject: header.subject,
-      class_name: header.class_name,
-      extra: data.extra,
-    };
-
-    const plan: LessonPlan = text
-      ? parseLessonPlanJson(text, fallbackCtx)
-      : buildFallbackNerdcLessonPlan(fallbackCtx);
-
     return { header, plan };
   });

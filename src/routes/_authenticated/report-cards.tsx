@@ -62,7 +62,7 @@ function ReportCardsListPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Terminal Report Cards</h1>
           <p className="text-sm text-muted-foreground">
-            Complete academic records across 2 sessions (2024/2025 and 2025/2026) and all 3 terms with barcodes and analytics.
+            Report cards saved and published by your school.
           </p>
         </div>
 
@@ -70,11 +70,11 @@ function ReportCardsListPage() {
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="outline" className="border-primary/30 text-primary py-1 px-3 flex items-center gap-1.5 text-xs">
             <Calendar className="h-3.5 w-3.5" />
-            2 Academic Sessions (2024/2025 & 2025/2026)
+            {new Set((cards ?? []).map((c: any) => c.session)).size} Session(s)
           </Badge>
-          <Badge variant="outline" className="border-emerald-500/40 text-emerald-700 dark:text-emerald-400 py-1 px-3 flex items-center gap-1.5 text-xs">
+          <Badge variant="outline" className="py-1 px-3 flex items-center gap-1.5 text-xs">
             <Award className="h-3.5 w-3.5" />
-            3 Terms Published
+            {(cards ?? []).filter((c: any) => c.published).length} Published
           </Badge>
           <Button
             size="sm"

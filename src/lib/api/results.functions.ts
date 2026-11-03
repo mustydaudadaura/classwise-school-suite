@@ -113,82 +113,11 @@ export const getReportCardsList = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const db = context.supabase;
     const { actor, classes: authClasses, allocations } = await resolveCallerHierarchyContext(context);
-    let rows: any[] = [];
-    try {
-      const query = db.from("report_cards")
-        .select("id, school_id, student_id, class_id, session, term, total_score, average, gpa, position, class_size, published, verification_code, created_at")
-        .order("created_at", { ascending: false }).limit(500);
-
-      const res = await query;
-      if (res.data && res.data.length > 0) {
-        rows = res.data;
-      }
-    } catch {
-      // DB offline fallback
-    }
-
-    if (!rows.length) {
-      const { ALL_DEMO_REPORT_CARDS } = await import("@/lib/demo-school-data");
-      const demoClasses: ClassScopeRow[] = authClasses.length
-        ? authClasses
-        : Array.from(
-            new Map(
-              ALL_DEMO_REPORT_CARDS.map((r) => [
-                r.class_id,
-                { id: r.class_id, name: r.classes.name, school_id: r.school_id, teacher_id: null },
-              ])
-            ).values()
-          );
-
-      const authorizedDemoCards = ALL_DEMO_REPORT_CARDS.filter((r) => {
-        if (!actor.roles.length) return false;
-        // If demo admin/super_admin, enforce school/role rules
-        if (actor.roles.includes("super_admin") || actor.roles.includes("school_admin")) {
-          return canAccessReportCardRecord(
-            { ...actor, schoolId: actor.schoolId ?? r.school_id },
-            { id: r.id, school_id: r.school_id, student_id: r.student_id, class_id: r.class_id, published: r.published },
-            demoClasses,
-            allocations
-          );
-        }
-        return canAccessReportCardRecord(
-          actor,
-          { id: r.id, school_id: r.school_id, student_id: r.student_id, class_id: r.class_id, published: r.published },
-          demoClasses,
-          allocations
-        );
-      });
-
-      return {
-        cards: authorizedDemoCards.map((r) => ({
-          id: r.id,
-          school_id: r.school_id,
-          student_id: r.student_id,
-          class_id: r.class_id,
-          session: r.session,
-          term: r.term,
-          total_score: r.total_score,
-          average: r.average,
-          gpa: r.gpa,
-          position: r.position,
-          class_size: r.class_size,
-          published: r.published,
-          verification_code: r.verification_code,
-          created_at: r.created_at,
-          students: {
-            id: r.students.id,
-            first_name: r.students.first_name,
-            last_name: r.students.last_name,
-            admission_no: r.students.admission_no,
-          },
-          classes: {
-            id: r.classes.id,
-            name: r.classes.name,
-            arm: r.classes.arm,
-          },
-        })),
-      };
-    }
+    const res = await db.from("report_cards")
+      .select("id, school_id, student_id, class_id, session, term, total_score, average, gpa, position, class_size, published, verification_code, created_at")
+      .order("created_at", { ascending: false }).limit(500);
+    if (res.error) throw new Error(res.error.message);
+    const rows: any[] = res.data ?? [];
 
     const authorizedRows = rows.filter((r: any) =>
       canAccessReportCardRecord(actor, r, authClasses, allocations)
@@ -222,64 +151,10 @@ export const getReportCardDetail = createServerFn({ method: "GET" })
   .handler(async ({ data, context }) => {
     const { supabase: db } = context;
     const { actor, classes: authClasses, allocations } = await resolveCallerHierarchyContext(context);
-    let rc: any = null;
-    try {
-      const res = await db.from("report_cards").select("*").eq("id", data.id).maybeSingle();
-      rc = res.data;
-    } catch {
-      // offline
-    }
-
-    if (!rc) {
-      const { findDemoReportCard } = await import("@/lib/demo-school-data");
-      const demo = findDemoReportCard(data.id);
-      if (demo) {
-        const effectiveActor =
-          actor.roles.includes("super_admin") || actor.roles.includes("school_admin")
-            ? { ...actor, schoolId: actor.schoolId ?? demo.school_id }
-            : actor;
-        const allowed = canAccessReportCardRecord(
-          effectiveActor,
-          {
-            id: demo.id,
-            school_id: demo.school_id,
-            student_id: demo.student_id,
-            class_id: demo.class_id,
-            published: demo.published,
-          },
-          authClasses.length
-            ? authClasses
-            : [{ id: demo.class_id, name: demo.classes.name, school_id: demo.school_id, teacher_id: null }],
-          allocations
-        );
-        if (!allowed) {
-          throw new Error("Access Denied: You are not authorized to view this report card.");
-        }
-        return {
-          rc: {
-            ...demo,
-            schools: demo.schools,
-            students: demo.students,
-            classes: demo.classes,
-            annual_evaluation: {
-              term1: demo.assessments[0]?.first_term_total || 55,
-              term2: demo.assessments[0]?.second_term_total || 58,
-              term3: demo.average,
-              cumulativeAverage: demo.average,
-              formula: "Equal Weight (33.3% × 3 Terms)",
-              termsAvailable: 3,
-              promotion: {
-                promoted: demo.status_verdict.includes("PROMOTED"),
-                status: demo.status_verdict,
-                reason: "Satisfied cumulative academic benchmark and minimum core pass requirements",
-              },
-            },
-          },
-          assessments: demo.assessments,
-        };
-      }
-      throw new Error("Report card not found");
-    }
+    const res = await db.from("report_cards").select("*").eq("id", data.id).maybeSingle();
+    if (res.error) throw new Error(res.error.message);
+    const rc: any = res.data;
+    if (!rc) throw new Error("Report card not found");
 
     if (!canAccessReportCardRecord(actor, rc, authClasses, allocations)) {
       throw new Error("Access Denied: You are not authorized to view this report card.");

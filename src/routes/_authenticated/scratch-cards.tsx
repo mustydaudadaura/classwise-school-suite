@@ -9,7 +9,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { generateScratchCards } from "@/lib/api/scratch-cards.functions";
 import { DEFAULT_SCRATCH_SETTINGS, cardState, formatPin, scratchStats, type ScratchSettings } from "@/lib/scratch-cards";
 import { downloadBlob, pagesToPdf } from "@/lib/report-pdf";
-import { ScratchCardBack, ScratchCardFace, ScratchSheet, type ScratchSchool } from "@/components/ScratchCardPrint";
+import QRCode from "qrcode";
+import { ScratchCardBack, ScratchCardFace, ScratchGuidePage, ScratchSheet, type ScratchSchool } from "@/components/ScratchCardPrint";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -112,13 +113,15 @@ function ScratchCardsAdmin({ schoolId }: { schoolId: string }) {
       downloadBlob(new Blob([csv], { type: "text/csv" }), `scratch_cards_${res.batch_id.slice(0, 8)}.csv`);
       await qc.invalidateQueries({ queryKey: ["scratch-cards", schoolId] });
       const school = schoolQ.data ?? { name: "School", logo_url: null, address: null, phone: null, theme_color: null };
-      const portal = typeof window !== "undefined" ? window.location.host + "/auth" : "";
+      const portalLink = `${window.location.origin}/auth?portal=parent`;
+      const portal = `${window.location.host}/auth?portal=parent`;
+      const qr = await QRCode.toDataURL(portalLink, { margin: 1, width: 300 });
       const valid = new Date(res.valid_until).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" });
-      const pages: React.ReactNode[] = [];
+      const pages: React.ReactNode[] = [<ScratchGuidePage key="guide" school={school} portalUrl={portal} views={res.max_views} validUntil={valid} qr={qr} count={res.cards.length} />];
       for (let i = 0; i < res.cards.length; i += 5) {
         pages.push(<ScratchSheet key={i}>{res.cards.slice(i, i + 5).flatMap((c) => [
           <ScratchCardFace key={c.serial_no} school={school} card={{ serial_no: c.serial_no, pin: formatPin(c.pin) }} price={res.price} views={res.max_views} validUntil={valid} portalUrl={portal} />,
-          <ScratchCardBack key={c.serial_no + "-b"} school={school} portalUrl={portal} views={res.max_views} />,
+          <ScratchCardBack key={c.serial_no + "-b"} school={school} portalUrl={portal} views={res.max_views} qr={qr} />,
         ])}</ScratchSheet>);
       }
       toast.message("Designing printable cards…");

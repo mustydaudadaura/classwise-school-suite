@@ -303,37 +303,6 @@ function Landing() {
                         </span>
                       </div>
 
-                      {/* Recent Results Preview Table */}
-                      <div className="rounded-md border border-border bg-card p-2">
-                        <p className="font-semibold text-[11px] mb-1.5">Recent Results Sheet</p>
-                        <div className="space-y-1 text-[10px]">
-                          <div className="flex items-center justify-between border-b border-border/50 pb-1 font-medium text-muted-foreground">
-                            <span>Student Name</span>
-                            <span>Class</span>
-                            <span>Status</span>
-                            <span>Action</span>
-                          </div>
-                          <div className="flex items-center justify-between py-0.5">
-                            <span className="font-medium">David Okoh</span>
-                            <span>JSS 2</span>
-                            <span className="text-emerald-600 font-medium">Published</span>
-                            <span className="text-primary">View →</span>
-                          </div>
-                          <div className="flex items-center justify-between py-0.5">
-                            <span className="font-medium">Chiamaka Bello</span>
-                            <span>SS 1</span>
-                            <span className="text-emerald-600 font-medium">Published</span>
-                            <span className="text-primary">View →</span>
-                          </div>
-                          <div className="flex items-center justify-between py-0.5">
-                            <span className="font-medium">Ibrahim Musa</span>
-                            <span>JSS 3</span>
-                            <span className="text-emerald-600 font-medium">Published</span>
-                            <span className="text-primary">View →</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
                   </div>
                 </div>
               </div>

@@ -120,12 +120,14 @@ Write the real subject content for THIS topic: correct definitions, facts, formu
     });
 
     let plan: LessonPlan;
+    let streamErr: any = null;
     try {
       const result = streamText({
         model: provider.responses("openai/gpt-6-astra"),
         instructions: INSTRUCTIONS,
         prompt: promptText,
         output: Output.object({ schema: LessonPlanSchema }),
+        onError: ({ error }) => { streamErr = error; },
         providerOptions: {
           openai: { store: false, forceReasoning: true, reasoningEffort: "medium", reasoningSummary: "auto", include: ["reasoning.encrypted_content"] },
         },
@@ -137,7 +139,8 @@ Write the real subject content for THIS topic: correct definitions, facts, formu
         // Model answered but slightly off-shape: keep its real content, no template filler.
         plan = parseLessonPlanJson(err.text);
       } else {
-        const status = err?.statusCode ?? err?.status;
+        const src = streamErr ?? err;
+        const status = src?.statusCode ?? src?.status ?? src?.cause?.statusCode;
         console.error("Lesson AI failed:", status, err?.message);
         if (status === 402) throw new Error("AI credits have run out. Please top up credits and try again.");
         if (status === 429) throw new Error("The lesson AI is busy right now. Please wait a minute and try again.");

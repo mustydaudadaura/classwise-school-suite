@@ -57,7 +57,7 @@ const TRAITS: Record<ReportLanguage, { affective: [string, string][]; psychomoto
   },
 };
 
-const GRADE_SCALE: [string, string, string][] = [['A', '70 – 100', 'excellent'], ['B', '60 – 69', 'very good'], ['C', '50 – 59', 'good'], ['D', '45 – 49', 'fair'], ['F', '0 – 44', 'fail']];
+const GRADE_SCALE: [string, string, string][] = [['A', '70 – 100', 'Excellent'], ['B', '60 – 69', 'Very Good'], ['C', '50 – 59', 'Good'], ['D', '45 – 49', 'Fair'], ['F', '0 – 44', 'Fail']];
 
 export function NigerianReportSheet({ rc, assessments, qrDataUrl, design: designOverride, language: languageOverride }: { rc: SchoolReport; assessments: IslamiyyaAssessment[]; qrDataUrl?: string; design?: ReportSheetId; language?: ReportLanguage }) {
   const template = resolveReportTemplate(rc.schools?.report_template, rc.classes?.section);

@@ -8,7 +8,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { generateScratchCards } from "@/lib/api/scratch-cards.functions";
 import { DEFAULT_SCRATCH_SETTINGS, cardState, formatPin, scratchStats, type ScratchSettings } from "@/lib/scratch-cards";
-import { downloadBlob } from "@/lib/report-pdf";
+import { downloadBlob, pagesToPdf } from "@/lib/report-pdf";
+import { ScratchCardFace, ScratchSheet, type ScratchSchool } from "@/components/ScratchCardPrint";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,6 +49,14 @@ function ScratchCardsAdmin({ schoolId }: { schoolId: string }) {
       const { data, error } = await supabase.from("scratch_card_settings").select("*").eq("school_id", schoolId).maybeSingle();
       if (error) throw error;
       return data;
+    },
+  });
+  const schoolQ = useQuery({
+    queryKey: ["scratch-school", schoolId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("schools").select("name, logo_url, address, phone, theme_color").eq("id", schoolId).maybeSingle();
+      if (error) throw error;
+      return data as ScratchSchool | null;
     },
   });
   const cardsQ = useQuery({
@@ -102,7 +111,17 @@ function ScratchCardsAdmin({ schoolId }: { schoolId: string }) {
       const csv = ["Serial number,PIN,Price,Views,Valid until", ...res.cards.map((c) => `${c.serial_no},${formatPin(c.pin)},${res.price},${res.max_views},${res.valid_until.slice(0, 10)}`)].join("\n");
       downloadBlob(new Blob([csv], { type: "text/csv" }), `scratch_cards_${res.batch_id.slice(0, 8)}.csv`);
       await qc.invalidateQueries({ queryKey: ["scratch-cards", schoolId] });
-      toast.success(`${res.cards.length} cards made. The PIN list has downloaded — keep it safe; PINs cannot be shown again.`);
+      const school = schoolQ.data ?? { name: "School", logo_url: null, address: null, phone: null, theme_color: null };
+      const portal = typeof window !== "undefined" ? window.location.host + "/portal" : "";
+      const valid = new Date(res.valid_until).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" });
+      const pages: React.ReactNode[] = [];
+      for (let i = 0; i < res.cards.length; i += 10) {
+        pages.push(<ScratchSheet key={i}>{res.cards.slice(i, i + 10).map((c) => <ScratchCardFace key={c.serial_no} school={school} card={{ serial_no: c.serial_no, pin: formatPin(c.pin) }} price={res.price} views={res.max_views} validUntil={valid} portalUrl={portal} />)}</ScratchSheet>);
+      }
+      toast.message("Designing printable cards…");
+      const pdf = await pagesToPdf(pages);
+      downloadBlob(pdf, `scratch_cards_${res.batch_id.slice(0, 8)}.pdf`);
+      toast.success(`${res.cards.length} cards made. The printable cards (PDF) and PIN list have downloaded — keep them safe; PINs cannot be shown again.`);
     } catch (e) { toast.error(e instanceof Error ? e.message : "Could not generate cards"); } finally { setBusy(false); }
   }
 
@@ -161,7 +180,7 @@ function ScratchCardsAdmin({ schoolId }: { schoolId: string }) {
         <CardContent className="flex flex-wrap items-end gap-3">
           <div><Label>How many</Label><Input className="w-32" type="number" min={1} max={1000} value={count} onChange={(e) => setCount(Math.max(1, Math.min(1000, Number(e.target.value) || 1)))} /></div>
           <Button onClick={makeCards} disabled={busy || !settingsQ.data}><KeyRound className="mr-2 h-4 w-4" />{busy ? "Working…" : `Generate ${count} card(s)`}</Button>
-          <p className="w-full text-xs text-muted-foreground">The PIN list downloads once as a spreadsheet for printing. For security PINs are stored scrambled and cannot be shown again.</p>
+          <p className="w-full text-xs text-muted-foreground">Printable ID-card-size cards (10 per A4 page, PDF) and a PIN spreadsheet download once. For security PINs are stored scrambled and cannot be shown again.</p>
         </CardContent>
       </Card>
 

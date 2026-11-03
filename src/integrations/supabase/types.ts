@@ -3175,19 +3175,6 @@ export type Database = {
         Args: { _class_id: string; _school_id: string; _user_id: string }
         Returns: boolean
       }
-      can_enter_subject_scores: {
-        Args: {
-          _class_id: string
-          _school_id: string
-          _subject_id: string
-          _user_id: string
-        }
-        Returns: boolean
-      }
-      can_review_class_results: {
-        Args: { _class_id: string; _school_id: string; _user_id: string }
-        Returns: boolean
-      }
       can_manage_school: {
         Args: { _school_id: string; _user_id: string }
         Returns: boolean
@@ -3320,10 +3307,6 @@ export type Database = {
       }
       teaches_class: {
         Args: { _class_id: string; _user_id: string }
-        Returns: boolean
-      }
-      teaches_subject: {
-        Args: { _class_id: string; _subject_id: string; _user_id: string }
         Returns: boolean
       }
       verify_report_card: {

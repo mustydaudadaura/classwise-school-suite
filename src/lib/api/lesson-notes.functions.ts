@@ -98,9 +98,6 @@ export const generateLessonNote = createServerFn({ method: "POST" })
       teacher: prof.data?.full_name ?? "",
     };
 
-    const apiKey = process.env.LOVABLE_API_KEY;
-    if (!apiKey) throw new Error("The lesson AI is not configured. Please contact the school administrator.");
-
     const promptText = `Subject: ${header.subject}
 Class: ${header.class_name}${cls.data.section ? ` (${cls.data.section} section)` : ""}
 Term: ${header.term} term, Week ${data.week}, ${header.session} session
@@ -111,45 +108,87 @@ ${data.extra ? `Teacher notes: ${data.extra}` : ""}
 
 Write the real subject content for THIS topic: correct definitions, facts, formulas, rules, worked examples with answers, dates, names and diagrams descriptions as a ${header.subject} specialist would teach them. Do not write generic filler such as "the meaning of the topic" or "key features of the topic" — every sentence must be specific to "${data.topic}".`;
 
-    const { createOpenAI } = await import("@ai-sdk/openai");
-    const { streamText, Output, NoObjectGeneratedError } = await import("ai");
-    const provider = createOpenAI({
-      baseURL: "https://ai.gateway.lovable.dev/v1",
-      apiKey,
-      headers: { "Lovable-API-Key": apiKey, "X-Lovable-AIG-SDK": "vercel-ai-sdk" },
-    });
+    const isComplete = (p: LessonPlan | null): p is LessonPlan => !!p && !!p.lesson_note?.trim() && p.presentation.length > 0;
+    let lastStatus: number | undefined;
 
-    let plan: LessonPlan;
-    let streamErr: any = null;
-    try {
-      const result = streamText({
-        model: provider.responses("openai/gpt-6-astra"),
-        instructions: INSTRUCTIONS,
-        prompt: promptText,
-        output: Output.object({ schema: LessonPlanSchema }),
-        onError: ({ error }) => { streamErr = error; },
-        providerOptions: {
-          openai: { store: false, forceReasoning: true, reasoningEffort: "medium", reasoningSummary: "auto", include: ["reasoning.encrypted_content"] },
-        },
-      });
-      const out = await result.output;
-      plan = { ...out, lesson_note: out.lesson_note.trim() };
-    } catch (err: any) {
-      if (NoObjectGeneratedError.isInstance(err) && err.text) {
-        // Model answered but slightly off-shape: keep its real content, no template filler.
-        plan = parseLessonPlanJson(err.text);
-      } else {
-        const src = streamErr ?? err;
-        const status = src?.statusCode ?? src?.status ?? src?.cause?.statusCode;
-        console.error("Lesson AI failed:", status, err?.message);
-        if (status === 402) throw new Error("AI credits have run out. Please top up credits and try again.");
-        if (status === 429) throw new Error("The lesson AI is busy right now. Please wait a minute and try again.");
-        throw new Error("The lesson AI could not write this lesson right now. Please try again.");
+    // 1. DeepSeek first (school's own DeepSeek account).
+    const deepseekKey = process.env.DEEPSEEK_API_KEY;
+    if (deepseekKey) {
+      try {
+        const plan = await generateWithDeepSeek(deepseekKey, promptText);
+        if (isComplete(plan)) return { header, plan, provider: "deepseek" as const };
+      } catch (err: any) {
+        console.error("DeepSeek lesson generation failed, trying ChatGPT:", err?.message);
       }
     }
 
-    if (!plan.lesson_note?.trim() || plan.presentation.length === 0) {
-      throw new Error("The AI returned an incomplete lesson. Please try again.");
+    // 2. ChatGPT through the built-in AI as backup.
+    const apiKey = process.env.LOVABLE_API_KEY;
+    if (apiKey) {
+      try {
+        const plan = await generateWithChatGpt(apiKey, promptText);
+        if (isComplete(plan)) return { header, plan, provider: "chatgpt" as const };
+      } catch (err: any) {
+        lastStatus = err?.status;
+        console.error("ChatGPT lesson generation failed:", lastStatus, err?.message);
+      }
     }
-    return { header, plan };
+
+    if (!deepseekKey && !apiKey) throw new Error("The lesson AI is not configured. Please contact the school administrator.");
+    if (lastStatus === 402) throw new Error("DeepSeek did not answer and AI credits have run out. Check your DeepSeek balance or top up credits, then try again.");
+    if (lastStatus === 429) throw new Error("The lesson AI is busy right now. Please wait a minute and try again.");
+    throw new Error("The lesson AI could not write this lesson right now. Please try again.");
   });
+
+async function generateWithDeepSeek(key: string, promptText: string): Promise<LessonPlan | null> {
+  const res = await fetch("https://api.deepseek.com/chat/completions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+    body: JSON.stringify({
+      model: "deepseek-chat",
+      stream: false,
+      response_format: { type: "json_object" },
+      max_tokens: 8000,
+      messages: [
+        { role: "system", content: `${INSTRUCTIONS}\nReturn ONLY one json object with exactly these keys: sub_topics, specific_objectives, rationale, previous_knowledge, instructional_materials, reference_materials, presentation (array of {stage, teacher_activities, learning_activities, learning_point}), evaluation, summary, assignment, lesson_note, video_searches.` },
+        { role: "user", content: `${promptText}\n\nReturn the lesson as json.` },
+      ],
+    }),
+  });
+  if (!res.ok) throw new Error(`DeepSeek HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  const body: any = await res.json();
+  const text: string = body?.choices?.[0]?.message?.content ?? "";
+  if (!text.trim()) return null;
+  return parseLessonPlanJson(text);
+}
+
+async function generateWithChatGpt(apiKey: string, promptText: string): Promise<LessonPlan | null> {
+  const { createOpenAI } = await import("@ai-sdk/openai");
+  const { streamText, Output, NoObjectGeneratedError } = await import("ai");
+  const provider = createOpenAI({
+    baseURL: "https://ai.gateway.lovable.dev/v1",
+    apiKey,
+    headers: { "Lovable-API-Key": apiKey, "X-Lovable-AIG-SDK": "vercel-ai-sdk" },
+  });
+  let streamErr: any = null;
+  try {
+    const result = streamText({
+      model: provider.responses("openai/gpt-6-astra"),
+      instructions: INSTRUCTIONS,
+      prompt: promptText,
+      output: Output.object({ schema: LessonPlanSchema }),
+      onError: ({ error }) => { streamErr = error; },
+      providerOptions: {
+        openai: { store: false, forceReasoning: true, reasoningEffort: "medium", reasoningSummary: "auto", include: ["reasoning.encrypted_content"] },
+      },
+    });
+    const out = await result.output;
+    return { ...out, lesson_note: out.lesson_note.trim() };
+  } catch (err: any) {
+    if (NoObjectGeneratedError.isInstance(err) && err.text) return parseLessonPlanJson(err.text);
+    const src = streamErr ?? err;
+    const e = new Error(src?.message ?? "ChatGPT failed") as Error & { status?: number };
+    e.status = src?.statusCode ?? src?.status ?? src?.cause?.statusCode;
+    throw e;
+  }
+}

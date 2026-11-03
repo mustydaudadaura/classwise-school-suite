@@ -24,6 +24,8 @@ export type ReportLayoutId =
   | 'ubec_basic'             // Universal Basic Education / State Ministry format
   | 'islamic_integrated'     // Islamic & Arabic Integrated Academy format
   | 'islamiyya_arabic'
+  | 'islamiyya_hausa'
+  | 'islamiyya_arabic_hausa'
   | 'waec_senior';           // WAEC / NECO Senior Secondary format
 
 export interface ReportLayoutDefinition {
@@ -43,8 +45,22 @@ export const REPORT_LAYOUTS: ReportLayoutDefinition[] = [
     badge: 'العربية / Islamiyya'
   },
   {
+    id: 'islamiyya_hausa',
+    name: 'Islamiyya — Hausa Report Card',
+    tagline: 'Takardar sakamakon Islamiyya da Hausa',
+    description: 'Fully Hausa report for parents who read Hausa best: same results, positions, attendance, remarks, watermark and signatures.',
+    badge: 'Hausa'
+  },
+  {
+    id: 'islamiyya_arabic_hausa',
+    name: 'Islamiyya — Arabic + Hausa Report Card',
+    tagline: 'العربية والهوسا · Larabci da Hausa',
+    description: 'Every heading shown in Hausa with the Arabic beneath it, so both readers understand the same results.',
+    badge: 'Arabic + Hausa'
+  },
+  {
     id: 'classic_comprehensive',
-    name: 'Classic Comprehensive Academy (Re-included)',
+    name: 'English — Classic Comprehensive Academy',
     tagline: 'Traditional Nigerian full-format report sheet with comprehensive psychomotor & affective matrix',
     description: 'The beloved traditional Nigerian 2-column academic report sheet. Features continuous assessment breakdown (CA1, CA2, CA3/Project, Exam), class statistics, 10-trait behavioral domain ratings, teacher & principal remarks, and performance analytics.',
     badge: 'Classic 2nd Template (Reincluded)'
@@ -106,6 +122,8 @@ export function resolveReportTemplate(value: unknown, section?: string | null): 
     'ubec_basic',
     'islamic_integrated',
     'islamiyya_arabic',
+    'islamiyya_hausa',
+    'islamiyya_arabic_hausa',
     'waec_senior'
   ];
 
@@ -132,4 +150,9 @@ export function resolveReportTemplate(value: unknown, section?: string | null): 
 
 export function positionVisibility(mode: Required<ReportTemplate>['positions']) {
   return { class: mode === 'class' || mode === 'both', subject: mode === 'subject' || mode === 'both' };
+}
+
+/** Islamiyya language for a layout, or null for the English layouts. */
+export function islamiyyaLanguage(layout: ReportLayoutId): 'ar' | 'ha' | 'ar_ha' | null {
+  return layout === 'islamiyya_arabic' ? 'ar' : layout === 'islamiyya_hausa' ? 'ha' : layout === 'islamiyya_arabic_hausa' ? 'ar_ha' : null;
 }

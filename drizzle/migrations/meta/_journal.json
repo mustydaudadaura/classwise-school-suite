@@ -127,6 +127,27 @@
       "when": 1793682274256,
       "tag": "0017_report_ranking_and_whatsapp_delivery",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1793682758742,
+      "tag": "0018_allow_hausa_report_layouts",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1793682827283,
+      "tag": "0019_scratch_card_report_access",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1793683012370,
+      "tag": "0020_id_cards",
+      "breakpoints": true
     }
   ]
 }

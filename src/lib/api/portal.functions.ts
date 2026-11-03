@@ -142,13 +142,31 @@ export const getPortalReportCards = createServerFn({ method: "POST" })
   });
 
 export const getPortalReportCardDetail = createServerFn({ method: "POST" })
-  .inputValidator((d) => TokenOnly.extend({ id: z.string().uuid() }).parse(d))
+  .inputValidator((d) => TokenOnly.extend({ id: z.string().uuid(), pin: z.string().max(40).optional() }).parse(d))
   .handler(async ({ data }) => {
     const claims = await verify(data.token);
     const db = await admin();
     const { data: rc, error } = await db.from("report_cards").select("*").eq("id", data.id).eq("published", true).maybeSingle();
     if (error || !rc) throw new Error("Report card not found");
     await requireActiveChild(claims, rc.student_id);
+    if (rc.school_id !== claims.school_id) throw new Error("Report card not found");
+
+    // Scratch-card access: each successful view uses one view on the card.
+    let access: { remaining: number; valid_until: string; serial_no: string } | null = null;
+    const { data: rules } = await db.from("scratch_card_settings").select("access_mode, price, max_views, validity_days").eq("school_id", rc.school_id).maybeSingle();
+    if (rules?.access_mode === "scratch") {
+      const { normalizePin, hashPin, REDEEM_MESSAGES } = await import("@/lib/scratch-cards");
+      const pin = normalizePin(data.pin ?? "");
+      if (!pin) return { locked: true as const, rules: { price: Number(rules.price), max_views: rules.max_views, validity_days: rules.validity_days } };
+      if (pin.length !== 12) throw new Error(REDEEM_MESSAGES.invalid);
+      const { data: result, error: rErr } = await db.rpc("redeem_scratch_card", {
+        _school_id: rc.school_id, _pin_hash: await hashPin(rc.school_id, pin), _student_id: rc.student_id, _report_card_id: rc.id, _parent_id: claims.parent_id,
+      });
+      if (rErr) throw new Error("Scratch card could not be checked. Please try again.");
+      const res = result as { ok: boolean; reason?: string; remaining?: number; valid_until?: string; serial_no?: string };
+      if (!res.ok) throw new Error(REDEEM_MESSAGES[res.reason ?? "invalid"] ?? REDEEM_MESSAGES.invalid);
+      access = { remaining: res.remaining ?? 0, valid_until: res.valid_until ?? "", serial_no: res.serial_no ?? "" };
+    }
 
     const [{ data: school }, { data: student }, { data: klass }, { data: rawAssessments }] = await Promise.all([
       db.from("schools").select("name, motto, address, email, phone, logo_url, stamp_url, website, branch_name, principal_name, principal_signature_url, report_template, current_session, current_term").eq("id", (rc as any).school_id).maybeSingle(),
@@ -182,6 +200,8 @@ export const getPortalReportCardDetail = createServerFn({ method: "POST" })
     }));
 
     return {
+      locked: false as const,
+      access,
       rc: { ...(rc as any), schools: school, students: student, classes: klass },
       assessments,
     };
@@ -352,4 +372,16 @@ export const saveParentPreferences = createServerFn({ method: "POST" })
   .inputValidator((d) => TokenOnly.extend({ muted_types: z.array(z.enum(["news", "general"])).max(2) }).parse(d))
   .handler(async ({ data }) => {
     return { ok: true };
+  });
+
+/** Report access rules shown to parents before they buy or use a scratch card. */
+export const getPortalAccessRules = createServerFn({ method: "POST" })
+  .inputValidator((d) => TokenOnly.parse(d))
+  .handler(async ({ data }) => {
+    const claims = await verify(data.token);
+    const db = await admin();
+    const { data: rules } = await db.from("scratch_card_settings").select("access_mode, price, max_views, validity_days").eq("school_id", claims.school_id).maybeSingle();
+    return rules?.access_mode === "scratch"
+      ? { mode: "scratch" as const, price: Number(rules.price), max_views: rules.max_views, validity_days: rules.validity_days }
+      : { mode: "free" as const };
   });

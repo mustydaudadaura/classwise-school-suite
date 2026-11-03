@@ -26,6 +26,7 @@ import { Route as AuthenticatedDashboardRouteImport } from './routes/_authentica
 import { Route as AuthenticatedDiagnosticsRouteImport } from './routes/_authenticated/diagnostics'
 import { Route as AuthenticatedDocumentsRouteImport } from './routes/_authenticated/documents'
 import { Route as AuthenticatedFeesRouteImport } from './routes/_authenticated/fees'
+import { Route as AuthenticatedIdCardsRouteImport } from './routes/_authenticated/id-cards'
 import { Route as AuthenticatedIslamicRouteImport } from './routes/_authenticated/islamic'
 import { Route as AuthenticatedKioskRouteImport } from './routes/_authenticated/kiosk'
 import { Route as AuthenticatedMyAttendanceRouteImport } from './routes/_authenticated/my-attendance'
@@ -34,6 +35,7 @@ import { Route as AuthenticatedReportCardsRouteImport } from './routes/_authenti
 import { Route as AuthenticatedReportDistributionRouteImport } from './routes/_authenticated/report-distribution'
 import { Route as AuthenticatedResultsRouteImport } from './routes/_authenticated/results'
 import { Route as AuthenticatedSchoolsRouteImport } from './routes/_authenticated/schools'
+import { Route as AuthenticatedScratchCardsRouteImport } from './routes/_authenticated/scratch-cards'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedStaffAttendanceRouteImport } from './routes/_authenticated/staff-attendance'
 import { Route as AuthenticatedStudentsRouteImport } from './routes/_authenticated/students'
@@ -46,6 +48,7 @@ import { Route as PortalFeesRouteImport } from './routes/portal/fees'
 import { Route as PortalNotificationsRouteImport } from './routes/portal/notifications'
 import { Route as PortalReportCardsRouteImport } from './routes/portal/report-cards'
 import { Route as SSlugRouteImport } from './routes/s.$slug'
+import { Route as VerifyIdCodeRouteImport } from './routes/verify-id.$code'
 import { Route as VerifyCodeRouteImport } from './routes/verify.$code'
 import { Route as AuthenticatedReportCardIdRouteImport } from './routes/_authenticated/report-card.$id'
 import { Route as AuthenticatedStudentsIdRouteImport } from './routes/_authenticated/students.$id'
@@ -142,6 +145,11 @@ const AuthenticatedFeesRoute = AuthenticatedFeesRouteImport.update({
   path: '/fees',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedIdCardsRoute = AuthenticatedIdCardsRouteImport.update({
+  id: '/id-cards',
+  path: '/id-cards',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedIslamicRoute = AuthenticatedIslamicRouteImport.update({
   id: '/islamic',
   path: '/islamic',
@@ -185,6 +193,12 @@ const AuthenticatedSchoolsRoute = AuthenticatedSchoolsRouteImport.update({
   path: '/schools',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedScratchCardsRoute =
+  AuthenticatedScratchCardsRouteImport.update({
+    id: '/scratch-cards',
+    path: '/scratch-cards',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -244,6 +258,11 @@ const PortalReportCardsRoute = PortalReportCardsRouteImport.update({
 const SSlugRoute = SSlugRouteImport.update({
   id: '/s/$slug',
   path: '/s/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VerifyIdCodeRoute = VerifyIdCodeRouteImport.update({
+  id: '/verify-id/$code',
+  path: '/verify-id/$code',
   getParentRoute: () => rootRouteImport,
 } as any)
 const VerifyCodeRoute = VerifyCodeRouteImport.update({
@@ -312,6 +331,7 @@ export interface FileRoutesByFullPath {
   '/diagnostics': typeof AuthenticatedDiagnosticsRoute
   '/documents': typeof AuthenticatedDocumentsRoute
   '/fees': typeof AuthenticatedFeesRoute
+  '/id-cards': typeof AuthenticatedIdCardsRoute
   '/islamic': typeof AuthenticatedIslamicRoute
   '/kiosk': typeof AuthenticatedKioskRoute
   '/my-attendance': typeof AuthenticatedMyAttendanceRoute
@@ -320,6 +340,7 @@ export interface FileRoutesByFullPath {
   '/report-distribution': typeof AuthenticatedReportDistributionRoute
   '/results': typeof AuthenticatedResultsRoute
   '/schools': typeof AuthenticatedSchoolsRoute
+  '/scratch-cards': typeof AuthenticatedScratchCardsRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/staff-attendance': typeof AuthenticatedStaffAttendanceRoute
   '/students': typeof AuthenticatedStudentsRouteWithChildren
@@ -331,6 +352,7 @@ export interface FileRoutesByFullPath {
   '/portal/notifications': typeof PortalNotificationsRoute
   '/portal/report-cards': typeof PortalReportCardsRoute
   '/s/$slug': typeof SSlugRoute
+  '/verify-id/$code': typeof VerifyIdCodeRoute
   '/verify/$code': typeof VerifyCodeRoute
   '/portal/': typeof PortalIndexRoute
   '/report-card/$id': typeof AuthenticatedReportCardIdRoute
@@ -358,6 +380,7 @@ export interface FileRoutesByTo {
   '/diagnostics': typeof AuthenticatedDiagnosticsRoute
   '/documents': typeof AuthenticatedDocumentsRoute
   '/fees': typeof AuthenticatedFeesRoute
+  '/id-cards': typeof AuthenticatedIdCardsRoute
   '/islamic': typeof AuthenticatedIslamicRoute
   '/kiosk': typeof AuthenticatedKioskRoute
   '/my-attendance': typeof AuthenticatedMyAttendanceRoute
@@ -366,6 +389,7 @@ export interface FileRoutesByTo {
   '/report-distribution': typeof AuthenticatedReportDistributionRoute
   '/results': typeof AuthenticatedResultsRoute
   '/schools': typeof AuthenticatedSchoolsRoute
+  '/scratch-cards': typeof AuthenticatedScratchCardsRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/staff-attendance': typeof AuthenticatedStaffAttendanceRoute
   '/students': typeof AuthenticatedStudentsRouteWithChildren
@@ -377,6 +401,7 @@ export interface FileRoutesByTo {
   '/portal/notifications': typeof PortalNotificationsRoute
   '/portal/report-cards': typeof PortalReportCardsRoute
   '/s/$slug': typeof SSlugRoute
+  '/verify-id/$code': typeof VerifyIdCodeRoute
   '/verify/$code': typeof VerifyCodeRoute
   '/portal': typeof PortalIndexRoute
   '/report-card/$id': typeof AuthenticatedReportCardIdRoute
@@ -407,6 +432,7 @@ export interface FileRoutesById {
   '/_authenticated/diagnostics': typeof AuthenticatedDiagnosticsRoute
   '/_authenticated/documents': typeof AuthenticatedDocumentsRoute
   '/_authenticated/fees': typeof AuthenticatedFeesRoute
+  '/_authenticated/id-cards': typeof AuthenticatedIdCardsRoute
   '/_authenticated/islamic': typeof AuthenticatedIslamicRoute
   '/_authenticated/kiosk': typeof AuthenticatedKioskRoute
   '/_authenticated/my-attendance': typeof AuthenticatedMyAttendanceRoute
@@ -415,6 +441,7 @@ export interface FileRoutesById {
   '/_authenticated/report-distribution': typeof AuthenticatedReportDistributionRoute
   '/_authenticated/results': typeof AuthenticatedResultsRoute
   '/_authenticated/schools': typeof AuthenticatedSchoolsRoute
+  '/_authenticated/scratch-cards': typeof AuthenticatedScratchCardsRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/staff-attendance': typeof AuthenticatedStaffAttendanceRoute
   '/_authenticated/students': typeof AuthenticatedStudentsRouteWithChildren
@@ -426,6 +453,7 @@ export interface FileRoutesById {
   '/portal/notifications': typeof PortalNotificationsRoute
   '/portal/report-cards': typeof PortalReportCardsRoute
   '/s/$slug': typeof SSlugRoute
+  '/verify-id/$code': typeof VerifyIdCodeRoute
   '/verify/$code': typeof VerifyCodeRoute
   '/portal/': typeof PortalIndexRoute
   '/_authenticated/report-card/$id': typeof AuthenticatedReportCardIdRoute
@@ -456,6 +484,7 @@ export interface FileRouteTypes {
     | '/diagnostics'
     | '/documents'
     | '/fees'
+    | '/id-cards'
     | '/islamic'
     | '/kiosk'
     | '/my-attendance'
@@ -464,6 +493,7 @@ export interface FileRouteTypes {
     | '/report-distribution'
     | '/results'
     | '/schools'
+    | '/scratch-cards'
     | '/settings'
     | '/staff-attendance'
     | '/students'
@@ -475,6 +505,7 @@ export interface FileRouteTypes {
     | '/portal/notifications'
     | '/portal/report-cards'
     | '/s/$slug'
+    | '/verify-id/$code'
     | '/verify/$code'
     | '/portal/'
     | '/report-card/$id'
@@ -502,6 +533,7 @@ export interface FileRouteTypes {
     | '/diagnostics'
     | '/documents'
     | '/fees'
+    | '/id-cards'
     | '/islamic'
     | '/kiosk'
     | '/my-attendance'
@@ -510,6 +542,7 @@ export interface FileRouteTypes {
     | '/report-distribution'
     | '/results'
     | '/schools'
+    | '/scratch-cards'
     | '/settings'
     | '/staff-attendance'
     | '/students'
@@ -521,6 +554,7 @@ export interface FileRouteTypes {
     | '/portal/notifications'
     | '/portal/report-cards'
     | '/s/$slug'
+    | '/verify-id/$code'
     | '/verify/$code'
     | '/portal'
     | '/report-card/$id'
@@ -550,6 +584,7 @@ export interface FileRouteTypes {
     | '/_authenticated/diagnostics'
     | '/_authenticated/documents'
     | '/_authenticated/fees'
+    | '/_authenticated/id-cards'
     | '/_authenticated/islamic'
     | '/_authenticated/kiosk'
     | '/_authenticated/my-attendance'
@@ -558,6 +593,7 @@ export interface FileRouteTypes {
     | '/_authenticated/report-distribution'
     | '/_authenticated/results'
     | '/_authenticated/schools'
+    | '/_authenticated/scratch-cards'
     | '/_authenticated/settings'
     | '/_authenticated/staff-attendance'
     | '/_authenticated/students'
@@ -569,6 +605,7 @@ export interface FileRouteTypes {
     | '/portal/notifications'
     | '/portal/report-cards'
     | '/s/$slug'
+    | '/verify-id/$code'
     | '/verify/$code'
     | '/portal/'
     | '/_authenticated/report-card/$id'
@@ -592,6 +629,7 @@ export interface RootRouteChildren {
   VerifyCredentialRoute: typeof VerifyCredentialRoute
   ApiPassportEnhanceRoute: typeof ApiPassportEnhanceRoute
   SSlugRoute: typeof SSlugRoute
+  VerifyIdCodeRoute: typeof VerifyIdCodeRoute
   VerifyCodeRoute: typeof VerifyCodeRoute
   ApiPublicParentLoginRoute: typeof ApiPublicParentLoginRoute
   ApiPublicVirtualAccountWebhookRoute: typeof ApiPublicVirtualAccountWebhookRoute
@@ -720,6 +758,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFeesRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/id-cards': {
+      id: '/_authenticated/id-cards'
+      path: '/id-cards'
+      fullPath: '/id-cards'
+      preLoaderRoute: typeof AuthenticatedIdCardsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/islamic': {
       id: '/_authenticated/islamic'
       path: '/islamic'
@@ -774,6 +819,13 @@ declare module '@tanstack/react-router' {
       path: '/schools'
       fullPath: '/schools'
       preLoaderRoute: typeof AuthenticatedSchoolsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/scratch-cards': {
+      id: '/_authenticated/scratch-cards'
+      path: '/scratch-cards'
+      fullPath: '/scratch-cards'
+      preLoaderRoute: typeof AuthenticatedScratchCardsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/settings': {
@@ -858,6 +910,13 @@ declare module '@tanstack/react-router' {
       path: '/s/$slug'
       fullPath: '/s/$slug'
       preLoaderRoute: typeof SSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/verify-id/$code': {
+      id: '/verify-id/$code'
+      path: '/verify-id/$code'
+      fullPath: '/verify-id/$code'
+      preLoaderRoute: typeof VerifyIdCodeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/verify/$code': {
@@ -949,6 +1008,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedDiagnosticsRoute: typeof AuthenticatedDiagnosticsRoute
   AuthenticatedDocumentsRoute: typeof AuthenticatedDocumentsRoute
   AuthenticatedFeesRoute: typeof AuthenticatedFeesRoute
+  AuthenticatedIdCardsRoute: typeof AuthenticatedIdCardsRoute
   AuthenticatedIslamicRoute: typeof AuthenticatedIslamicRoute
   AuthenticatedKioskRoute: typeof AuthenticatedKioskRoute
   AuthenticatedMyAttendanceRoute: typeof AuthenticatedMyAttendanceRoute
@@ -957,6 +1017,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedReportDistributionRoute: typeof AuthenticatedReportDistributionRoute
   AuthenticatedResultsRoute: typeof AuthenticatedResultsRoute
   AuthenticatedSchoolsRoute: typeof AuthenticatedSchoolsRoute
+  AuthenticatedScratchCardsRoute: typeof AuthenticatedScratchCardsRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedStaffAttendanceRoute: typeof AuthenticatedStaffAttendanceRoute
   AuthenticatedStudentsRoute: typeof AuthenticatedStudentsRouteWithChildren
@@ -974,6 +1035,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedDiagnosticsRoute: AuthenticatedDiagnosticsRoute,
   AuthenticatedDocumentsRoute: AuthenticatedDocumentsRoute,
   AuthenticatedFeesRoute: AuthenticatedFeesRoute,
+  AuthenticatedIdCardsRoute: AuthenticatedIdCardsRoute,
   AuthenticatedIslamicRoute: AuthenticatedIslamicRoute,
   AuthenticatedKioskRoute: AuthenticatedKioskRoute,
   AuthenticatedMyAttendanceRoute: AuthenticatedMyAttendanceRoute,
@@ -982,6 +1044,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedReportDistributionRoute: AuthenticatedReportDistributionRoute,
   AuthenticatedResultsRoute: AuthenticatedResultsRoute,
   AuthenticatedSchoolsRoute: AuthenticatedSchoolsRoute,
+  AuthenticatedScratchCardsRoute: AuthenticatedScratchCardsRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedStaffAttendanceRoute: AuthenticatedStaffAttendanceRoute,
   AuthenticatedStudentsRoute: AuthenticatedStudentsRouteWithChildren,
@@ -1029,6 +1092,7 @@ const rootRouteChildren: RootRouteChildren = {
   VerifyCredentialRoute: VerifyCredentialRoute,
   ApiPassportEnhanceRoute: ApiPassportEnhanceRoute,
   SSlugRoute: SSlugRoute,
+  VerifyIdCodeRoute: VerifyIdCodeRoute,
   VerifyCodeRoute: VerifyCodeRoute,
   ApiPublicParentLoginRoute: ApiPublicParentLoginRoute,
   ApiPublicVirtualAccountWebhookRoute: ApiPublicVirtualAccountWebhookRoute,

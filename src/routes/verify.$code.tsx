@@ -14,30 +14,9 @@ function VerifyPage() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["verify", code],
     queryFn: async () => {
-      try {
-        const { data, error } = await supabase.rpc("verify_report_card", { _code: code });
-        if (!error && data?.[0]) return data[0];
-      } catch {
-        // DB offline fallback
-      }
-      const { ALL_DEMO_REPORT_CARDS } = await import("@/lib/demo-school-data");
-      const match = ALL_DEMO_REPORT_CARDS.find(
-        (r) => r.verification_code.toLowerCase() === code.toLowerCase() || code.toLowerCase().includes(r.students.admission_no.replace(/[^a-z0-9]/gi, "").toLowerCase())
-      );
-      if (match) {
-        return {
-          school_name: match.schools.name,
-          student_name: `${match.students.first_name} ${match.students.last_name}`,
-          admission_no: match.students.admission_no,
-          class_name: match.classes.name,
-          session: match.session,
-          term: match.term,
-          total_score: match.total_score,
-          average: match.average,
-          position: match.position,
-        };
-      }
-      return null;
+      const { data, error } = await supabase.rpc("verify_report_card", { _code: code });
+      if (error) throw error;
+      return data?.[0] ?? null;
     },
   });
 

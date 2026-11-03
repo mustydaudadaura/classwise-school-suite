@@ -23,19 +23,34 @@ export const Route = createFileRoute("/_authenticated/attendance")({
 
 const STATUSES = ["present", "absent", "late", "excused"] as const;
 
+function weekRange(dateStr: string) {
+  const d = new Date(dateStr + "T12:00:00");
+  const day = d.getDay(); // 0 Sun .. 6 Sat
+  const monday = new Date(d); monday.setDate(d.getDate() - ((day + 6) % 7));
+  const friday = new Date(monday); friday.setDate(monday.getDate() + 4);
+  const iso = (x: Date) => x.toISOString().slice(0, 10);
+  return { from: iso(monday), to: iso(friday) };
+}
+
 function Page() {
+  const { user, roles } = useAuth();
+  const isAdmin = roles.includes("super_admin") || roles.includes("school_admin");
   const [classId, setClassId] = useState<string>("");
   const [date, setDate] = useState<string>(new Date().toISOString().slice(0, 10));
   const [entries, setEntries] = useState<Record<string, (typeof STATUSES)[number]>>({});
   const [saving, setSaving] = useState(false);
 
   const { data: classes } = useQuery({
-    queryKey: ["att-classes"],
-    queryFn: async () => (await supabase.from("classes").select("id, name").order("name")).data ?? [],
+    queryKey: ["att-classes", isAdmin, user?.id],
+    queryFn: async () => {
+      let q = supabase.from("classes").select("id, name, teacher_id").eq("active", true).order("name");
+      if (!isAdmin && user?.id) q = q.eq("teacher_id", user.id);
+      return (await q).data ?? [];
+    },
   });
   const { data: students } = useQuery({
     queryKey: ["att-students", classId],
-    queryFn: async () => (await supabase.from("students").select("id, first_name, last_name, admission_no").eq("class_id", classId).order("first_name")).data ?? [],
+    queryFn: async () => (await supabase.from("students").select("id, first_name, last_name, admission_no").eq("class_id", classId).eq("active", true).order("first_name")).data ?? [],
     enabled: !!classId,
   });
   const { data: existing } = useQuery({
@@ -43,6 +58,21 @@ function Page() {
     queryFn: async () => (await supabase.from("attendance").select("student_id, status").eq("class_id", classId).eq("date", date)).data ?? [],
     enabled: !!classId,
   });
+
+  const week = weekRange(date);
+  const { data: weekRows, refetch: refetchWeek } = useQuery({
+    queryKey: ["att-week", classId, week.from],
+    queryFn: async () => (await supabase.from("attendance").select("student_id, status, date").eq("class_id", classId).gte("date", week.from).lte("date", week.to)).data ?? [],
+    enabled: !!classId,
+  });
+  const weekDays = new Set((weekRows ?? []).map((r: any) => r.date)).size;
+  const weekly = (students ?? []).map((s: any) => {
+    const rows = (weekRows ?? []).filter((r: any) => r.student_id === s.id);
+    const attended = rows.filter((r: any) => r.status === "present" || r.status === "late").length;
+    return { s, attended, marked: rows.length, pct: rows.length ? Math.round((attended / rows.length) * 100) : null };
+  });
+  const classPct = (() => { const m = weekly.reduce((a, w) => a + w.marked, 0); return m ? Math.round((weekly.reduce((a, w) => a + w.attended, 0) / m) * 100) : null; })();
+  const isFriday = new Date(date + "T12:00:00").getDay() === 5;
 
   const getStatus = (sid: string): (typeof STATUSES)[number] => entries[sid] ?? (existing?.find((e: any) => e.student_id === sid)?.status as any) ?? "present";
 
@@ -53,6 +83,7 @@ function Page() {
       const payload = students.map((s: any) => ({ student_id: s.id, status: getStatus(s.id) }));
       const res = await markAttendance({ data: { class_id: classId, date, entries: payload } });
       toast.success(`Saved ${res.count} entries`);
+      refetchWeek();
     } catch (e: any) {
       toast.error(e.message);
     } finally {
@@ -64,7 +95,7 @@ function Page() {
     <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-bold">Attendance</h1>
-        <p className="text-sm text-muted-foreground">Mark daily attendance per class.</p>
+        <p className="text-sm text-muted-foreground">Form masters take the daily register for their class; weekly percentages are calculated for each Friday.</p>
       </div>
       <Card>
         <CardContent className="grid gap-3 p-4 sm:grid-cols-3">
@@ -102,6 +133,28 @@ function Page() {
                 </Select>
               </div>
             ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {classId && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Weekly register — {week.from} to {week.to} (Friday)</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              {isFriday ? "Today is Friday: this week's percentages are final once today's register is saved." : "Percentages update each day and close on Friday."}
+              {" "}School days marked: {weekDays} of 5 · Class attendance: {classPct === null ? "—" : `${classPct}%`}
+            </p>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader><TableRow><TableHead>Student</TableHead><TableHead className="text-right">Present (incl. late)</TableHead><TableHead className="text-right">Days marked</TableHead><TableHead className="text-right">Percentage</TableHead></TableRow></TableHeader>
+              <TableBody>
+                {weekly.map(({ s, attended, marked, pct }) => (
+                  <TableRow key={s.id}><TableCell>{s.first_name} {s.last_name}</TableCell><TableCell className="text-right">{attended}</TableCell><TableCell className="text-right">{marked}</TableCell><TableCell className={`text-right font-semibold ${pct !== null && pct < 75 ? "text-destructive" : ""}`}>{pct === null ? "—" : `${pct}%`}</TableCell></TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
       )}

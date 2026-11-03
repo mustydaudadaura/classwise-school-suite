@@ -2268,6 +2268,188 @@ export type Database = {
         }
         Relationships: []
       }
+      scratch_card_redemptions: {
+        Row: {
+          card_id: string
+          created_at: string
+          id: string
+          parent_id: string | null
+          report_card_id: string | null
+          school_id: string
+          student_id: string
+          views_after: number
+        }
+        Insert: {
+          card_id: string
+          created_at?: string
+          id?: string
+          parent_id?: string | null
+          report_card_id?: string | null
+          school_id: string
+          student_id: string
+          views_after: number
+        }
+        Update: {
+          card_id?: string
+          created_at?: string
+          id?: string
+          parent_id?: string | null
+          report_card_id?: string | null
+          school_id?: string
+          student_id?: string
+          views_after?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scratch_card_redemptions_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "scratch_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scratch_card_redemptions_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "parents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scratch_card_redemptions_report_card_id_fkey"
+            columns: ["report_card_id"]
+            isOneToOne: false
+            referencedRelation: "report_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scratch_card_redemptions_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scratch_card_redemptions_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scratch_card_settings: {
+        Row: {
+          access_mode: string
+          max_views: number
+          price: number
+          school_id: string
+          updated_at: string
+          updated_by: string | null
+          validity_days: number
+        }
+        Insert: {
+          access_mode?: string
+          max_views?: number
+          price?: number
+          school_id: string
+          updated_at?: string
+          updated_by?: string | null
+          validity_days?: number
+        }
+        Update: {
+          access_mode?: string
+          max_views?: number
+          price?: number
+          school_id?: string
+          updated_at?: string
+          updated_by?: string | null
+          validity_days?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scratch_card_settings_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: true
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scratch_cards: {
+        Row: {
+          batch_id: string
+          created_at: string
+          created_by: string | null
+          first_used_at: string | null
+          id: string
+          last_used_at: string | null
+          max_views: number
+          pin_hash: string
+          price: number
+          school_id: string
+          serial_no: string
+          sold_at: string | null
+          sold_note: string | null
+          status: string
+          student_id: string | null
+          valid_until: string
+          views_used: number
+        }
+        Insert: {
+          batch_id: string
+          created_at?: string
+          created_by?: string | null
+          first_used_at?: string | null
+          id?: string
+          last_used_at?: string | null
+          max_views: number
+          pin_hash: string
+          price: number
+          school_id: string
+          serial_no: string
+          sold_at?: string | null
+          sold_note?: string | null
+          status?: string
+          student_id?: string | null
+          valid_until: string
+          views_used?: number
+        }
+        Update: {
+          batch_id?: string
+          created_at?: string
+          created_by?: string | null
+          first_used_at?: string | null
+          id?: string
+          last_used_at?: string | null
+          max_views?: number
+          pin_hash?: string
+          price?: number
+          school_id?: string
+          serial_no?: string
+          sold_at?: string | null
+          sold_note?: string | null
+          status?: string
+          student_id?: string | null
+          valid_until?: string
+          views_used?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scratch_cards_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scratch_cards_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       staff_attendance: {
         Row: {
           check_in_at: string | null
@@ -3336,6 +3518,16 @@ export type Database = {
       parent_has_child_in_class: {
         Args: { _class_id: string; _user_id: string }
         Returns: boolean
+      }
+      redeem_scratch_card: {
+        Args: {
+          _parent_id: string
+          _pin_hash: string
+          _report_card_id: string
+          _school_id: string
+          _student_id: string
+        }
+        Returns: Json
       }
       registry_purge_rows: {
         Args: { _cond: string; _depth: number; _rel: unknown }

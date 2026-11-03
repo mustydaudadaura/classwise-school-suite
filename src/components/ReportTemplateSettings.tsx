@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Save, RotateCcw, Check, Upload, Trash2, ShieldCheck, Building2, Sparkles, Layout } from 'lucide-react';
 import { toast } from 'sonner';
-import { REPORT_COLOURS, REPORT_PARTS, resolveReportTemplate, REPORT_LAYOUTS, type ReportTemplate, type ReportPart, type ReportLayoutId } from '@/lib/report-template';
+import { REPORT_COLOURS, REPORT_PARTS, resolveReportTemplate, REPORT_LAYOUTS, REPORT_LANGUAGES, type ReportTemplate, type ReportPart, type ReportLayoutId } from '@/lib/report-template';
 import { ReportCardView } from '@/components/ReportCardView';
 
 export function ReportTemplateSettings({ school }: { school: { id: string; name: string; report_template: unknown; logo_url?: string | null; stamp_url?: string | null; principal_signature_url?: string | null; motto?: string | null; address?: string | null; phone?: string | null; email?: string | null; principal_name?: string | null; [key: string]: unknown } }) {
@@ -282,10 +282,10 @@ export function ReportTemplateSettings({ school }: { school: { id: string; name:
           <div>
             <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
               <Layout className="h-4 w-4 text-primary" />
-              Specialized Nigerian Report Sheet Templates
+              Report Sheet Design & Language
             </h3>
             <p className="text-xs text-muted-foreground">
-              Select a report format.
+              Choose one of the 4 designs, then the language it prints in.
             </p>
           </div>
           <Badge variant="outline" className="text-primary border-primary/30 bg-primary/5 text-xs font-mono">
@@ -329,8 +329,20 @@ export function ReportTemplateSettings({ school }: { school: { id: string; name:
         </div>
       </div>
 
+      <div className="rounded-xl border border-border bg-card p-4 space-y-2">
+        <h3 className="text-sm font-semibold text-foreground">Report language</h3>
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Report language">
+          {REPORT_LANGUAGES.map((l) => (
+            <Button key={l.id} type="button" variant={resolved.report_language === l.id ? "default" : "outline"} aria-pressed={resolved.report_language === l.id} onClick={() => setDraft({ ...draft, report_language: l.id })}>
+              {resolved.report_language === l.id && <Check className="mr-1 h-4 w-4" />}{l.name}
+            </Button>
+          ))}
+        </div>
+        <p className="text-xs text-muted-foreground">Every heading and label prints in this language. Names, scores and remarks typed by staff stay as written.</p>
+      </div>
+
       {/* SECTION 4: Template Colours & Position Options */}
-      {(resolved.layout_id === 'islamiyya_arabic' || resolved.layout_id === 'islamiyya_arabic_hausa') && <div className="grid gap-4 sm:grid-cols-2">
+      {resolved.report_language === 'ar' && <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2"><Label htmlFor="arabic-school-name">School name in Arabic / اسم المدرسة</Label><Input id="arabic-school-name" dir="rtl" lang="ar" value={draft.arabic_school_name ?? ''} onChange={e => setDraft({ ...draft, arabic_school_name: e.target.value })} /></div>
         <div className="space-y-2"><Label htmlFor="arabic-school-address">Address in Arabic / العنوان</Label><Input id="arabic-school-address" dir="rtl" lang="ar" value={draft.arabic_address ?? ''} onChange={e => setDraft({ ...draft, arabic_address: e.target.value })} /></div>
       </div>}
@@ -432,16 +444,16 @@ export function ReportTemplateSettings({ school }: { school: { id: string; name:
               report_template: draft,
             },
             students: {
-              first_name: resolved.layout_id === 'islamiyya_arabic' ? 'زينب' : 'Zainab',
-              last_name: resolved.layout_id === 'islamiyya_arabic' ? 'بلو' : 'Bello',
-              middle_name: resolved.layout_id === 'islamiyya_arabic' ? 'موسى' : 'Musa',
+              first_name: resolved.report_language === 'ar' ? 'زينب' : 'Zainab',
+              last_name: resolved.report_language === 'ar' ? 'بلو' : 'Bello',
+              middle_name: resolved.report_language === 'ar' ? 'موسى' : 'Musa',
               admission_no: 'ADM/2026/014',
               gender: 'female',
               dob: '2014-06-18',
             },
             classes: {
-              name: resolved.layout_id === 'islamiyya_arabic' ? 'المستوى الثاني' : section === 'secondary' ? 'JSS 2' : section === 'primary' ? 'Primary 5' : 'Nursery 2',
-              arm: resolved.layout_id === 'islamiyya_arabic' ? 'أ' : 'Gold',
+              name: resolved.report_language === 'ar' ? 'المستوى الثاني' : section === 'secondary' ? 'JSS 2' : section === 'primary' ? 'Primary 5' : 'Nursery 2',
+              arm: resolved.report_language === 'ar' ? 'أ' : 'Gold',
               section,
             },
             session: typeof school.current_session === 'string' ? school.current_session : '2025/2026',
@@ -451,11 +463,11 @@ export function ReportTemplateSettings({ school }: { school: { id: string; name:
             days_total: 65,
             days_present: 63,
             days_absent: 2,
-            teacher_remark: resolved.layout_id === 'islamiyya_arabic' ? 'طالب مجتهد، مواظب على الحفظ والمراجعة، وحسن الخلق.' : 'An exceptional student with strong analytical skills and consistent dedication.',
-            principal_remark: resolved.layout_id === 'islamiyya_arabic' ? 'بارك الله فيك، واصل الاجتهاد والتميز.' : 'Commended for academic excellence and outstanding character.',
+            teacher_remark: resolved.report_language === 'ar' ? 'طالب مجتهد، مواظب على الحفظ والمراجعة، وحسن الخلق.' : 'An exceptional student with strong analytical skills and consistent dedication.',
+            principal_remark: resolved.report_language === 'ar' ? 'بارك الله فيك، واصل الاجتهاد والتميز.' : 'Commended for academic excellence and outstanding character.',
             verification_code: 'VERIFY-2026-SAMPLE',
           }}
-          assessments={resolved.layout_id === 'islamiyya_arabic' ? [
+          assessments={resolved.report_language === 'ar' ? [
             { id: 'ar-1', ca1: 18, ca2: 19, exam: 54, total: 91, grade: 'A', remark: 'ممتاز', subjects: { name: 'القرآن الكريم', code: 'QUR' } },
             { id: 'ar-2', ca1: 17, ca2: 18, exam: 50, total: 85, grade: 'A', remark: 'ممتاز', subjects: { name: 'التجويد', code: 'TAJ' } },
             { id: 'ar-3', ca1: 16, ca2: 17, exam: 49, total: 82, grade: 'A', remark: 'جيد جداً', subjects: { name: 'اللغة العربية', code: 'ARA' } },

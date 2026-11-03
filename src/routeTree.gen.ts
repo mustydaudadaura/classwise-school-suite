@@ -31,6 +31,7 @@ import { Route as AuthenticatedKioskRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedMyAttendanceRouteImport } from './routes/_authenticated/my-attendance'
 import { Route as AuthenticatedPromotionRouteImport } from './routes/_authenticated/promotion'
 import { Route as AuthenticatedReportCardsRouteImport } from './routes/_authenticated/report-cards'
+import { Route as AuthenticatedReportDistributionRouteImport } from './routes/_authenticated/report-distribution'
 import { Route as AuthenticatedResultsRouteImport } from './routes/_authenticated/results'
 import { Route as AuthenticatedSchoolsRouteImport } from './routes/_authenticated/schools'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
@@ -166,6 +167,12 @@ const AuthenticatedReportCardsRoute =
   AuthenticatedReportCardsRouteImport.update({
     id: '/report-cards',
     path: '/report-cards',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedReportDistributionRoute =
+  AuthenticatedReportDistributionRouteImport.update({
+    id: '/report-distribution',
+    path: '/report-distribution',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
 const AuthenticatedResultsRoute = AuthenticatedResultsRouteImport.update({
@@ -310,6 +317,7 @@ export interface FileRoutesByFullPath {
   '/my-attendance': typeof AuthenticatedMyAttendanceRoute
   '/promotion': typeof AuthenticatedPromotionRoute
   '/report-cards': typeof AuthenticatedReportCardsRoute
+  '/report-distribution': typeof AuthenticatedReportDistributionRoute
   '/results': typeof AuthenticatedResultsRoute
   '/schools': typeof AuthenticatedSchoolsRoute
   '/settings': typeof AuthenticatedSettingsRoute
@@ -355,6 +363,7 @@ export interface FileRoutesByTo {
   '/my-attendance': typeof AuthenticatedMyAttendanceRoute
   '/promotion': typeof AuthenticatedPromotionRoute
   '/report-cards': typeof AuthenticatedReportCardsRoute
+  '/report-distribution': typeof AuthenticatedReportDistributionRoute
   '/results': typeof AuthenticatedResultsRoute
   '/schools': typeof AuthenticatedSchoolsRoute
   '/settings': typeof AuthenticatedSettingsRoute
@@ -403,6 +412,7 @@ export interface FileRoutesById {
   '/_authenticated/my-attendance': typeof AuthenticatedMyAttendanceRoute
   '/_authenticated/promotion': typeof AuthenticatedPromotionRoute
   '/_authenticated/report-cards': typeof AuthenticatedReportCardsRoute
+  '/_authenticated/report-distribution': typeof AuthenticatedReportDistributionRoute
   '/_authenticated/results': typeof AuthenticatedResultsRoute
   '/_authenticated/schools': typeof AuthenticatedSchoolsRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
@@ -451,6 +461,7 @@ export interface FileRouteTypes {
     | '/my-attendance'
     | '/promotion'
     | '/report-cards'
+    | '/report-distribution'
     | '/results'
     | '/schools'
     | '/settings'
@@ -496,6 +507,7 @@ export interface FileRouteTypes {
     | '/my-attendance'
     | '/promotion'
     | '/report-cards'
+    | '/report-distribution'
     | '/results'
     | '/schools'
     | '/settings'
@@ -543,6 +555,7 @@ export interface FileRouteTypes {
     | '/_authenticated/my-attendance'
     | '/_authenticated/promotion'
     | '/_authenticated/report-cards'
+    | '/_authenticated/report-distribution'
     | '/_authenticated/results'
     | '/_authenticated/schools'
     | '/_authenticated/settings'
@@ -742,6 +755,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedReportCardsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/report-distribution': {
+      id: '/_authenticated/report-distribution'
+      path: '/report-distribution'
+      fullPath: '/report-distribution'
+      preLoaderRoute: typeof AuthenticatedReportDistributionRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/results': {
       id: '/_authenticated/results'
       path: '/results'
@@ -934,6 +954,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedMyAttendanceRoute: typeof AuthenticatedMyAttendanceRoute
   AuthenticatedPromotionRoute: typeof AuthenticatedPromotionRoute
   AuthenticatedReportCardsRoute: typeof AuthenticatedReportCardsRoute
+  AuthenticatedReportDistributionRoute: typeof AuthenticatedReportDistributionRoute
   AuthenticatedResultsRoute: typeof AuthenticatedResultsRoute
   AuthenticatedSchoolsRoute: typeof AuthenticatedSchoolsRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
@@ -958,6 +979,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedMyAttendanceRoute: AuthenticatedMyAttendanceRoute,
   AuthenticatedPromotionRoute: AuthenticatedPromotionRoute,
   AuthenticatedReportCardsRoute: AuthenticatedReportCardsRoute,
+  AuthenticatedReportDistributionRoute: AuthenticatedReportDistributionRoute,
   AuthenticatedResultsRoute: AuthenticatedResultsRoute,
   AuthenticatedSchoolsRoute: AuthenticatedSchoolsRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,

@@ -21,7 +21,7 @@ export const Route = createFileRoute("/_authenticated")({
   component: AuthedLayout,
 });
 
-const PAGE_ACCESS: Record<string, SchoolPermission> = { "/staff-attendance": "staffatt.view", "/kiosk": "staffatt.kiosk", "/students": "students.view", "/admissions": "students.view", "/classes": "academics.view", "/academics": "academics.view", "/islamic": "academics.view", "/promotion": "promotion.edit", "/results": "results.edit", "/attendance": "attendance.view", "/fees": "fees.view", "/announcements": "communication.view", "/report-cards": "results.view", "/documents": "students.view", "/users": "users.edit", "/settings": "settings.edit" };
+const PAGE_ACCESS: Record<string, SchoolPermission> = { "/staff-attendance": "staffatt.view", "/kiosk": "staffatt.kiosk", "/students": "students.view", "/admissions": "students.view", "/classes": "academics.view", "/academics": "academics.view", "/islamic": "academics.view", "/promotion": "promotion.edit", "/results": "results.edit", "/attendance": "attendance.view", "/fees": "fees.view", "/announcements": "communication.view", "/report-cards": "results.view", "/report-distribution": "results.view", "/documents": "students.view", "/users": "users.edit", "/settings": "settings.edit" };
 
 const NAV = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["super_admin", "school_admin", "teacher", "form_master", "accountant", "student", "parent"] },
@@ -39,6 +39,7 @@ const NAV = [
   { to: "/fees", label: "Fees & Finances", icon: Wallet, roles: ["super_admin", "school_admin", "accountant"] },
   { to: "/announcements", label: "Announcements", icon: Megaphone, roles: ["super_admin", "school_admin"] },
   { to: "/report-cards", label: "Report Cards", icon: Award, roles: ["super_admin", "school_admin", "teacher", "form_master", "student", "parent"] },
+  { to: "/report-distribution", label: "Report PDFs & WhatsApp", icon: Award, roles: ["super_admin", "school_admin", "teacher", "form_master"] },
   { to: "/documents", label: "Certificates & Reports", icon: ScrollText, roles: ["super_admin", "school_admin"] },
   { to: "/users", label: "Staff & User Credentials", icon: UserCog, roles: ["super_admin", "school_admin"] },
   { to: "/settings", search: { tab: "reports" }, label: "Report Card Design", icon: Award, roles: ["super_admin", "school_admin"] },

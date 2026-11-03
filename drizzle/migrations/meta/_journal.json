@@ -127,6 +127,13 @@
       "when": 1793682274256,
       "tag": "0017_report_ranking_and_whatsapp_delivery",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1793682758742,
+      "tag": "0018_allow_hausa_report_layouts",
+      "breakpoints": true
     }
   ]
 }

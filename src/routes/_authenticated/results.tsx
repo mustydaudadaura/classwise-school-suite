@@ -46,6 +46,9 @@ function ResultsPage() {
   const [scores, setScores] = useState<Record<string, { ca1: number; ca2: number; exam: number }>>({});
   const [entryMode, setEntryMode] = useState('individual');
   const [saving, setSaving] = useState(false);
+  const [rowSaving, setRowSaving] = useState<Record<string, boolean>>({});
+  const [dirty, setDirty] = useState<Record<string, boolean>>({});
+  const [autoSave, setAutoSave] = useState(true);
 
   const canApprove = access.can("results.publish");
   const [remarks, setRemarks] = useState<Record<string, string>>({});
@@ -244,24 +247,25 @@ function ResultsPage() {
     },
   });
 
-  const saveScore = async (studentId: string) => {
-    if (saving) return;
-    if (!schoolId) return toast.error("No school");
-    if (!classes?.some(c => c.id === filters.class_id)) return toast.error("Choose your assigned class");
+  const saveScore = async (studentId: string, quiet = false): Promise<boolean> => {
+    if (rowSaving[studentId]) return false;
+    const fail = (m: string) => { toast.error(m); return false; };
+    if (!schoolId) return fail("No school");
+    if (!classes?.some(c => c.id === filters.class_id)) return fail("Choose your assigned class");
     if (!subjects?.some(s => s.id === filters.subject_id)) {
-      return toast.error("Access Denied: You can only enter or modify scores for your assigned subjects.");
+      return fail("Access Denied: You can only enter or modify scores for your assigned subjects.");
     }
     const ex = existing?.[studentId];
     const s = scores[studentId] ?? { ca1: ex?.ca1 ?? 0, ca2: ex?.ca2 ?? 0, exam: ex?.exam ?? 0 };
 
     const validation = validateScores(s.ca1, s.ca2, s.exam, academicConfig.caRatio);
     if (!validation.isValid) {
-      return toast.error(validation.error || "Invalid score values entered");
+      return fail(validation.error || "Invalid score values entered");
     }
 
     const gradeDef = calculateGrade(validation.total, scaleType);
 
-    setSaving(true);
+    setRowSaving((p) => ({ ...p, [studentId]: true }));
     const { data: saved, error } = await supabase.from("assessments").upsert({
       school_id: schoolId,
       student_id: studentId,
@@ -277,12 +281,28 @@ function ResultsPage() {
       remark: gradeDef.remark,
       status: "submitted",
     }, { onConflict: "student_id,subject_id,session,term" }).select('id,student_id,subject_id,ca1,ca2,exam').single();
-    setSaving(false);
-    if (error) return toast.error(error.message);
-    if (!saved || saved.student_id !== studentId || saved.subject_id !== filters.subject_id || Number(saved.ca1) !== s.ca1 || Number(saved.exam) !== s.exam) return toast.error('Saved scores could not be confirmed');
-    toast.success(`Score saved (${gradeDef.grade} — ${gradeDef.remark})`);
+    setRowSaving((p) => ({ ...p, [studentId]: false }));
+    if (error) return fail(error.message);
+    if (!saved || saved.student_id !== studentId || saved.subject_id !== filters.subject_id || Number(saved.ca1) !== s.ca1 || Number(saved.exam) !== s.exam) return fail('Saved scores could not be confirmed');
+    setDirty((p) => ({ ...p, [studentId]: false }));
+    if (!quiet) toast.success(`Score saved (${gradeDef.grade} — ${gradeDef.remark})`);
     qc.invalidateQueries({ queryKey: ["assessments"] });
     qc.invalidateQueries({ queryKey: ["class-monitor-assessments"] });
+    return true;
+  };
+
+  const saveAll = async () => {
+    const ids = Object.keys(dirty).filter((id) => dirty[id]);
+    if (!ids.length) return toast.info("No changed scores to save");
+    setSaving(true);
+    let ok = 0;
+    for (const id of ids) if (await saveScore(id, true)) ok++;
+    setSaving(false);
+    toast.success(`${ok} of ${ids.length} students' scores saved`);
+  };
+
+  const autoSaveRow = (studentId: string) => {
+    if (autoSave && dirty[studentId]) void saveScore(studentId, true);
   };
 
   // Student/parent view: strictly restricted to their own / their registered children's approved & published results
@@ -575,6 +595,10 @@ function ResultsPage() {
         <Card>
           <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
             <CardTitle>Scoresheet</CardTitle>
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={autoSave} onChange={(e) => setAutoSave(e.target.checked)} /> Save automatically</label>
+              <Button size="sm" disabled={saving || existingLoading} onClick={saveAll}>{saving ? "Saving…" : `Save all changes${Object.values(dirty).filter(Boolean).length ? ` (${Object.values(dirty).filter(Boolean).length})` : ""}`}</Button>
+            </div>
             {canApprove && (
               <Button size="sm" variant="secondary" onClick={() => review(Object.values(existing ?? {}).filter((a: any) => a.status === "submitted").map((a: any) => a.id), "approved")}>
                 Approve all submitted
@@ -610,7 +634,9 @@ function ResultsPage() {
                           max={caRatioConfig.ca1Max}
                           className="w-20"
                           value={cur.ca1}
-                          onChange={(e) => setScores({ ...scores, [st.id]: { ...cur, ca1: +e.target.value } })}
+                          onChange={(e) => { setScores({ ...scores, [st.id]: { ...cur, ca1: +e.target.value } }); setDirty((p) => ({ ...p, [st.id]: true })); }}
+                          onBlur={() => autoSaveRow(st.id)}
+                          disabled={ex?.status === "approved" && !canApprove}
                         />
                       </TableCell>
                       {caRatioConfig.ca2Max > 0 && (
@@ -621,7 +647,9 @@ function ResultsPage() {
                             max={caRatioConfig.ca2Max}
                             className="w-20"
                             value={cur.ca2}
-                            onChange={(e) => setScores({ ...scores, [st.id]: { ...cur, ca2: +e.target.value } })}
+                            onChange={(e) => { setScores({ ...scores, [st.id]: { ...cur, ca2: +e.target.value } }); setDirty((p) => ({ ...p, [st.id]: true })); }}
+                          onBlur={() => autoSaveRow(st.id)}
+                          disabled={ex?.status === "approved" && !canApprove}
                           />
                         </TableCell>
                       )}
@@ -632,7 +660,9 @@ function ResultsPage() {
                           max={caRatioConfig.examMax}
                           className="w-20"
                           value={cur.exam}
-                          onChange={(e) => setScores({ ...scores, [st.id]: { ...cur, exam: +e.target.value } })}
+                          onChange={(e) => { setScores({ ...scores, [st.id]: { ...cur, exam: +e.target.value } }); setDirty((p) => ({ ...p, [st.id]: true })); }}
+                          onBlur={() => autoSaveRow(st.id)}
+                          disabled={ex?.status === "approved" && !canApprove}
                         />
                       </TableCell>
                       <TableCell className="font-bold text-sm">{liveTotal}</TableCell>
@@ -658,7 +688,7 @@ function ResultsPage() {
                         {ex?.review_remark && <p className="mt-1 text-xs text-muted-foreground">Remark: {ex.review_remark}</p>}
                       </TableCell>
                       <TableCell className="space-y-1 min-w-[160px]">
-                        <Button size="sm" disabled={saving || existingLoading || (ex?.status === "approved" && !canApprove)} onClick={() => saveScore(st.id)}>{saving ? 'Saving…' : ex?.status === "draft" ? "Resubmit" : "Save"}</Button>
+                        <Button size="sm" disabled={rowSaving[st.id] || existingLoading || (ex?.status === "approved" && !canApprove)} onClick={() => saveScore(st.id)}>{rowSaving[st.id] ? 'Saving…' : dirty[st.id] ? 'Save' : ex ? 'Saved ✓' : ex?.status === "draft" ? "Resubmit" : "Save"}</Button>
                         {canReviewSelectedClass && ex && (
                           <div className="flex flex-col gap-1">
                             {canApprove && ex.status !== "approved" && <Button size="sm" variant="outline" onClick={() => review([ex.id], "approved")}>Approve</Button>}

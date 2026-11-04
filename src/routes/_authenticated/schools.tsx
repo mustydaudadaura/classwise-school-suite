@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Settings2, RefreshCw, Copy, Wand2, ExternalLink, Globe, Download } from "lucide-react";
 import { toast } from "sonner";
+import { BulkRegistryDelete } from "@/components/BulkRegistryDelete";
 import { RegistryActions } from "@/components/RegistryActions";
 import { schoolRegistrationSchema } from "@/lib/school-registration";
 import { selectSchool } from "@/lib/school-access";
@@ -214,7 +215,7 @@ function SchoolsPage() {
 
 
       <Card>
-        <CardHeader><CardTitle>All schools</CardTitle></CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between"><CardTitle>All schools</CardTitle><BulkRegistryDelete table="schools" label="schools" items={(schools ?? []).map((s: any) => ({ id: s.id, name: s.name }))} /></CardHeader>
         <CardContent>
           {schoolsError ? <p role="alert" className="text-destructive">Schools could not be loaded: {schoolsError.message}</p> : isLoading ? <p className="text-muted-foreground">Loading…</p> : (
             <Table>

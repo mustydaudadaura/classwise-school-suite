@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import { BulkRegistryDelete } from "@/components/BulkRegistryDelete";
 import { RegistryActions } from "@/components/RegistryActions";
 import { useSchoolAccess } from "@/hooks/useSchoolAccess";
 import { classSubmissionState } from "@/lib/registry-permissions";
@@ -169,6 +170,7 @@ function ClassesPage() {
           </Card>}
           <Card>
             <CardContent className="pt-6">
+              {isAdministrator && <div className="mb-3 flex justify-end"><BulkRegistryDelete table="classes" label="classes" items={(classes ?? []).map((c: any) => ({ id: c.id, name: c.name }))} /></div>}
               <Table>
                 <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Level</TableHead><TableHead>Arm</TableHead><TableHead>Section</TableHead><TableHead>Form master</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
                 <TableBody>
@@ -207,6 +209,7 @@ function ClassesPage() {
           </Card>}
           <Card>
             <CardContent className="pt-6">
+              {isAdministrator && <div className="mb-3 flex justify-end"><BulkRegistryDelete table="subjects" label="subjects" items={(subjects ?? []).map((s: any) => ({ id: s.id, name: `${s.name}${s.classes?.name ? ` (${s.classes.name})` : ""}` }))} /></div>}
               <Table>
                 <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Code</TableHead><TableHead>Class</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
                 <TableBody>

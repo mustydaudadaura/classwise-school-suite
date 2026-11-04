@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Plus, UserPlus, Search, X, SlidersHorizontal, ArrowUpDown, Download } from "lucide-react";
 import { toast } from "sonner";
 import { PassportPhotoStudioModal } from "@/components/admissions/PassportPhotoStudioModal";
+import { BulkRegistryDelete } from "@/components/BulkRegistryDelete";
 import { RegistryActions } from "@/components/RegistryActions";
 import { hasRole } from "@/hooks/useAuth";
 import { requireSavedRecord } from "@/lib/registry-save";
@@ -356,7 +357,7 @@ function StudentsPage() {
         <CardHeader className="pb-3">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div>
-              <CardTitle>Student Directory</CardTitle>
+              <div className="flex items-center gap-2"><CardTitle>Student Directory</CardTitle>{canManage && <BulkRegistryDelete table="students" label="students" items={filteredStudents.map((s: any) => ({ id: s.id, name: `${s.admission_no ?? ""} ${[s.first_name, s.last_name].filter(Boolean).join(" ")}`.trim() }))} />}</div>
               <CardDescription>
                 Search and filter student profiles by name, admission ID, or class.
               </CardDescription>

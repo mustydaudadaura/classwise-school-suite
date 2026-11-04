@@ -23,7 +23,12 @@ export function GeneralSubjectEntry(p: Props) {
   // Device draft: unsaved broadsheet cells survive leaving the tab until the final save.
   const draftKey = scoreDraftKey(['broadsheet', p.schoolId, p.classId, p.session, p.term]);
   const [restored, setRestored] = useState(false);
-  useEffect(() => { setChanges(loadScoreDraft(draftKey)); setRestored(true); }, [draftKey]);
+  useEffect(() => {
+    const draft = loadScoreDraft(draftKey);
+    setChanges(Object.fromEntries(Object.entries(draft).filter(([id]) => { const [st, sub] = id.split(':'); return p.students.some(s => s.id === st) && p.subjects.some(s => s.id === sub); })));
+    setRestored(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftKey]);
   useEffect(() => { if (restored) saveScoreDraft(draftKey, changes); }, [restored, draftKey, changes]);
   const results = useQuery({
     queryKey: ['assessments', 'broadsheet', p.schoolId, p.classId, p.session, p.term],

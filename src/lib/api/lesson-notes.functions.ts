@@ -115,7 +115,7 @@ Write the real subject content for THIS topic: correct definitions, facts, formu
     const geminiKey = process.env.GEMINI_API_KEY;
     if (geminiKey) {
       try {
-        const plan = await generateWithCompatible("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", "gemini-2.5-flash", geminiKey, promptText);
+        const plan = await generateWithCompatible("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", "gemini-flash-latest", geminiKey, promptText);
         if (isComplete(plan)) return { header, plan, provider: "gemini" as const };
       } catch (err: any) {
         console.error("Gemini lesson generation failed, trying next:", err?.message);

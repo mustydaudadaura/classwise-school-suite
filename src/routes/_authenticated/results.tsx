@@ -19,6 +19,7 @@ import { scoreEntryClasses, scoreEntrySubjects, isClassFormMaster } from "@/lib/
 import { buildClassSubmissionSummary } from "@/lib/hierarchical-rbac";
 import { GeneralSubjectEntry } from "@/components/GeneralSubjectEntry";
 import { classSubjects } from '@/lib/broadsheet';
+import { loadScoreDraft, saveScoreDraft, scoreDraftKey } from '@/lib/score-drafts';
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   calculateGrade,
@@ -300,6 +301,27 @@ function ResultsPage() {
     setSaving(false);
     toast.success(`${ok} of ${ids.length} students' scores saved`);
   };
+
+  // Device draft: typed scores survive leaving the tab, refreshing or losing connection.
+  const draftKey = scoreDraftKey([schoolId, filters.class_id, filters.subject_id, filters.session, filters.term]);
+  const [restoredDraftKey, setRestoredDraftKey] = useState<string | null>(null);
+  const [draftCount, setDraftCount] = useState(0);
+  useEffect(() => {
+    const draft = loadScoreDraft(draftKey);
+    const ids = Object.keys(draft);
+    if (ids.length) {
+      setScores((prev) => ({ ...prev, ...draft }));
+      setDirty((prev) => ({ ...prev, ...Object.fromEntries(ids.map((id) => [id, true])) }));
+    }
+    setDraftCount(ids.length);
+    setRestoredDraftKey(draftKey);
+  }, [draftKey]);
+  useEffect(() => {
+    if (!draftKey || restoredDraftKey !== draftKey) return;
+    const draft = Object.fromEntries(Object.keys(dirty).filter((id) => dirty[id] && scores[id]).map((id) => [id, scores[id]]));
+    saveScoreDraft(draftKey, draft);
+    setDraftCount(Object.keys(draft).length);
+  }, [draftKey, restoredDraftKey, scores, dirty]);
 
   const autoSaveRow = (studentId: string) => {
     if (autoSave && dirty[studentId]) void saveScore(studentId, true);
@@ -597,7 +619,8 @@ function ResultsPage() {
             <CardTitle>Scoresheet</CardTitle>
             <div className="flex flex-wrap items-center gap-2">
               <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={autoSave} onChange={(e) => setAutoSave(e.target.checked)} /> Save automatically</label>
-              <Button size="sm" disabled={saving || existingLoading} onClick={saveAll}>{saving ? "Saving…" : `Save all changes${Object.values(dirty).filter(Boolean).length ? ` (${Object.values(dirty).filter(Boolean).length})` : ""}`}</Button>
+              {draftCount > 0 && <span className="text-xs text-muted-foreground">Draft kept on this device ({draftCount})</span>}
+              <Button size="sm" disabled={saving || existingLoading} onClick={saveAll}>{saving ? "Saving…" : `Final save${Object.values(dirty).filter(Boolean).length ? ` (${Object.values(dirty).filter(Boolean).length})` : ""}`}</Button>
             </div>
             {canApprove && (
               <Button size="sm" variant="secondary" onClick={() => review(Object.values(existing ?? {}).filter((a: any) => a.status === "submitted").map((a: any) => a.id), "approved")}>

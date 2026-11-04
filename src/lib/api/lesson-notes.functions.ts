@@ -112,9 +112,14 @@ Write the real subject content for THIS topic: correct definitions, facts, formu
     let lastStatus: number | undefined;
 
     // 0. Gemini first (school's own free Google AI Studio key).
-    const geminiKey = process.env.GEMINI_API_KEY;
-    if (geminiKey) {
+    // Multiple keys supported: GEMINI_API_KEY, GEMINI_API_KEY_2 … _5. When one runs out the next is tried.
+    const geminiKeys = ["", "_2", "_3", "_4", "_5"]
+      .map((s) => process.env[`GEMINI_API_KEY${s}`])
+      .filter((k): k is string => Boolean(k));
+    const geminiKey = geminiKeys[0];
+    for (const key of geminiKeys) {
       for (const model of ["gemini-flash-latest", "gemini-flash-lite-latest"]) {
+        const geminiKey = key;
         try {
           const plan = await generateWithCompatible("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", model, geminiKey, promptText);
           if (isComplete(plan)) return { header, plan, provider: "gemini" as const };

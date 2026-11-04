@@ -114,11 +114,13 @@ Write the real subject content for THIS topic: correct definitions, facts, formu
     // 0. Gemini first (school's own free Google AI Studio key).
     const geminiKey = process.env.GEMINI_API_KEY;
     if (geminiKey) {
-      try {
-        const plan = await generateWithCompatible("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", "gemini-flash-latest", geminiKey, promptText);
-        if (isComplete(plan)) return { header, plan, provider: "gemini" as const };
-      } catch (err: any) {
-        console.error("Gemini lesson generation failed, trying next:", err?.message);
+      for (const model of ["gemini-flash-latest", "gemini-flash-lite-latest"]) {
+        try {
+          const plan = await generateWithCompatible("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", model, geminiKey, promptText);
+          if (isComplete(plan)) return { header, plan, provider: "gemini" as const };
+        } catch (err: any) {
+          console.error(`Gemini (${model}) lesson generation failed, trying next:`, err?.message);
+        }
       }
     }
 

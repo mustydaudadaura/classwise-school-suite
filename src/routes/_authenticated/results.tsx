@@ -98,7 +98,7 @@ function ResultsPage() {
   useEffect(() => {
     if (!classes) return;
     setFilters(previous => classes.some(c => c.id === previous.class_id) ? previous : { ...previous, class_id: classes[0]?.id ?? '', subject_id: '' });
-    setScores({});
+    setScores({}); setDirty({});
   }, [classes]);
 
   const selectedClass = classes?.find((c: any) => c.id === filters.class_id);
@@ -172,10 +172,10 @@ function ResultsPage() {
   useEffect(() => {
     if (subjects?.length && !subjects.some(s => s.id === filters.subject_id)) {
       setFilters(previous => ({ ...previous, subject_id: subjects[0]?.id ?? '' }));
-      setScores({});
+      setScores({}); setDirty({});
     } else if (subjects && subjects.length === 0 && filters.subject_id) {
       setFilters(previous => ({ ...previous, subject_id: '' }));
-      setScores({});
+      setScores({}); setDirty({});
     }
   }, [subjects, filters.subject_id]);
 
@@ -459,7 +459,7 @@ function ResultsPage() {
               value={filters.class_id}
               onValueChange={(v) => {
                 setFilters({ ...filters, class_id: v, subject_id: '' });
-                setScores({});
+                setScores({}); setDirty({});
               }}
             >
               <SelectTrigger aria-label="Result class"><SelectValue placeholder="Choose Class" /></SelectTrigger>
@@ -472,7 +472,7 @@ function ResultsPage() {
             <Label>Subject</Label>
             <Select
               value={filters.subject_id}
-              onValueChange={(v) => { setFilters({ ...filters, subject_id: v }); setScores({}); }}
+              onValueChange={(v) => { setFilters({ ...filters, subject_id: v }); setScores({}); setDirty({}); }}
             >
               <SelectTrigger aria-label="Result subject"><SelectValue placeholder={subjects?.length ? "Choose Subject" : "No subjects available"} /></SelectTrigger>
               <SelectContent>
@@ -484,10 +484,10 @@ function ResultsPage() {
               </SelectContent>
             </Select>
           </div>}
-          <div><Label>Session</Label><Input value={filters.session} onChange={(e) => { setFilters({ ...filters, session: e.target.value }); setScores({}); }} /></div>
+          <div><Label>Session</Label><Input value={filters.session} onChange={(e) => { setFilters({ ...filters, session: e.target.value }); setScores({}); setDirty({}); }} /></div>
           <div>
             <Label>Term</Label>
-            <Select value={filters.term} onValueChange={(v: any) => { setFilters({ ...filters, term: v }); setScores({}); }}>
+            <Select value={filters.term} onValueChange={(v: any) => { setFilters({ ...filters, term: v }); setScores({}); setDirty({}); }}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="first">First</SelectItem>
@@ -688,7 +688,7 @@ function ResultsPage() {
                         {ex?.review_remark && <p className="mt-1 text-xs text-muted-foreground">Remark: {ex.review_remark}</p>}
                       </TableCell>
                       <TableCell className="space-y-1 min-w-[160px]">
-                        <Button size="sm" disabled={rowSaving[st.id] || existingLoading || (ex?.status === "approved" && !canApprove)} onClick={() => saveScore(st.id)}>{rowSaving[st.id] ? 'Saving…' : dirty[st.id] ? 'Save' : ex ? 'Saved ✓' : ex?.status === "draft" ? "Resubmit" : "Save"}</Button>
+                        <Button size="sm" disabled={rowSaving[st.id] || existingLoading || (ex?.status === "approved" && !canApprove)} onClick={() => saveScore(st.id)}>{rowSaving[st.id] ? 'Saving…' : dirty[st.id] ? (ex?.status === "draft" ? "Resubmit" : 'Save') : ex ? (ex.status === "draft" ? "Resubmit" : 'Saved ✓') : "Save"}</Button>
                         {canReviewSelectedClass && ex && (
                           <div className="flex flex-col gap-1">
                             {canApprove && ex.status !== "approved" && <Button size="sm" variant="outline" onClick={() => review([ex.id], "approved")}>Approve</Button>}

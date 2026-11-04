@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { loadScoreDraft, saveScoreDraft, scoreDraftKey } from '@/lib/score-drafts';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -19,6 +20,11 @@ export function GeneralSubjectEntry(p: Props) {
   const config = CA_RATIOS[p.ratio];
   const [changes, setChanges] = useState<Record<string, EntryScore>>({});
   const [saving, setSaving] = useState(false);
+  // Device draft: unsaved broadsheet cells survive leaving the tab until the final save.
+  const draftKey = scoreDraftKey(['broadsheet', p.schoolId, p.classId, p.session, p.term]);
+  const [restored, setRestored] = useState(false);
+  useEffect(() => { setChanges(loadScoreDraft(draftKey)); setRestored(true); }, [draftKey]);
+  useEffect(() => { if (restored) saveScoreDraft(draftKey, changes); }, [restored, draftKey, changes]);
   const results = useQuery({
     queryKey: ['assessments', 'broadsheet', p.schoolId, p.classId, p.session, p.term],
     queryFn: async () => {
@@ -51,7 +57,7 @@ export function GeneralSubjectEntry(p: Props) {
   if (results.error) return <p role="alert" className="text-destructive">Scores could not be loaded: {results.error.message}</p>;
   if (results.isPending) return <p>Loading scores…</p>;
   return <section className="space-y-3">
-    <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-semibold">General subject broadsheet</h2><Button disabled={saving || !Object.keys(changes).length} onClick={save}>{saving ? 'Saving…' : `Save changed scores (${Object.keys(changes).length})`}</Button></div>
+    <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-semibold">General subject broadsheet</h2><div className="flex flex-wrap items-center gap-2">{Object.keys(changes).length > 0 && <span className="text-xs text-muted-foreground">Draft kept on this device — saved automatically as you type</span>}<Button disabled={saving || !Object.keys(changes).length} onClick={save}>{saving ? 'Saving…' : `Final save (${Object.keys(changes).length})`}</Button></div></div>
     <Table>
       <TableHeader><TableRow><TableHead className="min-w-44">Student</TableHead>{p.subjects.map(s => <TableHead key={s.id} colSpan={config.ca2Max > 0 ? 4 : 3} className="border-l text-center">{s.name}</TableHead>)}</TableRow>
       <TableRow><TableHead>Admission no.</TableHead>{p.subjects.map(s => <TableHead key={s.id} colSpan={config.ca2Max > 0 ? 4 : 3} className="border-l"><div className={`grid gap-2 ${config.ca2Max > 0 ? 'min-w-88 grid-cols-4' : 'min-w-64 grid-cols-3'}`}><span>{config.ca1Label} ({config.ca1Max})</span>{config.ca2Max > 0 && <span>{config.ca2Label} ({config.ca2Max})</span>}<span>{config.examLabel} ({config.examMax})</span><span>Total</span></div></TableHead>)}</TableRow></TableHeader>

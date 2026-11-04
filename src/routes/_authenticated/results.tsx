@@ -19,6 +19,7 @@ import { scoreEntryClasses, scoreEntrySubjects, isClassFormMaster } from "@/lib/
 import { buildClassSubmissionSummary } from "@/lib/hierarchical-rbac";
 import { GeneralSubjectEntry } from "@/components/GeneralSubjectEntry";
 import { classSubjects } from '@/lib/broadsheet';
+import { loadScoreDraft, saveScoreDraft, scoreDraftKey } from '@/lib/score-drafts';
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   calculateGrade,

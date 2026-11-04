@@ -111,7 +111,18 @@ Write the real subject content for THIS topic: correct definitions, facts, formu
     const isComplete = (p: LessonPlan | null): p is LessonPlan => !!p && !!p.lesson_note?.trim() && p.presentation.length > 0;
     let lastStatus: number | undefined;
 
-    // 1. DeepSeek first (school's own DeepSeek account).
+    // 0. Gemini first (school's own free Google AI Studio key).
+    const geminiKey = process.env.GEMINI_API_KEY;
+    if (geminiKey) {
+      try {
+        const plan = await generateWithCompatible("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", "gemini-2.5-flash", geminiKey, promptText);
+        if (isComplete(plan)) return { header, plan, provider: "gemini" as const };
+      } catch (err: any) {
+        console.error("Gemini lesson generation failed, trying next:", err?.message);
+      }
+    }
+
+    // 1. DeepSeek next (school's own DeepSeek account).
     const deepseekKey = process.env.DEEPSEEK_API_KEY;
     if (deepseekKey) {
       try {
@@ -134,18 +145,22 @@ Write the real subject content for THIS topic: correct definitions, facts, formu
       }
     }
 
-    if (!deepseekKey && !apiKey) throw new Error("The lesson AI is not configured. Please contact the school administrator.");
-    if (lastStatus === 402) throw new Error("DeepSeek did not answer and AI credits have run out. Check your DeepSeek balance or top up credits, then try again.");
+    if (!geminiKey && !deepseekKey && !apiKey) throw new Error("The lesson AI is not configured. Please contact the school administrator.");
+    if (lastStatus === 402) throw new Error("Gemini/DeepSeek did not answer and AI credits have run out. Check your DeepSeek balance or top up credits, then try again.");
     if (lastStatus === 429) throw new Error("The lesson AI is busy right now. Please wait a minute and try again.");
     throw new Error("The lesson AI could not write this lesson right now. Please try again.");
   });
 
-async function generateWithDeepSeek(key: string, promptText: string): Promise<LessonPlan | null> {
-  const res = await fetch("https://api.deepseek.com/chat/completions", {
+function generateWithDeepSeek(key: string, promptText: string) {
+  return generateWithCompatible("https://api.deepseek.com/chat/completions", "deepseek-chat", key, promptText);
+}
+
+async function generateWithCompatible(url: string, model: string, key: string, promptText: string): Promise<LessonPlan | null> {
+  const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
     body: JSON.stringify({
-      model: "deepseek-chat",
+      model,
       stream: false,
       response_format: { type: "json_object" },
       max_tokens: 8000,
@@ -155,7 +170,7 @@ async function generateWithDeepSeek(key: string, promptText: string): Promise<Le
       ],
     }),
   });
-  if (!res.ok) throw new Error(`DeepSeek HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  if (!res.ok) throw new Error(`${model} HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`);
   const body: any = await res.json();
   const text: string = body?.choices?.[0]?.message?.content ?? "";
   if (!text.trim()) return null;

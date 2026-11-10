@@ -321,8 +321,9 @@ export function CorelyticsDashboard({ m }: { m?: DashboardMetrics }) {
           <PanelHead title="Expenses analytics" sub="Spending by category" to="/fees" />
           <div className="grid items-center gap-3 sm:grid-cols-[1fr_11rem_1fr]">
             <ul className="space-y-3 text-xs">
+              <li className="text-[10px] uppercase tracking-wide text-muted-foreground">Attendance, 30 days</li>
               {att.map((a) => (
-                <li key={a.name}><b className="block text-base text-foreground">{a.value}</b><span className="capitalize text-muted-foreground">{a.name} marks</span></li>
+                <li key={a.name}><b className="block text-base text-foreground">{a.value}</b><span className="capitalize text-muted-foreground">{a.name}</span></li>
               ))}
             </ul>
             <div className="relative h-44">

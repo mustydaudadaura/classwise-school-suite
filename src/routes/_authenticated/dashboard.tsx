@@ -27,6 +27,7 @@ import { StudentPerformanceAnalytics } from "@/components/StudentPerformanceAnal
 import { AdminAIAssistantWidget } from "@/components/AdminAIAssistantWidget";
 import { useDashboardMetrics } from "@/hooks/useDashboardMetrics";
 import type { DashboardMetrics } from "@/lib/dashboard-metrics";
+import { VisionDashboard, CorelyticsDashboard } from "@/components/StyledDashboards";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard — Alegacy" }, { name: "description", content: "Dashboard for authorized school accounts and families in Alegacy." }, { property: "og:title", content: "Dashboard — Alegacy" }, { property: "og:description", content: "Dashboard for authorized school accounts and families in Alegacy." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
@@ -176,6 +177,9 @@ function Dashboard() {
           </SelectContent>
         </Select>
       </div>
+      {dashStyle !== "classic" && role !== "parent" && role !== "student" && roles.length > 0 ? (
+        <StyledView style={dashStyle} role={role} schoolId={schoolId} name={fullName || "there"} title={title} />
+      ) : (<>
       {/* Header */}
       <div
         className="flex flex-col gap-2 rounded-2xl p-4 sm:p-6 text-white shadow-[var(--shadow-analytic)] sm:flex-row sm:items-center sm:justify-between"
@@ -203,7 +207,20 @@ function Dashboard() {
       {role === "parent" && <ParentView />}
       {role === "student" && <StudentView />}
       {roles.length === 0 && <StudentView />}
+      </>)}
     </div>
+  );
+}
+
+function StyledView({ style, role, schoolId, name, title }: { style: DashStyle; role: string; schoolId?: string | null; name: string; title: string }) {
+  const { user } = useAuth();
+  const { data: m } = useDashboardMetrics({ schoolId, teacherId: role === "teacher" ? user?.id ?? null : null });
+  const sub = `${title} · ${new Date().toLocaleDateString("en-NG", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}`;
+  return (
+    <>
+      <h1 className="text-2xl font-bold text-foreground sm:text-3xl">Dashboard</h1>
+      {style === "vision" ? <VisionDashboard m={m} name={name} subtitle={sub} /> : <CorelyticsDashboard m={m} />}
+    </>
   );
 }
 

@@ -26,7 +26,13 @@ export function useDashboardMetrics({ schoolId, teacherId }: Scope) {
       if (teacherId) {
         const { data, error } = await sc(supabase.from("teacher_allocations").select("class_id").eq("teacher_id", teacherId) as any) as any;
         if (error) throw error;
-        classIds = [...new Set(((data ?? []) as { class_id: string }[]).map((r) => r.class_id))];
+        const { data: own, error: ownErr } = await sc(supabase.from("classes").select("id").eq("teacher_id", teacherId) as any) as any;
+        if (ownErr) throw ownErr;
+        // Subject allocations plus classes where this teacher is the form master.
+        classIds = [...new Set([
+          ...((data ?? []) as { class_id: string }[]).map((r) => r.class_id),
+          ...((own ?? []) as { id: string }[]).map((r) => r.id),
+        ])];
         if (!classIds.length) classIds = ["00000000-0000-0000-0000-000000000000"];
       }
       const cl = (q: any) => (classIds ? q.in("class_id", classIds) : q);

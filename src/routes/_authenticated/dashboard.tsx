@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -34,6 +35,14 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 
 // ---------- shared building blocks ----------
 
+const DASH_STYLE_KEY = "alegacy-dashboard-style";
+const DASH_STYLES = [
+  { id: "classic", label: "Classic (bright)" },
+  { id: "vision", label: "Vision (deep blue)" },
+  { id: "corelytics", label: "Corelytics (dark)" },
+] as const;
+type DashStyle = (typeof DASH_STYLES)[number]["id"];
+
 const PINK = "var(--analytic-pink)";
 const PURPLE = "var(--analytic-purple)";
 const EMERALD = "var(--analytic-emerald)";
@@ -49,7 +58,7 @@ function DonutStat({ label, value, color }: { label: string; value: number; colo
         <div className="relative mx-auto h-20 w-20 sm:h-28 sm:w-28">
           <ResponsiveContainer width="100%" height="100%">
             <RadialBarChart innerRadius="70%" outerRadius="100%" data={data} startAngle={90} endAngle={-270}>
-              <RadialBar dataKey="value" cornerRadius={20} background={{ fill: "oklch(0.95 0.02 320)" }} />
+              <RadialBar dataKey="value" cornerRadius={20} background={{ fill: "var(--analytic-track)" }} />
             </RadialBarChart>
           </ResponsiveContainer>
           <div className="absolute inset-0 flex items-center justify-center text-sm sm:text-lg font-bold" style={{ color }}>
@@ -146,8 +155,27 @@ function Dashboard() {
     : role === "parent" ? "Parent Portal"
     : "My Learning";
 
+  const [dashStyle, setDashStyle] = useState<DashStyle>("classic");
+  useEffect(() => {
+    const saved = window.localStorage.getItem(DASH_STYLE_KEY) as DashStyle | null;
+    if (saved && DASH_STYLES.some((d) => d.id === saved)) setDashStyle(saved);
+  }, []);
+  const changeStyle = (v: string) => {
+    setDashStyle(v as DashStyle);
+    window.localStorage.setItem(DASH_STYLE_KEY, v);
+  };
+
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div data-dash-style={dashStyle} className="dash-surface space-y-4 sm:space-y-6">
+      <div className="flex items-center justify-end gap-2">
+        <span className="text-xs text-muted-foreground">Dashboard style</span>
+        <Select value={dashStyle} onValueChange={changeStyle}>
+          <SelectTrigger className="h-8 w-40 text-xs" aria-label="Dashboard style"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {DASH_STYLES.map((d) => <SelectItem key={d.id} value={d.id}>{d.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
       {/* Header */}
       <div
         className="flex flex-col gap-2 rounded-2xl p-4 sm:p-6 text-white shadow-[var(--shadow-analytic)] sm:flex-row sm:items-center sm:justify-between"
@@ -424,10 +452,10 @@ function SchoolAdminView({ schoolId }: { stats?: any; schoolId?: string | null }
   return (
     <>
       <div className="grid gap-3 grid-cols-2 sm:gap-4 lg:grid-cols-4">
-        <GradientStat icon={Users} label="Active Students" value={m ? m.totalStudents : "—"} gradient="linear-gradient(135deg, oklch(0.58 0.24 355), oklch(0.48 0.22 355))" />
-        <GradientStat icon={Award} label="Report Cards Published" value={m ? m.reportsPublished : "—"} gradient="linear-gradient(135deg, oklch(0.56 0.22 305), oklch(0.46 0.20 290))" />
-        <GradientStat icon={Wallet} label="Total Fees Collected" value={m ? fmtMoney(m.fees.collected) : "—"} gradient="linear-gradient(135deg, oklch(0.58 0.18 150), oklch(0.48 0.16 160))" />
-        <GradientStat icon={BookOpen} label="Active Classes" value={m ? m.classes : "—"} gradient="linear-gradient(135deg, oklch(0.62 0.16 230), oklch(0.50 0.16 250))" />
+        <GradientStat icon={Users} label="Active Students" value={m ? m.totalStudents : "—"} gradient="var(--gradient-stat-1)" />
+        <GradientStat icon={Award} label="Report Cards Published" value={m ? m.reportsPublished : "—"} gradient="var(--gradient-stat-2)" />
+        <GradientStat icon={Wallet} label="Total Fees Collected" value={m ? fmtMoney(m.fees.collected) : "—"} gradient="var(--gradient-stat-3)" />
+        <GradientStat icon={BookOpen} label="Active Classes" value={m ? m.classes : "—"} gradient="var(--gradient-stat-4)" />
       </div>
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2 overflow-hidden border border-primary/20 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent shadow-sm">
@@ -613,10 +641,10 @@ function ChartsRow({ metrics, fees, title, subtitle }: { metrics?: DashboardMetr
                   <stop offset="100%" stopColor={PURPLE} stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.92 0.02 320)" vertical={false} />
-              <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="oklch(0.6 0.02 280)" />
-              <YAxis tick={{ fontSize: 11 }} stroke="oklch(0.6 0.02 280)" />
-              <Tooltip contentStyle={{ borderRadius: 12, border: "none", boxShadow: "var(--shadow-analytic)" }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--analytic-grid)" vertical={false} />
+              <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="var(--analytic-axis)" />
+              <YAxis tick={{ fontSize: 11 }} stroke="var(--analytic-axis)" />
+              <Tooltip contentStyle={{ borderRadius: 12, border: "none", boxShadow: "var(--shadow-analytic)", background: "var(--card)", color: "var(--foreground)" }} />
               <Area type="monotone" dataKey="a" stroke={PURPLE} strokeWidth={2.5} fill="url(#gPurple)" />
               {!fees && <Area type="monotone" dataKey="b" stroke={PINK} strokeWidth={2.5} fill="url(#gPink)" />}
             </AreaChart>
@@ -638,10 +666,10 @@ function ChartsRow({ metrics, fees, title, subtitle }: { metrics?: DashboardMetr
                   <stop offset="100%" stopColor={INDIGO} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.92 0.02 320)" vertical={false} />
-              <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="oklch(0.6 0.02 280)" />
-              <YAxis tick={{ fontSize: 11 }} stroke="oklch(0.6 0.02 280)" />
-              <Tooltip contentStyle={{ borderRadius: 12, border: "none", boxShadow: "var(--shadow-analytic)" }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--analytic-grid)" vertical={false} />
+              <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="var(--analytic-axis)" />
+              <YAxis tick={{ fontSize: 11 }} stroke="var(--analytic-axis)" />
+              <Tooltip contentStyle={{ borderRadius: 12, border: "none", boxShadow: "var(--shadow-analytic)", background: "var(--card)", color: "var(--foreground)" }} />
               <Bar dataKey="score" fill="url(#barGrad)" radius={[8, 8, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>

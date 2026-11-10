@@ -123,6 +123,13 @@
   --gradient-analytic-3: linear-gradient(135deg, oklch(0.58 0.18 150), oklch(0.48 0.16 170));
   --gradient-analytic-soft: linear-gradient(180deg, oklch(0.985 0.015 355), oklch(0.96 0.025 340));
   --shadow-analytic: 0 10px 30px -10px oklch(0.48 0.22 355 / 0.25);
+  --gradient-stat-1: linear-gradient(135deg, oklch(0.58 0.24 355), oklch(0.48 0.22 355));
+  --gradient-stat-2: linear-gradient(135deg, oklch(0.56 0.22 305), oklch(0.46 0.20 290));
+  --gradient-stat-3: linear-gradient(135deg, oklch(0.58 0.18 150), oklch(0.48 0.16 160));
+  --gradient-stat-4: linear-gradient(135deg, oklch(0.62 0.16 230), oklch(0.50 0.16 250));
+  --analytic-track: oklch(0.95 0.02 320);
+  --analytic-grid: oklch(0.92 0.02 320);
+  --analytic-axis: oklch(0.6 0.02 280);
 }
 
 .dark {
@@ -395,4 +402,75 @@
   .school-report-classic-grid { grid-template-columns: minmax(0, 3fr) minmax(0, 1fr); }
   .school-report-sheet tr, .school-report-header, .school-report-sheet section { break-inside: avoid; }
   .school-report-sheet thead { display: table-header-group; }
+}
+
+/* Selectable dashboard styles (data stays the same; only the look changes) */
+[data-dash-style="vision"], [data-dash-style="corelytics"] {
+  border-radius: 1.25rem;
+  padding: 1rem;
+  --foreground: oklch(0.97 0.01 260);
+  --card-foreground: oklch(0.97 0.01 260);
+  --muted-foreground: oklch(0.75 0.03 260);
+  --primary: oklch(0.62 0.2 262);
+  --primary-foreground: oklch(0.98 0 0);
+  --analytic-axis: oklch(0.7 0.03 260);
+  color: var(--foreground);
+}
+[data-dash-style="vision"] {
+  background: radial-gradient(120% 80% at 80% 0%, oklch(0.42 0.2 265) 0%, oklch(0.2 0.08 265) 45%, oklch(0.15 0.05 265) 100%);
+  --card: oklch(0.22 0.07 265 / 0.85);
+  --background: oklch(0.19 0.06 265);
+  --input: oklch(0.35 0.08 265);
+  --popover: oklch(0.22 0.07 265);
+  --popover-foreground: oklch(0.97 0.01 260);
+  --muted: oklch(0.28 0.07 265);
+  --border: oklch(0.35 0.08 265);
+  --analytic-track: oklch(0.3 0.06 265);
+  --analytic-grid: oklch(0.32 0.06 265);
+  --analytic-pink: oklch(0.72 0.17 230);
+  --analytic-rose: oklch(0.7 0.15 190);
+  --analytic-purple: oklch(0.62 0.21 262);
+  --analytic-emerald: oklch(0.72 0.16 165);
+  --analytic-indigo: oklch(0.6 0.2 280);
+  --analytic-blue: oklch(0.7 0.15 240);
+  --gradient-analytic-1: linear-gradient(135deg, oklch(0.32 0.14 265), oklch(0.45 0.22 268));
+  --gradient-analytic-2: linear-gradient(135deg, oklch(0.26 0.09 265), oklch(0.36 0.15 262));
+  --gradient-analytic-3: linear-gradient(135deg, oklch(0.26 0.09 250), oklch(0.38 0.14 230));
+  --gradient-stat-1: linear-gradient(135deg, oklch(0.24 0.08 265), oklch(0.3 0.12 262));
+  --gradient-stat-2: var(--gradient-stat-1);
+  --gradient-stat-3: var(--gradient-stat-1);
+  --gradient-stat-4: var(--gradient-stat-1);
+  --shadow-analytic: 0 10px 30px -10px oklch(0.55 0.22 262 / 0.5);
+}
+[data-dash-style="corelytics"] {
+  background: oklch(0.17 0.025 275);
+  --card: oklch(0.22 0.03 275);
+  --background: oklch(0.2 0.025 275);
+  --input: oklch(0.32 0.03 275);
+  --popover: oklch(0.22 0.03 275);
+  --popover-foreground: oklch(0.97 0.01 260);
+  --muted: oklch(0.27 0.03 275);
+  --border: oklch(0.32 0.03 275);
+  --analytic-track: oklch(0.3 0.03 275);
+  --analytic-grid: oklch(0.3 0.03 275);
+  --analytic-pink: oklch(0.82 0.15 85);
+  --analytic-rose: oklch(0.68 0.2 15);
+  --analytic-purple: oklch(0.65 0.18 285);
+  --analytic-emerald: oklch(0.72 0.16 160);
+  --analytic-indigo: oklch(0.6 0.22 300);
+  --analytic-blue: oklch(0.7 0.13 245);
+  --gradient-analytic-1: linear-gradient(135deg, oklch(0.24 0.035 275), oklch(0.3 0.06 285));
+  --gradient-analytic-2: var(--gradient-analytic-1);
+  --gradient-analytic-3: var(--gradient-analytic-1);
+  --gradient-stat-1: linear-gradient(135deg, oklch(0.22 0.03 275), oklch(0.25 0.035 280));
+  --gradient-stat-2: var(--gradient-stat-1);
+  --gradient-stat-3: var(--gradient-stat-1);
+  --gradient-stat-4: var(--gradient-stat-1);
+  --shadow-analytic: 0 0 0 1px oklch(0.32 0.03 275);
+}
+[data-dash-style="vision"] .bg-card, [data-dash-style="corelytics"] .bg-card,
+[data-dash-style="vision"] [data-slot="card"], [data-dash-style="corelytics"] [data-slot="card"] {
+  background-color: var(--card);
+  color: var(--card-foreground);
+  backdrop-filter: blur(8px);
 }

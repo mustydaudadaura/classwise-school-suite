@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import alegacyLogo from "@/assets/alegacy-logo.png.asset.json";
 import { Button } from "@/components/ui/button";
 import {
   GraduationCap,
@@ -72,9 +73,7 @@ function Landing() {
       <header className="sticky top-0 z-30 border-b border-border bg-card/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
           <Link to="/" className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
-              <GraduationCap className="h-5 w-5" />
-            </div>
+            <img src={alegacyLogo.url} alt="Alegacy Technologies logo" className="h-10 w-14 object-contain" />
             <div className="flex flex-col">
               <span className="text-lg font-bold tracking-tight text-foreground leading-none">
                 Alegacy

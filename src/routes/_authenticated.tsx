@@ -1,4 +1,5 @@
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
+import alegacyLogo from "@/assets/alegacy-logo.png.asset.json";
 import { useEffect } from "react";
 import { useAuth, hasRole } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -139,9 +140,7 @@ function AuthedLayout() {
       >
         <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
           <Link to="/dashboard" className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sidebar-primary text-white shadow-sm">
-              <GraduationCap className="h-4 w-4" />
-            </div>
+            <img src={alegacyLogo.url} alt="Alegacy Technologies logo" className="h-9 w-12 rounded-md bg-card object-contain p-0.5" />
             <div className="flex flex-col">
               <span className="font-bold text-sm tracking-tight text-white leading-tight">Alegacy</span>
               <span className="text-[10px] text-sidebar-foreground/60 leading-tight">School Workspace</span>

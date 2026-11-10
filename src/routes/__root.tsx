@@ -79,16 +79,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "EduERP Nigeria - School ERP & Result Management" },
+      { name: "theme-color", content: "#0b2a5c" },
+      { title: "Alegacy — School Management Platform" },
       { name: "description", content: "Complete modern educational management platform and school ERP for student admissions, attendance, fees, grading, broadsheets, and parent portals." },
-      { name: "author", content: "EduERP" },
-      { property: "og:title", content: "EduERP Nigeria - School ERP & Result Management" },
+      { name: "author", content: "Alegacy Technologies" },
+      { property: "og:title", content: "Alegacy — School Management Platform" },
       { property: "og:description", content: "Complete modern educational management platform and school ERP for student admissions, attendance, fees, grading, broadsheets, and parent portals." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
     links: [
       { rel: "icon", type: "image/png", href: "/favicon.png" },
+      { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
       {
         rel: "stylesheet",
         href: appCss,

@@ -39,7 +39,7 @@ export function useDashboardMetrics({ schoolId, teacherId }: Scope) {
       const since = new Date(); since.setDate(since.getDate() - 30);
       const yearAgo = new Date(); yearAgo.setMonth(yearAgo.getMonth() - 12);
 
-      const [students, classes, subjects, assessments, attendance, reportCards, invoices, payments, parents, scholarships] = await Promise.all([
+      const [students, classes, subjects, assessments, attendance, reportCards, invoices, payments, parents, scholarships, staffRoles, expenses] = await Promise.all([
         fetchAll<any>((f, t) => cl(sc(supabase.from("students").select("id, active, created_at") as any)).range(f, t)),
         classIds
           ? Promise.resolve({ count: classIds.length, error: null })
@@ -55,6 +55,8 @@ export function useDashboardMetrics({ schoolId, teacherId }: Scope) {
         teacherId ? Promise.resolve([]) : fetchAll<any>((f, t) => sc(supabase.from("fee_payments").select("amount, paid_at") as any).gte("paid_at", yearAgo.toISOString()).range(f, t)),
         teacherId ? Promise.resolve([]) : fetchAll<any>((f, t) => sc(supabase.from("parents").select("user_id") as any).range(f, t)),
         teacherId ? Promise.resolve({ count: 0, error: null }) : sc(supabase.from("student_scholarships").select("id", { count: "exact", head: true }).eq("status", "approved") as any),
+        teacherId ? Promise.resolve([]) : fetchAll<any>((f, t) => sc(supabase.from("user_roles").select("user_id, role").eq("active", true).in("role", ["school_admin", "teacher", "accountant"]) as any).range(f, t)).catch(() => []),
+        teacherId ? Promise.resolve([]) : fetchAll<any>((f, t) => sc(supabase.from("school_expenses").select("amount, category, spent_on") as any).gte("spent_on", yearAgo.toISOString().slice(0, 10)).range(f, t)).catch(() => []),
       ]);
       if ((classes as any).error) throw (classes as any).error;
 
@@ -62,6 +64,8 @@ export function useDashboardMetrics({ schoolId, teacherId }: Scope) {
         students, classes: (classes as any).count ?? 0, subjects, assessments, attendance, reportCards,
         invoices: invoices as any[], payments: payments as any[], parents: parents as any[],
         scholarships: (scholarships as any).count ?? 0,
+        staff: new Set((staffRoles as any[]).map((r) => r.user_id)).size,
+        expenses: expenses as any[],
       };
       return computeDashboardMetrics(raw);
     },

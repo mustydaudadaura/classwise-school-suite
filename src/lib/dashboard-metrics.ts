@@ -20,6 +20,9 @@ export interface RawDashboardData {
   payments: { amount: number | string; paid_at: string }[];
   parents: { user_id: string | null }[];
   scholarships: number;
+  /** Optional extras so every registered record shows on the dashboard. */
+  staff?: number;
+  expenses?: { amount: number | string; category: string; spent_on: string }[];
 }
 
 /** Last 12 calendar months ending at `now`, oldest first. */
@@ -60,6 +63,19 @@ export function computeDashboardMetrics(raw: RawDashboardData, now = new Date())
   for (const a of raw.assessments) { const i = idx.get(bucketKey(a.created_at)); if (i !== undefined) trend[i].a += 1; }
   for (const p of raw.payments) { const i = idx.get(bucketKey(p.paid_at)); if (i !== undefined) feeTrend[i].a += Number(p.amount) || 0; }
 
+  const expenses = raw.expenses ?? [];
+  const expenseTotal = expenses.reduce((t, e) => t + (Number(e.amount) || 0), 0);
+  const byCat = new Map<string, number>();
+  for (const e of expenses) {
+    const c = (e.category || "Other").trim() || "Other";
+    byCat.set(c, (byCat.get(c) ?? 0) + (Number(e.amount) || 0));
+    const i = idx.get(bucketKey(e.spent_on)); if (i !== undefined) feeTrend[i].b += Number(e.amount) || 0;
+  }
+  const expenseCategories = [...byCat.entries()].map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+  const attendanceBreakdown = (["present", "late", "absent", "excused"] as const).map((k) => ({
+    name: k, value: raw.attendance.filter((a) => a.status === k).length,
+  }));
+
   const names = new Map(raw.subjects.map((s) => [s.id, s.name]));
   const bySubject = new Map<string, { sum: number; n: number }>();
   for (const a of scored) {
@@ -99,6 +115,10 @@ export function computeDashboardMetrics(raw: RawDashboardData, now = new Date())
     trend,
     feeTrend,
     subjectScores,
+    staff: raw.staff ?? 0,
+    expenseTotal,
+    expenseCategories,
+    attendanceBreakdown,
   };
 }
 

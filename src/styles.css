@@ -474,3 +474,13 @@
   color: var(--card-foreground);
   backdrop-filter: blur(8px);
 }
+[data-dash-style="vision"] .dash-panel {
+  background: linear-gradient(160deg, oklch(0.24 0.08 265 / 0.95), oklch(0.17 0.05 265 / 0.9));
+  box-shadow: var(--shadow-analytic);
+}
+[data-dash-style="vision"] .dash-hero {
+  background: radial-gradient(70% 90% at 80% 40%, oklch(0.5 0.24 275 / 0.7), transparent 70%), linear-gradient(160deg, oklch(0.24 0.08 265), oklch(0.17 0.05 265));
+}
+[data-dash-style="vision"] .dash-inset { background: oklch(0.15 0.05 265 / 0.9); }
+[data-dash-style="corelytics"] .dash-panel { background: var(--card); box-shadow: var(--shadow-analytic); }
+[data-dash-style="corelytics"] .dash-inset { background: var(--muted); }

@@ -19,6 +19,10 @@
  */
 
 @theme inline {
+  --color-auth: var(--auth);
+  --color-auth-deep: var(--auth-deep);
+  --color-auth-soft: var(--auth-soft);
+  --color-auth-foreground: var(--auth-foreground);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -61,6 +65,12 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
+:root {
+  --auth: oklch(0.52 0.12 160);
+  --auth-deep: oklch(0.38 0.1 158);
+  --auth-soft: oklch(0.92 0.04 165);
+  --auth-foreground: oklch(0.99 0 0);
+}
 :root,
 [data-theme="default"],
 [data-theme="royal"] {

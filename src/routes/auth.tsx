@@ -86,27 +86,28 @@ function AuthPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4 relative overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(168,0,88,0.06),transparent_55%)] pointer-events-none" />
-      <div className="relative w-full max-w-md">
-        <Link to="/" className="mb-6 flex items-center justify-center gap-2.5">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/25">
-            <GraduationCap className="h-5 w-5" />
+    <div className="flex min-h-screen items-center justify-center bg-muted p-0 sm:p-6">
+      <div className="relative grid w-full max-w-5xl overflow-hidden bg-background shadow-2xl sm:rounded-3xl md:grid-cols-[5fr_6fr]">
+        <div className="relative flex flex-col items-center justify-center gap-4 overflow-hidden bg-gradient-to-br from-auth to-auth-deep px-8 pb-16 pt-12 text-center text-auth-foreground md:rounded-r-[45%] md:py-16 rounded-b-[40%] md:rounded-bl-none">
+          <Link to="/" className="flex flex-col items-center gap-2">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-auth-foreground text-auth shadow-lg">
+              <GraduationCap className="h-8 w-8" />
+            </div>
+            <span className="text-xl font-bold tracking-tight">Alegacy</span>
+            <span className="text-xs opacity-80">School Management Platform</span>
+          </Link>
+          <h2 className="mt-4 text-3xl font-bold md:text-4xl">Welcome Back!</h2>
+          <p className="max-w-xs text-sm opacity-90">To stay connected with your school, please sign in with your details.</p>
+          <Button asChild variant="outline" className="mt-4 h-11 w-full max-w-xs rounded-full border-auth-foreground bg-transparent text-auth-foreground hover:bg-auth-foreground/10 hover:text-auth-foreground">
+            <Link to="/attendance-kiosk"><Clock className="mr-2 h-4 w-4" /> Staff Attendance Kiosk</Link>
+          </Button>
+        </div>
+        <div className="auth-form px-6 py-10 sm:px-10">
+          <div className="mb-6 text-center">
+            <h1 className="text-4xl font-bold text-auth-deep">welcome</h1>
+            <p className="text-sm text-muted-foreground">Log in to your account to continue</p>
           </div>
-          <div className="flex flex-col">
-            <span className="text-xl font-bold tracking-tight text-foreground leading-tight">Alegacy</span>
-            <span className="text-[10px] font-medium text-muted-foreground tracking-wide">School Management Platform</span>
-          </div>
-        </Link>
-        <Button asChild size="lg" className="mb-4 h-14 w-full rounded-2xl text-base font-semibold shadow-md shadow-primary/25">
-          <Link to="/attendance-kiosk"><Clock className="mr-2 h-5 w-5" /> Staff Attendance Kiosk</Link>
-        </Button>
-        <Card className="shadow-lg">
-          <CardHeader>
-            <CardTitle>Welcome</CardTitle>
-            <CardDescription>Sign in to your account or create a new one.</CardDescription>
-          </CardHeader>
-          <CardContent>
+          <div>
             <div className="mb-4 rounded-md border border-primary/30 bg-primary/5 p-3 text-sm">
               <p className="font-medium text-foreground">Just looking around?</p>
               <p className="mb-3 text-muted-foreground">Explore a demo school with students, results and fees already filled in.</p>
@@ -201,7 +202,7 @@ function AuthPage() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="email">Email address</Label>
-                    <Input
+                    <Input className="h-11 rounded-full border-0 bg-auth-soft px-5 text-center"
                       id="email"
                       type="email"
                       required
@@ -231,12 +232,12 @@ function AuthPage() {
                             toast.error(err?.message || "Failed to send reset email.");
                           }
                         }}
-                        className="text-[11px] text-primary hover:underline font-medium"
+                        className="text-[11px] text-auth-deep hover:underline font-medium"
                       >
                         Forgot password?
                       </Button>
                     </div>
-                    <Input
+                    <Input className="h-11 rounded-full border-0 bg-auth-soft px-5 text-center"
                       id="password"
                       type="password"
                       required
@@ -245,7 +246,7 @@ function AuthPage() {
                       onChange={(e) => setPassword(e.target.value)}
                     />
                   </div>
-                  <Button type="submit" className="w-full font-semibold" disabled={loading}>
+                  <Button type="submit" className="mx-auto flex h-11 w-full max-w-xs rounded-full bg-auth font-semibold text-auth-foreground hover:bg-auth-deep" disabled={loading}>
                     {loading ? "Signing in…" : "Sign In to Portal"}
                   </Button>
                   <div className="rounded-md border border-border/60 bg-muted/40 p-2.5 text-center text-xs text-muted-foreground">
@@ -267,20 +268,20 @@ function AuthPage() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="parent_phone">Phone number</Label>
-                    <Input id="parent_phone" type="tel" inputMode="tel" required placeholder="e.g. 08012345678"
+                    <Input className="h-11 rounded-full border-0 bg-auth-soft px-5 text-center" id="parent_phone" type="tel" inputMode="tel" required placeholder="e.g. 08012345678"
                       value={parentPhone} onChange={(e) => setParentPhone(e.target.value)} />
                     <p className="text-xs text-muted-foreground">
                       No password required. Enter your registered phone number.
                     </p>
                   </div>
-                  <Button type="submit" className="w-full font-semibold" disabled={loading}>
+                  <Button type="submit" className="mx-auto flex h-11 w-full max-w-xs rounded-full bg-auth font-semibold text-auth-foreground hover:bg-auth-deep" disabled={loading}>
                     {loading ? "Checking…" : "Enter Parent Portal"}
                   </Button>
                 </form>
               </TabsContent>
             </Tabs>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   );

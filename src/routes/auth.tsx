@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import alegacyLogo from "@/assets/alegacy-logo.png.asset.json";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { setParentSession } from "@/hooks/useParentAuth";
@@ -89,9 +90,7 @@ function AuthPage() {
       <div className="relative grid w-full max-w-5xl overflow-hidden bg-background shadow-2xl sm:rounded-3xl md:grid-cols-[5fr_6fr]">
         <div className="relative flex flex-col items-center justify-center gap-4 overflow-hidden bg-gradient-to-br from-auth to-auth-deep px-8 pb-16 pt-12 text-center text-auth-foreground md:rounded-r-[45%] md:py-16 rounded-b-[40%] md:rounded-bl-none">
           <Link to="/" className="flex flex-col items-center gap-2">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-auth-foreground text-auth shadow-lg">
-              <GraduationCap className="h-8 w-8" />
-            </div>
+            <img src={alegacyLogo.url} alt="Alegacy Technologies logo" className="h-24 w-36 rounded-2xl bg-card object-contain p-1 shadow-lg" />
             <span className="text-xl font-bold tracking-tight">Alegacy</span>
             <span className="text-xs opacity-80">School Management Platform</span>
           </Link>

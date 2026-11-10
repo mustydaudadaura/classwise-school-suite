@@ -162,6 +162,13 @@
       "when": 1793687473190,
       "tag": "0022_report_designs_and_language",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1794292231118,
+      "tag": "0023_migration",
+      "breakpoints": true
     }
   ]
 }

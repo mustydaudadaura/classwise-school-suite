@@ -660,7 +660,8 @@ function ResultsPage() {
                           onChange={(e) => { setScores({ ...scores, [st.id]: { ...cur, ca1: +e.target.value } }); setDirty((p) => ({ ...p, [st.id]: true })); }}
                           onBlur={() => autoSaveRow(st.id)}
                           disabled={ex?.status === "approved" && !canApprove}
-                        />
+                          />
+                          <Button type="button" size="sm" variant="outline" className="mt-1 h-7 w-20 px-1 text-xs" disabled={rowSaving[st.id] || existingLoading || (ex?.status === "approved" && !canApprove)} onMouseDown={(e) => e.preventDefault()} onClick={() => saveScore(st.id)}>{rowSaving[st.id] ? "Saving…" : dirty[st.id] ? "Save CA" : ex ? "Saved ✓" : "Save CA"}</Button>
                       </TableCell>
                       {caRatioConfig.ca2Max > 0 && (
                         <TableCell>
@@ -674,6 +675,7 @@ function ResultsPage() {
                           onBlur={() => autoSaveRow(st.id)}
                           disabled={ex?.status === "approved" && !canApprove}
                           />
+                          <Button type="button" size="sm" variant="outline" className="mt-1 h-7 w-20 px-1 text-xs" disabled={rowSaving[st.id] || existingLoading || (ex?.status === "approved" && !canApprove)} onMouseDown={(e) => e.preventDefault()} onClick={() => saveScore(st.id)}>{rowSaving[st.id] ? "Saving…" : dirty[st.id] ? "Save CA" : ex ? "Saved ✓" : "Save CA"}</Button>
                         </TableCell>
                       )}
                       <TableCell>

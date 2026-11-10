@@ -47,3 +47,22 @@ describe("dashboard metrics", () => {
     expect(m.paidStudents).toBe(1);
   });
 });
+
+describe("dashboard extras", () => {
+  it("totals expenses by category and counts attendance by status", () => {
+    const m = computeDashboardMetrics({
+      ...base,
+      staff: 3,
+      attendance: [{ status: "present" }, { status: "absent" }, { status: "absent" }],
+      expenses: [
+        { amount: 2000, category: "Salaries", spent_on: new Date().toISOString() },
+        { amount: 500, category: "Fuel", spent_on: new Date().toISOString() },
+        { amount: 1000, category: "Salaries", spent_on: new Date().toISOString() },
+      ],
+    });
+    expect(m.staff).toBe(3);
+    expect(m.expenseTotal).toBe(3500);
+    expect(m.expenseCategories[0]).toEqual({ name: "Salaries", value: 3000 });
+    expect(m.attendanceBreakdown.find((a) => a.name === "absent")?.value).toBe(2);
+  });
+});

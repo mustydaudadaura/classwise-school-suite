@@ -21,15 +21,6 @@ export const Route = createFileRoute("/api/public/parent-login")({
             // DB offline or placeholder
           }
 
-          if (!row && (digits.includes("08031000001") || digits.endsWith("0001") || digits.length >= 7)) {
-            // Alegacy demo parent (Mrs. Hauwa Bello with children Zainab & Farouk)
-            const { signParentToken } = await import("@/lib/parent-auth.server");
-            const demoParentId = "d6ec3069-0809-4eba-a77a-ca441363b192";
-            const demoSchoolId = "af91ff67-95eb-4b62-93a0-5617d23a2f1d";
-            const token = signParentToken({ parent_id: demoParentId, school_id: demoSchoolId });
-            return Response.json({ token, parent: { id: demoParentId, full_name: "Mrs. Hauwa Bello", school_id: demoSchoolId } });
-          }
-
           if (!row) {
             return Response.json({ error: "No parent found for that phone number. Ask the school admin to confirm your number is on file." }, { status: 404 });
           }

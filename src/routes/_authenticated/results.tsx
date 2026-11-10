@@ -277,7 +277,6 @@ function ResultsPage() {
       ca1: s.ca1,
       ca2: caRatioConfig.ca2Max > 0 ? s.ca2 : 0,
       exam: s.exam,
-      total: validation.total,
       grade: gradeDef.grade,
       remark: gradeDef.remark,
       status: "submitted",

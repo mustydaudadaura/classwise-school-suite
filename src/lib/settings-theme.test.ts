@@ -11,7 +11,7 @@ test("PREDEFINED_THEMES defines the exact 5 themes requested", () => {
 
   const names = PREDEFINED_THEMES.map((t) => t.name);
   assert.deepEqual(names, [
-    "Royal Magenta & Plum",
+    "Alegacy Navy & Blue",
     "Emerald Green & Gold",
     "Sapphire & Oxford Blue",
     "Warm Amber & Bronze",

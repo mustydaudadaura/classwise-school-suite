@@ -48,7 +48,7 @@ export function GeneralSubjectEntry(p: Props) {
         if (!p.students.some(s => s.id === student_id) || !p.subjects.some(s => s.id === subject_id)) throw new Error('Choose students and subjects in this class');
         const total = score.ca1 + (config.ca2Max > 0 ? score.ca2 : 0) + score.exam;
         const grade = calculateGrade(total, p.scale);
-        return { school_id: p.schoolId, class_id: p.classId, student_id, subject_id, session: p.session, term: p.term, ...score, ca2: config.ca2Max > 0 ? score.ca2 : 0, total, grade: grade.grade, remark: grade.remark, status: 'submitted' as const };
+        return { school_id: p.schoolId, class_id: p.classId, student_id, subject_id, session: p.session, term: p.term, ...score, ca2: config.ca2Max > 0 ? score.ca2 : 0, grade: grade.grade, remark: grade.remark, status: 'submitted' as const };
       });
       const { data, error } = await supabase.from('assessments').upsert(rows, { onConflict: 'student_id,subject_id,session,term' }).select('student_id,subject_id,ca1,ca2,exam,status');
       if (error) throw error;

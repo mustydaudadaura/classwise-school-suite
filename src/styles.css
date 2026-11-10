@@ -419,6 +419,10 @@
 [data-dash-style="vision"] {
   background: radial-gradient(120% 80% at 80% 0%, oklch(0.42 0.2 265) 0%, oklch(0.2 0.08 265) 45%, oklch(0.15 0.05 265) 100%);
   --card: oklch(0.22 0.07 265 / 0.85);
+  --background: oklch(0.19 0.06 265);
+  --input: oklch(0.35 0.08 265);
+  --popover: oklch(0.22 0.07 265);
+  --popover-foreground: oklch(0.97 0.01 260);
   --muted: oklch(0.28 0.07 265);
   --border: oklch(0.35 0.08 265);
   --analytic-track: oklch(0.3 0.06 265);
@@ -441,6 +445,10 @@
 [data-dash-style="corelytics"] {
   background: oklch(0.17 0.025 275);
   --card: oklch(0.22 0.03 275);
+  --background: oklch(0.2 0.025 275);
+  --input: oklch(0.32 0.03 275);
+  --popover: oklch(0.22 0.03 275);
+  --popover-foreground: oklch(0.97 0.01 260);
   --muted: oklch(0.27 0.03 275);
   --border: oklch(0.32 0.03 275);
   --analytic-track: oklch(0.3 0.03 275);

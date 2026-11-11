@@ -29,6 +29,8 @@ export const Route = createFileRoute("/_authenticated/students/$id")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
+  validateSearch: (search: Record<string, unknown>): { upload?: boolean } =>
+    search.upload === true || search.upload === "true" || search.upload === 1 || search.upload === "1" ? { upload: true } : {},
   component: StudentProfile,
 });
 
@@ -58,7 +60,8 @@ function StudentProfile() {
 
   const [editing, setEditing] = useState(false);
   const [savingBio, setSavingBio] = useState(false);
-  const [passportOpen, setPassportOpen] = useState(false);
+  const { upload } = Route.useSearch();
+  const [passportOpen, setPassportOpen] = useState(Boolean(upload));
   const [form, setForm] = useState<Record<string, string>>({});
 
   // Guardian editing state

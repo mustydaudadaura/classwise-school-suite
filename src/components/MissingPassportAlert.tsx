@@ -50,11 +50,14 @@ export function MissingPassportAlert() {
         {data.map((s, i) => (
           <li key={s.id} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
             <span className="min-w-0 truncate">
-              {i + 1}. <strong>{s.first_name} {s.last_name}</strong>
+              {i + 1}.{" "}
+              <Link to="/students/$id" params={{ id: s.id }} search={{ upload: true }} className="font-bold underline-offset-2 hover:underline">
+                {s.first_name} {s.last_name}
+              </Link>
               <span className="text-muted-foreground"> · {s.admission_no}{(s.classes as { name?: string } | null)?.name ? ` · ${(s.classes as { name: string }).name}` : ""}</span>
             </span>
             <Button asChild size="sm" variant="destructive">
-              <Link to="/students/$id" params={{ id: s.id }}><Camera className="mr-1 h-3.5 w-3.5" />Upload</Link>
+              <Link to="/students/$id" params={{ id: s.id }} search={{ upload: true }}><Camera className="mr-1 h-3.5 w-3.5" />Upload</Link>
             </Button>
           </li>
         ))}

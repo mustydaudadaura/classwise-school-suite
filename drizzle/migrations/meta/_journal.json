@@ -190,6 +190,13 @@
       "when": 1794387464102,
       "tag": "0026_allow_form_master_pending_admission",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1794416827636,
+      "tag": "0027_create_staff_members",
+      "breakpoints": true
     }
   ]
 }

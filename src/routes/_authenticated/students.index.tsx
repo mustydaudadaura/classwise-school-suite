@@ -23,7 +23,7 @@ import { useSchoolAccess } from "@/hooks/useSchoolAccess";
 import { admissionMode } from "@/lib/registry-permissions";
 import { useRegistrationSubmission } from "@/hooks/useRegistrationSubmission";
 
-export const Route = createFileRoute("/_authenticated/students")({
+export const Route = createFileRoute("/_authenticated/students/")({
   head: () => ({ meta: [{ title: "Students — Alegacy" }, { name: "description", content: "Students for authorized school accounts and families in Alegacy." }, { property: "og:title", content: "Students — Alegacy" }, { property: "og:description", content: "Students for authorized school accounts and families in Alegacy." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: StudentsPage,
 });

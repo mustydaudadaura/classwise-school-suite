@@ -122,6 +122,13 @@ function StudentProfile() {
   if (isPending) return <p className="text-muted-foreground">Loading profile…</p>;
   if (error || !data?.student) return <p className="text-muted-foreground">Student not found or you don't have access.</p>;
   const s: any = data.student;
+  // Form master of this student's class may edit biodata, but not class or status.
+  const isClassFormMaster =
+    Boolean(user?.id && s.class_id) &&
+    (data.classes.some((c: any) => c.id === s.class_id && c.teacher_id === user?.id) ||
+      data.allocations.some((a: any) => a.class_id === s.class_id && a.is_class_teacher));
+  const canEditFull = can("students.edit");
+  const canEditProfile = canEditFull || isClassFormMaster;
 
   const linkedStudentIds = (data.links ?? [])
     .filter((l: any) => l.parents?.user_id && l.parents.user_id === user?.id)
@@ -188,9 +195,11 @@ function StudentProfile() {
         gender: form.gender || null,
         dob: form.dob || null,
         admission_date: form.admission_date || null,
-        class_id: form.class_id || null,
-        status: form.status || "active",
       };
+      if (canEditFull) {
+        patch.class_id = form.class_id || null;
+        patch.status = form.status || "active";
+      }
       BIO.forEach(([k]) => {
         if (k in form) patch[k] = form[k]?.trim() || null;
       });
@@ -288,7 +297,7 @@ function StudentProfile() {
                 `${s.first_name?.[0] ?? ""}${s.last_name?.[0] ?? ""}`
               )}
             </div>
-            {can("students.edit") && (
+            {canEditProfile && (
               <Button
                 type="button"
                 size="sm"
@@ -379,7 +388,7 @@ function StudentProfile() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Personal Information, Biodata & Medical</CardTitle>
-              {can("students.edit") &&
+              {canEditProfile &&
                 (editing ? (
                   <div className="flex gap-2">
                     <Button size="sm" variant="outline" disabled={savingBio} onClick={() => setEditing(false)}>
@@ -437,6 +446,7 @@ function StudentProfile() {
                     <Label htmlFor="st-class">Class</Label>
                     <Select
                       value={form.class_id || "none"}
+                      disabled={!canEditFull}
                       onValueChange={(v) => setForm((f) => ({ ...f, class_id: v === "none" ? "" : v }))}
                     >
                       <SelectTrigger id="st-class">
@@ -489,6 +499,7 @@ function StudentProfile() {
                   <div>
                     <Label htmlFor="st-status">Enrollment status</Label>
                     <Select
+                      disabled={!canEditFull}
                       value={form.status || "active"}
                       onValueChange={(v) => setForm((f) => ({ ...f, status: v }))}
                     >

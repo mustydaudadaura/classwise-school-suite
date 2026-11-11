@@ -112,7 +112,9 @@ function StudentsPage() {
     if (!students) return [];
     const q = searchQuery.trim().toLowerCase();
     const isAdmin = canManage || hasRole(roles, "super_admin", "school_admin");
-    const allowedClassSet = !isAdmin && teacherAllocatedClassIds ? new Set(teacherAllocatedClassIds) : null;
+    // Form masters see only the classes assigned to them by an administrator.
+    const scopeIds = isFormMaster ? formMasterClassIds : teacherAllocatedClassIds;
+    const allowedClassSet = !isAdmin && scopeIds ? new Set(scopeIds) : null;
 
     return students.filter((s: any) => {
       if (allowedClassSet && (!s.class_id || !allowedClassSet.has(s.class_id))) return false;
@@ -126,7 +128,7 @@ function StudentsPage() {
 
       return fullName.includes(q) || adm.includes(q) || className.includes(q);
     });
-  }, [students, searchQuery, classFilter, genderFilter, canManage, roles, teacherAllocatedClassIds]);
+  }, [students, searchQuery, classFilter, genderFilter, canManage, roles, teacherAllocatedClassIds, isFormMaster, formMasterClassIds]);
 
   const hasActiveFilters = searchQuery.trim() !== "" || classFilter !== "all" || genderFilter !== "all";
 
@@ -399,7 +401,7 @@ function StudentsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All classes</SelectItem>
-                  {classes?.map((c) => (
+                  {classes?.filter((c) => !isFormMaster || (formMasterClassIds ?? []).includes(c.id)).map((c) => (
                     <SelectItem key={c.id} value={c.id}>
                       {c.name}
                     </SelectItem>

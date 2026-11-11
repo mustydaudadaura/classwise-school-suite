@@ -40,3 +40,5 @@
 - Form masters may edit biodata/passport of students in their assigned class through a dedicated RLS update policy; a trigger blocks class, status, login and school changes by non-administrators so edits never move or promote students.
 
 - The Staff Register keeps every staff member (with or without a login) in its own school-admin-only table; optional logins reuse the checked staff-account server function and sync ID-card details, so login, role and salary data stay separately protected.
+
+- A list page with child detail pages lives in `name.index.tsx` (or renders `<Outlet />`); otherwise detail URLs change but the list stays on screen.

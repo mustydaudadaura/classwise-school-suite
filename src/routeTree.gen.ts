@@ -37,6 +37,7 @@ import { Route as AuthenticatedResultsRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedSchoolsRouteImport } from './routes/_authenticated/schools'
 import { Route as AuthenticatedScratchCardsRouteImport } from './routes/_authenticated/scratch-cards'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
+import { Route as AuthenticatedStaffRouteImport } from './routes/_authenticated/staff'
 import { Route as AuthenticatedStaffAttendanceRouteImport } from './routes/_authenticated/staff-attendance'
 import { Route as AuthenticatedStudentsRouteImport } from './routes/_authenticated/students'
 import { Route as AuthenticatedUsersRouteImport } from './routes/_authenticated/users'
@@ -204,6 +205,11 @@ const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedStaffRoute = AuthenticatedStaffRouteImport.update({
+  id: '/staff',
+  path: '/staff',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedStaffAttendanceRoute =
   AuthenticatedStaffAttendanceRouteImport.update({
     id: '/staff-attendance',
@@ -342,6 +348,7 @@ export interface FileRoutesByFullPath {
   '/schools': typeof AuthenticatedSchoolsRoute
   '/scratch-cards': typeof AuthenticatedScratchCardsRoute
   '/settings': typeof AuthenticatedSettingsRoute
+  '/staff': typeof AuthenticatedStaffRoute
   '/staff-attendance': typeof AuthenticatedStaffAttendanceRoute
   '/students': typeof AuthenticatedStudentsRouteWithChildren
   '/users': typeof AuthenticatedUsersRoute
@@ -391,6 +398,7 @@ export interface FileRoutesByTo {
   '/schools': typeof AuthenticatedSchoolsRoute
   '/scratch-cards': typeof AuthenticatedScratchCardsRoute
   '/settings': typeof AuthenticatedSettingsRoute
+  '/staff': typeof AuthenticatedStaffRoute
   '/staff-attendance': typeof AuthenticatedStaffAttendanceRoute
   '/students': typeof AuthenticatedStudentsRouteWithChildren
   '/users': typeof AuthenticatedUsersRoute
@@ -443,6 +451,7 @@ export interface FileRoutesById {
   '/_authenticated/schools': typeof AuthenticatedSchoolsRoute
   '/_authenticated/scratch-cards': typeof AuthenticatedScratchCardsRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
+  '/_authenticated/staff': typeof AuthenticatedStaffRoute
   '/_authenticated/staff-attendance': typeof AuthenticatedStaffAttendanceRoute
   '/_authenticated/students': typeof AuthenticatedStudentsRouteWithChildren
   '/_authenticated/users': typeof AuthenticatedUsersRoute
@@ -495,6 +504,7 @@ export interface FileRouteTypes {
     | '/schools'
     | '/scratch-cards'
     | '/settings'
+    | '/staff'
     | '/staff-attendance'
     | '/students'
     | '/users'
@@ -544,6 +554,7 @@ export interface FileRouteTypes {
     | '/schools'
     | '/scratch-cards'
     | '/settings'
+    | '/staff'
     | '/staff-attendance'
     | '/students'
     | '/users'
@@ -595,6 +606,7 @@ export interface FileRouteTypes {
     | '/_authenticated/schools'
     | '/_authenticated/scratch-cards'
     | '/_authenticated/settings'
+    | '/_authenticated/staff'
     | '/_authenticated/staff-attendance'
     | '/_authenticated/students'
     | '/_authenticated/users'
@@ -835,6 +847,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/staff': {
+      id: '/_authenticated/staff'
+      path: '/staff'
+      fullPath: '/staff'
+      preLoaderRoute: typeof AuthenticatedStaffRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/staff-attendance': {
       id: '/_authenticated/staff-attendance'
       path: '/staff-attendance'
@@ -1019,6 +1038,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedSchoolsRoute: typeof AuthenticatedSchoolsRoute
   AuthenticatedScratchCardsRoute: typeof AuthenticatedScratchCardsRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
+  AuthenticatedStaffRoute: typeof AuthenticatedStaffRoute
   AuthenticatedStaffAttendanceRoute: typeof AuthenticatedStaffAttendanceRoute
   AuthenticatedStudentsRoute: typeof AuthenticatedStudentsRouteWithChildren
   AuthenticatedUsersRoute: typeof AuthenticatedUsersRoute
@@ -1046,6 +1066,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedSchoolsRoute: AuthenticatedSchoolsRoute,
   AuthenticatedScratchCardsRoute: AuthenticatedScratchCardsRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
+  AuthenticatedStaffRoute: AuthenticatedStaffRoute,
   AuthenticatedStaffAttendanceRoute: AuthenticatedStaffAttendanceRoute,
   AuthenticatedStudentsRoute: AuthenticatedStudentsRouteWithChildren,
   AuthenticatedUsersRoute: AuthenticatedUsersRoute,

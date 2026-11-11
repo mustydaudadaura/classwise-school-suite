@@ -490,6 +490,26 @@ function StudentsPage() {
                           >
                             Profile →
                           </Link>
+                          {isFormMaster && s.class_id && (formMasterClassIds ?? []).includes(s.class_id) && (
+                            <>
+                              <Link
+                                to="/students/$id"
+                                params={{ id: s.id }}
+                                search={{ edit: true }}
+                                className="ml-3 text-xs font-medium text-primary hover:underline"
+                              >
+                                Edit
+                              </Link>
+                              <Link
+                                to="/students/$id"
+                                params={{ id: s.id }}
+                                search={{ upload: true }}
+                                className="ml-3 text-xs font-medium text-primary hover:underline"
+                              >
+                                Photo
+                              </Link>
+                            </>
+                          )}
                           {canManage && <RegistryActions table="students" id={s.id} name={fullName} active={s.active} />}
                         </TableCell>
                       </TableRow>

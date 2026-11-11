@@ -29,8 +29,10 @@ export const Route = createFileRoute("/_authenticated/students/$id")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
-  validateSearch: (search: Record<string, unknown>): { upload?: boolean } =>
-    search.upload === true || search.upload === "true" || search.upload === 1 || search.upload === "1" ? { upload: true } : {},
+  validateSearch: (search: Record<string, unknown>): { upload?: boolean; edit?: boolean } => {
+    const on = (v: unknown) => v === true || v === "true" || v === 1 || v === "1";
+    return { ...(on(search.upload) ? { upload: true } : {}), ...(on(search.edit) ? { edit: true } : {}) };
+  },
   component: StudentProfile,
 });
 
@@ -60,7 +62,8 @@ function StudentProfile() {
 
   const [editing, setEditing] = useState(false);
   const [savingBio, setSavingBio] = useState(false);
-  const { upload } = Route.useSearch();
+  const { upload, edit: editOnArrival } = Route.useSearch();
+  const [pendingEdit, setPendingEdit] = useState(Boolean(editOnArrival));
   const [passportOpen, setPassportOpen] = useState(Boolean(upload));
   const [form, setForm] = useState<Record<string, string>>({});
 
@@ -155,7 +158,8 @@ function StudentProfile() {
     data.classes ?? [],
     data.allocations ?? []
   );
-  if (!authorizedToView) {
+  // The database-verified form-master check always grants access to their own class pupils.
+  if (!authorizedToView && !data.formMaster) {
     return (
       <div className="space-y-2 p-4">
         <h1 className="text-xl font-semibold text-destructive">Access Denied</h1>
@@ -190,6 +194,12 @@ function StudentProfile() {
     setForm(initial);
     setEditing(true);
   };
+
+  // Opened from the "Edit" shortcut: start in edit mode once permission is known.
+  if (pendingEdit && canEditProfile && !editing) {
+    setPendingEdit(false);
+    startEditing();
+  }
 
   const save = async () => {
     if (!form.first_name?.trim() || !form.last_name?.trim() || !form.admission_no?.trim()) {

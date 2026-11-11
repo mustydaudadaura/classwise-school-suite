@@ -61,6 +61,7 @@ function StudentProfile() {
   const qc = useQueryClient();
 
   const [editing, setEditing] = useState(false);
+  const [pendingEdit, setPendingEdit] = useState(Boolean(editOnArrival));
   const [savingBio, setSavingBio] = useState(false);
   const { upload, edit: editOnArrival } = Route.useSearch();
   const [passportOpen, setPassportOpen] = useState(Boolean(upload));
@@ -193,6 +194,12 @@ function StudentProfile() {
     setForm(initial);
     setEditing(true);
   };
+
+  // Opened from the "Edit" shortcut: start in edit mode once permission is known.
+  if (pendingEdit && canEditProfile && !editing) {
+    setPendingEdit(false);
+    startEditing();
+  }
 
   const save = async () => {
     if (!form.first_name?.trim() || !form.last_name?.trim() || !form.admission_no?.trim()) {

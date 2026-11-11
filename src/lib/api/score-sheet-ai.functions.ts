@@ -53,7 +53,7 @@ SUBJECTS (id | name):\n${data.subjects.map((s) => `${s.id} | ${s.name}`).join("\
       model: provider.responses("openai/gpt-6-astra"),
       instructions: INSTRUCTIONS,
       messages: [{ role: "user", content: parts }],
-      experimental_output: Output.object({ schema: jsonSchema<{ scores: { student_id: string; subject_id: string; ca1: number | null; ca2: number | null; exam: number | null }[]; unclear: string[] }>(Schema as any) }),
+      output: Output.object({ schema: jsonSchema<{ scores: { student_id: string; subject_id: string; ca1: number | null; ca2: number | null; exam: number | null }[]; unclear: string[] }>(Schema as any) }),
       providerOptions: { openai: { store: false, forceReasoning: true, reasoningEffort: "medium", reasoningSummary: "auto", include: ["reasoning.encrypted_content"] } },
     });
     let text = "";

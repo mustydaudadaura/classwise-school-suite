@@ -2697,6 +2697,80 @@ export type Database = {
           },
         ]
       }
+      staff_members: {
+        Row: {
+          account_name: string | null
+          account_number: string | null
+          active: boolean
+          bank_name: string | null
+          created_at: string
+          created_by: string | null
+          department: string | null
+          email: string | null
+          full_name: string
+          id: string
+          job_title: string | null
+          monthly_salary: number
+          phone: string | null
+          photo_url: string | null
+          role: string
+          school_id: string
+          staff_no: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          account_name?: string | null
+          account_number?: string | null
+          active?: boolean
+          bank_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          department?: string | null
+          email?: string | null
+          full_name: string
+          id?: string
+          job_title?: string | null
+          monthly_salary?: number
+          phone?: string | null
+          photo_url?: string | null
+          role?: string
+          school_id: string
+          staff_no?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          account_name?: string | null
+          account_number?: string | null
+          active?: boolean
+          bank_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          department?: string | null
+          email?: string | null
+          full_name?: string
+          id?: string
+          job_title?: string | null
+          monthly_salary?: number
+          phone?: string | null
+          photo_url?: string | null
+          role?: string
+          school_id?: string
+          staff_no?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_members_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       staff_penalties: {
         Row: {
           amount: number

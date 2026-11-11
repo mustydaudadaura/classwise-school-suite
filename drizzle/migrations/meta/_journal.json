@@ -183,6 +183,13 @@
       "when": 1794385056879,
       "tag": "0025_form_master_edit_class_students",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1794387464102,
+      "tag": "0026_allow_form_master_pending_admission",
+      "breakpoints": true
     }
   ]
 }

@@ -184,9 +184,10 @@ function ResultsPage() {
     queryKey: ["res-students", schoolId, filters.class_id],
     enabled: Boolean(schoolId && filters.class_id),
     queryFn: async () => {
-      const { data, error } = await supabase.from("students").select("id, admission_no, first_name, last_name").eq('school_id', schoolId ?? '').eq("class_id", filters.class_id).eq("active", true).eq("pending_activation", false).order("last_name");
+      const { data, error } = await supabase.from("students").select("id, admission_no, first_name, last_name").eq('school_id', schoolId ?? '').eq("class_id", filters.class_id).eq("active", true).eq("pending_activation", false).order("first_name").order("last_name");
       if (error) throw error;
-      return data ?? [];
+      const full = (s: { first_name: string | null; last_name: string | null }) => `${s.first_name ?? ""} ${s.last_name ?? ""}`.trim();
+      return [...(data ?? [])].sort((a, b) => full(a).localeCompare(full(b), undefined, { sensitivity: "base" }));
     },
   });
 

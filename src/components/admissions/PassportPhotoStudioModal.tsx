@@ -96,7 +96,8 @@ export function PassportPhotoStudioModal({
         setContrast(105);
         setPan({ x: 0, y: 0 });
         setIsEnhanced(false);
-        toast.success("Photo loaded. Click Enhance when ready or adjust framing directly.");
+        toast.info("Photo loaded. AI is cropping and enhancing it to passport size…");
+        void handleGeminiEnhance(optimized);
       }
     };
     reader.readAsDataURL(file);
@@ -112,7 +113,8 @@ export function PassportPhotoStudioModal({
       setContrast(105);
       setPan({ x: 0, y: 0 });
       setIsEnhanced(false);
-      toast.success("Photo captured. Click Enhance when ready or confirm framing.");
+      toast.info("Photo captured. AI is cropping and enhancing it to passport size…");
+      void handleGeminiEnhance(optimized);
     }
   };
 

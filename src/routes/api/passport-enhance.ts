@@ -5,6 +5,7 @@ import { editImage } from "@/lib/image-gateway.server";
 const PROMPT = `Turn this photo into an official school passport photograph.
 Keep the person's face, identity, skin tone, hairstyle, headwear (hijab/cap) and clothing exactly the same — do not change, beautify or morph facial features.
 Replace the background with a plain, evenly lit pure white background.
+If the photo shows more than the head and shoulders (half body, full body, standing, walking or running), crop it tightly to a standard passport framing: from just above the top of the head to just below the shoulders, discarding the rest of the body and surroundings.
 Centre the head and shoulders, face looking straight ahead, eyes level, head and top of shoulders filling the frame like a standard 35x45mm passport photo.
 Balance the lighting, remove shadows and colour casts, and make the image sharp and clean. No text, borders or watermarks.`;
 

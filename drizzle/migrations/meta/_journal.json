@@ -176,6 +176,13 @@
       "when": 1794328134688,
       "tag": "0024_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1794385056879,
+      "tag": "0025_form_master_edit_class_students",
+      "breakpoints": true
     }
   ]
 }

@@ -37,3 +37,4 @@
 - Scratch-card PINs are stored only as school-bound hashes and redeemed through one atomic service-only database function; each card copies price/views/expiry at creation so rule changes never alter sold cards.
 - ID cards get a random verification code per holder; the public QR check shows only what is printed on the card.
 - Unsaved score entries persist as per-device drafts (shared score-drafts helper) until the normal approval-checked final save; drafts never write assessments on their own.
+- Form masters may edit biodata/passport of students in their assigned class through a dedicated RLS update policy; a trigger blocks class, status, login and school changes by non-administrators so edits never move or promote students.

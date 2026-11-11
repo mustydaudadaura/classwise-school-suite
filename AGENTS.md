@@ -38,3 +38,5 @@
 - ID cards get a random verification code per holder; the public QR check shows only what is printed on the card.
 - Unsaved score entries persist as per-device drafts (shared score-drafts helper) until the normal approval-checked final save; drafts never write assessments on their own.
 - Form masters may edit biodata/passport of students in their assigned class through a dedicated RLS update policy; a trigger blocks class, status, login and school changes by non-administrators so edits never move or promote students.
+
+- The Staff Register keeps every staff member (with or without a login) in its own school-admin-only table; optional logins reuse the checked staff-account server function and sync ID-card details, so login, role and salary data stay separately protected.

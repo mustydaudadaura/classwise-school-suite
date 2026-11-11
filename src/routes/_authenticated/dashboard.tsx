@@ -27,6 +27,7 @@ import { StudentPerformanceAnalytics } from "@/components/StudentPerformanceAnal
 import { AdminAIAssistantWidget } from "@/components/AdminAIAssistantWidget";
 import { useDashboardMetrics } from "@/hooks/useDashboardMetrics";
 import type { DashboardMetrics } from "@/lib/dashboard-metrics";
+import { MissingPassportAlert } from "@/components/MissingPassportAlert";
 import { VisionDashboard, CorelyticsDashboard } from "@/components/StyledDashboards";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -177,6 +178,7 @@ function Dashboard() {
           </SelectContent>
         </Select>
       </div>
+      {roles.includes("teacher") && <MissingPassportAlert />}
       {dashStyle !== "classic" && role !== "parent" && role !== "student" && roles.length > 0 ? (
         <StyledView style={dashStyle} role={role} schoolId={schoolId} name={fullName || "there"} title={title} />
       ) : (<>

@@ -61,9 +61,9 @@ function StudentProfile() {
   const qc = useQueryClient();
 
   const [editing, setEditing] = useState(false);
-  const [pendingEdit, setPendingEdit] = useState(Boolean(editOnArrival));
   const [savingBio, setSavingBio] = useState(false);
   const { upload, edit: editOnArrival } = Route.useSearch();
+  const [pendingEdit, setPendingEdit] = useState(Boolean(editOnArrival));
   const [passportOpen, setPassportOpen] = useState(Boolean(upload));
   const [form, setForm] = useState<Record<string, string>>({});
 

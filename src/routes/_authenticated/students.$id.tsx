@@ -109,7 +109,13 @@ function StudentProfile() {
                 .eq("teacher_id", user.id)
             ).data ?? []
           : [];
+      let formMaster = false;
+      if (s.data?.class_id && user?.id) {
+        const fm = await supabase.rpc("is_form_master", { _user_id: user.id, _class_id: s.data.class_id } as any);
+        formMaster = fm.data === true;
+      }
       return {
+        formMaster,
         student: s.data,
         classes: schoolClasses,
         allocations,
@@ -128,7 +134,8 @@ function StudentProfile() {
   // Form master of this student's class may edit biodata, but not class or status.
   const isClassFormMaster =
     Boolean(user?.id && s.class_id) &&
-    (data.classes.some((c: any) => c.id === s.class_id && c.teacher_id === user?.id) ||
+    (data.formMaster ||
+      data.classes.some((c: any) => c.id === s.class_id && c.teacher_id === user?.id) ||
       data.allocations.some((a: any) => a.class_id === s.class_id && a.is_class_teacher));
   const canEditFull = can("students.edit");
   const canEditProfile = canEditFull || isClassFormMaster;

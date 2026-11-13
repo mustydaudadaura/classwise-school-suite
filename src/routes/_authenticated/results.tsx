@@ -132,7 +132,7 @@ function ResultsPage() {
     if (status === "draft" && !remark?.trim()) return toast.error("Write a remark before returning");
     const { error } = await supabase.from("assessments").update({ status, review_remark: remark?.trim() || null }).in("id", ids);
     if (error) return toast.error(error.message);
-    toast.success(status === "approved" ? `Approved ${ids.length} result(s)` : "Returned to teacher for correction");
+    toast.success(status === "approved" ? `Approved ${ids.length} result(s)` : `Unlocked ${ids.length} result(s) — teacher can now edit`);
     qc.invalidateQueries({ queryKey: ["assessments"] });
     qc.invalidateQueries({ queryKey: ["class-monitor-assessments"] });
   };
@@ -627,6 +627,16 @@ function ResultsPage() {
                 Approve all submitted
               </Button>
             )}
+            {canApprove && (
+              <Button size="sm" variant="outline" onClick={() => {
+                const ids = Object.values(existing ?? {}).filter((a: any) => a.status === "approved").map((a: any) => a.id);
+                if (!ids.length) return toast.info("No approved scores to unlock");
+                if (!window.confirm(`Unapprove ${ids.length} score(s) so the teacher can enter and edit them again?`)) return;
+                review(ids, "draft", "Unlocked by administrator for editing");
+              }}>
+                Unapprove all (allow editing)
+              </Button>
+            )}
           </CardHeader>
           <CardContent>
             <Table>
@@ -717,6 +727,7 @@ function ResultsPage() {
                         {canReviewSelectedClass && ex && (
                           <div className="flex flex-col gap-1">
                             {canApprove && ex.status !== "approved" && <Button size="sm" variant="outline" onClick={() => review([ex.id], "approved")}>Approve</Button>}
+                            {canApprove && ex.status === "approved" && <Button size="sm" variant="outline" onClick={() => review([ex.id], "draft", "Unlocked by administrator for editing")}>Unapprove</Button>}
                             <Input placeholder="Remark" className="h-8 text-xs" value={remarks[ex.id] ?? ""} onChange={(e) => setRemarks({ ...remarks, [ex.id]: e.target.value })} />
                             <Button size="sm" variant="ghost" onClick={() => review([ex.id], "draft", remarks[ex.id])}>Return for correction</Button>
                           </div>

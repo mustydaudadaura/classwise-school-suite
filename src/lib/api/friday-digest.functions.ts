@@ -45,98 +45,14 @@ async function assembleFridayData(
 
   const studentIds = (students ?? []).map((s) => s.id);
   if (!studentIds.length) {
-    // Provide realistic demo cohort so admins can test and preview immediately
-    const demoStudents: StudentWeeklyData[] = [
-      {
-        id: "demo-s1",
-        name: "Zainab Bello",
-        admission_no: "ADM/2026/014",
-        class_name: "Primary 5A",
-        present: 5,
-        late: 0,
-        absent: 0,
-        excused: 0,
-        total_days: 5,
-        average_score: 88,
-        recent_assessments: [{ subject_name: "Mathematics", score: 18, max_score: 20 }, { subject_name: "Basic Science", score: 17, max_score: 20 }],
-        pending_balance: 0,
-      },
-      {
-        id: "demo-s2",
-        name: "Emeka Okafor",
-        admission_no: "ADM/2026/042",
-        class_name: "Primary 5A",
-        present: 3,
-        late: 2,
-        absent: 0,
-        excused: 0,
-        total_days: 5,
-        average_score: 64,
-        recent_assessments: [{ subject_name: "English", score: 13, max_score: 20 }],
-        pending_balance: 15000,
-      },
-      {
-        id: "demo-s3",
-        name: "Fatima Aliyu",
-        admission_no: "ADM/2026/108",
-        class_name: "Primary 5A",
-        present: 3,
-        late: 0,
-        absent: 2,
-        excused: 0,
-        total_days: 5,
-        average_score: 41,
-        recent_assessments: [{ subject_name: "Mathematics", score: 8, max_score: 20 }],
-        pending_balance: 25000,
-      },
-      {
-        id: "demo-s4",
-        name: "Ibrahim Bello (Sibling)",
-        admission_no: "ADM/2026/015",
-        class_name: "Primary 3B",
-        present: 5,
-        late: 0,
-        absent: 0,
-        excused: 0,
-        total_days: 5,
-        average_score: 92,
-        recent_assessments: [{ subject_name: "Verbal Reasoning", score: 19, max_score: 20 }],
-        pending_balance: 0,
-      },
-    ];
-
-    const demoAnalyses = demoStudents.map(analyzeStudentWeek);
-    const demoParents = [
-      { id: "demo-p1", full_name: "Mrs. Hauwa Bello", phone: "08031000001" },
-      { id: "demo-p2", full_name: "Mr. Chukwudi Okafor", phone: "08022000002" },
-      { id: "demo-p3", full_name: "Alhaji Garba Aliyu", phone: "08093000003" },
-    ];
-
-    // Zainab and Ibrahim are siblings of Mrs. Hauwa Bello
-    const parentDigests: ParentWeeklyDigest[] = [
-      buildFridayParentDigest(demoParents[0], "Result Arena Academy", end, [demoAnalyses[0], demoAnalyses[3]])!,
-      buildFridayParentDigest(demoParents[1], "Result Arena Academy", end, [demoAnalyses[1]])!,
-      buildFridayParentDigest(demoParents[2], "Result Arena Academy", end, [demoAnalyses[2]])!,
-    ].filter(Boolean);
-
-    const praise = demoAnalyses.filter((s) => s.overall_flag === "praise").length;
-    const watchlist = demoAnalyses.filter((s) => s.overall_flag === "watchlist").length;
-    const action_required = demoAnalyses.filter((s) => s.overall_flag === "action_required").length;
-
+    // No pupils in this selection: show an empty week, never sample families.
     return {
       start,
       end,
-      analyses: demoAnalyses,
-      parentDigests,
-      stats: {
-        total: demoAnalyses.length,
-        praise,
-        watchlist,
-        action_required,
-        reachable: parentDigests.length,
-        missing_phone: 0,
-      },
-      schoolName: "Result Arena Academy",
+      analyses: [],
+      parentDigests: [],
+      stats: { total: 0, praise: 0, watchlist: 0, action_required: 0, reachable: 0, missing_phone: 0 },
+      schoolName: "",
     };
   }
 

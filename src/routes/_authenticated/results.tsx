@@ -20,6 +20,7 @@ import { buildClassSubmissionSummary } from "@/lib/hierarchical-rbac";
 import { GeneralSubjectEntry } from "@/components/GeneralSubjectEntry";
 import { classAssessmentOptions, refreshScoreViews } from '@/lib/assessment-query';
 import { classSubjects } from '@/lib/broadsheet';
+import { checkScoreLimit } from '@/lib/score-limits';
 import { loadClassScoreDraft, saveClassScoreDraft, scoreDraftKey, withoutSavedCells } from '@/lib/score-drafts';
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -50,6 +51,18 @@ function ResultsPage() {
   const [saving, setSaving] = useState(false);
   const [rowSaving, setRowSaving] = useState<Record<string, boolean>>({});
   const [dirty, setDirty] = useState<Record<string, boolean>>({});
+  // Marks above a column's limit are refused and explained in red under the box.
+  const [limitErrors, setLimitErrors] = useState<Record<string, string>>({});
+  const typeScore = (studentId: string, cur: { ca1: number; ca2: number; exam: number }, field: 'ca1' | 'ca2' | 'exam', raw: string) => {
+    const max = field === 'ca1' ? caRatioConfig.ca1Max : field === 'ca2' ? caRatioConfig.ca2Max : caRatioConfig.examMax;
+    const label = field === 'ca1' ? caRatioConfig.ca1Label : field === 'ca2' ? caRatioConfig.ca2Label : caRatioConfig.examLabel;
+    const check = checkScoreLimit(raw, max, label);
+    const cell = `${studentId}:${field}`;
+    if (!check.ok) { setLimitErrors((p) => ({ ...p, [cell]: check.error })); return; }
+    setLimitErrors((p) => { if (!p[cell]) return p; const n = { ...p }; delete n[cell]; return n; });
+    setScores((prev) => ({ ...prev, [studentId]: { ...cur, [field]: check.value } }));
+    setDirty((p) => ({ ...p, [studentId]: true }));
+  };
   const [autoSave, setAutoSave] = useState(true);
   const generalSave = useRef<(() => Promise<boolean>) | null>(null);
   const registerGeneralSave = useCallback((save: (() => Promise<boolean>) | null) => { generalSave.current = save; }, []);
@@ -681,10 +694,12 @@ function ResultsPage() {
                           max={caRatioConfig.ca1Max}
                           className="w-20"
                           aria-label={`${st.first_name} ${st.last_name} CA1`} value={cur.ca1}
-                          onChange={(e) => { setScores({ ...scores, [st.id]: { ...cur, ca1: +e.target.value } }); setDirty((p) => ({ ...p, [st.id]: true })); }}
+                          onChange={(e) => typeScore(st.id, cur, 'ca1', e.target.value)}
+                          aria-invalid={Boolean(limitErrors[`${st.id}:ca1`])}
                           onBlur={() => autoSaveRow(st.id)}
                           disabled={ex?.status === "approved" && !canApprove}
                           />
+                          {limitErrors[`${st.id}:ca1`] && <p role="alert" className="mt-1 w-24 text-[11px] font-semibold leading-tight text-destructive">{limitErrors[`${st.id}:ca1`]}</p>}
                           <Button type="button" size="sm" variant="outline" className="mt-1 h-7 w-20 px-1 text-xs" disabled={rowSaving[st.id] || existingLoading || (ex?.status === "approved" && !canApprove)} onMouseDown={(e) => e.preventDefault()} onClick={() => saveScore(st.id)}>{rowSaving[st.id] ? "Saving…" : dirty[st.id] ? "Save CA" : ex ? "Saved ✓" : "Save CA"}</Button>
                       </TableCell>
                       {caRatioConfig.ca2Max > 0 && (
@@ -695,10 +710,12 @@ function ResultsPage() {
                             max={caRatioConfig.ca2Max}
                             className="w-20"
                             aria-label={`${st.first_name} ${st.last_name} CA2`} value={cur.ca2}
-                            onChange={(e) => { setScores({ ...scores, [st.id]: { ...cur, ca2: +e.target.value } }); setDirty((p) => ({ ...p, [st.id]: true })); }}
+                            onChange={(e) => typeScore(st.id, cur, 'ca2', e.target.value)}
+                          aria-invalid={Boolean(limitErrors[`${st.id}:ca2`])}
                           onBlur={() => autoSaveRow(st.id)}
                           disabled={ex?.status === "approved" && !canApprove}
                           />
+                          {limitErrors[`${st.id}:ca2`] && <p role="alert" className="mt-1 w-24 text-[11px] font-semibold leading-tight text-destructive">{limitErrors[`${st.id}:ca2`]}</p>}
                           <Button type="button" size="sm" variant="outline" className="mt-1 h-7 w-20 px-1 text-xs" disabled={rowSaving[st.id] || existingLoading || (ex?.status === "approved" && !canApprove)} onMouseDown={(e) => e.preventDefault()} onClick={() => saveScore(st.id)}>{rowSaving[st.id] ? "Saving…" : dirty[st.id] ? "Save CA" : ex ? "Saved ✓" : "Save CA"}</Button>
                         </TableCell>
                       )}
@@ -709,10 +726,12 @@ function ResultsPage() {
                           max={caRatioConfig.examMax}
                           className="w-20"
                           aria-label={`${st.first_name} ${st.last_name} EXAM`} value={cur.exam}
-                          onChange={(e) => { setScores({ ...scores, [st.id]: { ...cur, exam: +e.target.value } }); setDirty((p) => ({ ...p, [st.id]: true })); }}
+                          onChange={(e) => typeScore(st.id, cur, 'exam', e.target.value)}
+                          aria-invalid={Boolean(limitErrors[`${st.id}:exam`])}
                           onBlur={() => autoSaveRow(st.id)}
                           disabled={ex?.status === "approved" && !canApprove}
                         />
+                          {limitErrors[`${st.id}:exam`] && <p role="alert" className="mt-1 w-24 text-[11px] font-semibold leading-tight text-destructive">{limitErrors[`${st.id}:exam`]}</p>}
                       </TableCell>
                       <TableCell className="font-bold text-sm">{liveTotal}</TableCell>
                       <TableCell>

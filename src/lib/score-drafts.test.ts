@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { loadScoreDraft, saveScoreDraft, scoreDraftKey } from './score-drafts';
+import { loadScoreDraft, saveScoreDraft, scoreDraftKey, loadClassScoreDraft, saveClassScoreDraft } from './score-drafts';
 
 function memoryStore(): Storage {
   const m = new Map<string, string>();
@@ -14,6 +14,24 @@ function memoryStore(): Storage {
 }
 
 describe('score drafts', () => {
+  it('shares general and individual cells without erasing other subjects', () => {
+    const store = memoryStore();
+    const parts = ['school', 'class', '2025/2026', 'first'];
+    saveClassScoreDraft(parts, ['maths', 'english'], { 's1:maths': { ca1: 12, ca2: 8, exam: 45 }, 's1:english': { ca1: 15, ca2: 10, exam: 50 } }, store);
+    expect(loadClassScoreDraft(parts, ['maths'], store)['s1:maths']).toEqual({ ca1: 12, ca2: 8, exam: 45 });
+    saveClassScoreDraft(parts, ['maths'], {}, store);
+    expect(loadClassScoreDraft(parts, ['maths', 'english'], store)).toEqual({ 's1:english': { ca1: 15, ca2: 10, exam: 50 } });
+  });
+  it('migrates old individual and general drafts and does not resurrect saved cells', () => {
+    const store = memoryStore();
+    const parts = ['school', 'class', '2025/2026', 'first'];
+    saveScoreDraft(scoreDraftKey(['broadsheet', ...parts]), { 's1:maths': { ca1: 12, ca2: 8, exam: 45 } }, store);
+    saveScoreDraft(scoreDraftKey(['school', 'class', 'english', '2025/2026', 'first']), { s1: { ca1: 15, ca2: 10, exam: 50 } }, store);
+    const migrated = loadClassScoreDraft(parts, ['maths', 'english'], store);
+    expect(Object.keys(migrated).sort()).toEqual(['s1:english', 's1:maths']);
+    saveClassScoreDraft(parts, ['maths', 'english'], {}, store);
+    expect(loadClassScoreDraft(parts, ['maths', 'english'], store)).toEqual({});
+  });
   it('keeps typed scores after leaving and coming back', () => {
     const store = memoryStore();
     const key = scoreDraftKey(['school', 'class', 'maths', '2025/2026', 'first']);
@@ -26,7 +44,7 @@ describe('score drafts', () => {
     const key = scoreDraftKey(['a', 'b', 'c', 'd', 'e']);
     saveScoreDraft(key, { s1: { ca1: 1, ca2: 2, exam: 3 } }, store);
     saveScoreDraft(key, {}, store);
-    expect(store.getItem(key!)).toBeNull();
+    expect(key && store.getItem(key)).toBeNull();
   });
 
   it('keeps drafts for different subjects apart', () => {

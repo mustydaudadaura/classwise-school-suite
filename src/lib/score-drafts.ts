@@ -39,3 +39,24 @@ export function saveScoreDraft(key: string | null, draft: ScoreDraft, store: Sto
     else store.removeItem(key);
   } catch { /* storage full or blocked: drafts are best-effort */ }
 }
+
+// Preserve legacy device drafts while giving both entry views the same cells.
+export function loadClassScoreDraft(parts: string[], subjects: string[], store: Storage | null = storage()): ScoreDraft {
+  const [school, classId, session, term] = parts;
+  const draft = loadScoreDraft(scoreDraftKey(['broadsheet', school, classId, session, term]), store);
+  for (const subject of subjects) {
+    const individual = loadScoreDraft(scoreDraftKey([school, classId, subject, session, term]), store);
+    for (const [student, score] of Object.entries(individual)) draft[`${student}:${subject}`] = score;
+  }
+  return { ...draft, ...loadScoreDraft(scoreDraftKey(['shared', ...parts]), store) };
+}
+
+export function saveClassScoreDraft(parts: string[], subjects: string[], draft: ScoreDraft, store: Storage | null = storage()): void {
+  const previous = loadScoreDraft(scoreDraftKey(['shared', ...parts]), store);
+  const retained = Object.fromEntries(Object.entries(previous).filter(([cell]) => !subjects.includes(cell.split(':')[1])));
+  saveScoreDraft(scoreDraftKey(['shared', ...parts]), { ...retained, ...draft }, store);
+  const [school, classId, session, term] = parts;
+  const legacy = loadScoreDraft(scoreDraftKey(['broadsheet', school, classId, session, term]), store);
+  saveScoreDraft(scoreDraftKey(['broadsheet', school, classId, session, term]), Object.fromEntries(Object.entries(legacy).filter(([cell]) => !subjects.includes(cell.split(':')[1]))), store);
+  for (const subject of subjects) saveScoreDraft(scoreDraftKey([school, classId, subject, session, term]), {}, store);
+}

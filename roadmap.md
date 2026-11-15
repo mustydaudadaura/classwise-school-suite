@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Keep individual/general scores synchronized, preserve drafts across view switches, and verify saved/published score reads.
+
 - [x] Phase 4: report PDFs (individual, whole-class, bulk ZIP) + WhatsApp sending with status tracking
 - [x] Phase 5: position ranking (total / average / custom ranges) with preview
 - [x] Phase 6: English, Arabic, Hausa, Arabic+Hausa report templates (Hausa screens not yet visually checked)

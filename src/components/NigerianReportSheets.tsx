@@ -148,7 +148,7 @@ export function NigerianReportSheet({ rc, assessments, qrDataUrl, design: design
 
   // The subject table is the stretchy part of every layout: its wrapper takes all spare
   // A4 height and the rows share it, so 3 subjects or 15 always fill the page.
-  const ROW_H = 22, STANDARD_ROWS = 15;
+  const ROW_H = 21, STANDARD_ROWS = 12;
   const results = (cols: 'alqalam' | 'emerald' | 'hisgrace' | 'fmp') => (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
     <table style={{ width: '100%', borderCollapse: 'collapse' }}>

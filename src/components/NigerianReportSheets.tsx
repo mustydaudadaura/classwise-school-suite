@@ -113,11 +113,13 @@ export function NigerianReportSheet({ rc, assessments, qrDataUrl, design: design
 
   // The subject table is the stretchy part of every layout: its wrapper takes all spare
   // A4 height and the rows share it, so 3 subjects or 15 always fill the page.
+  const ROW_H = 22, STANDARD_ROWS = 15;
   const results = (cols: 'alqalam' | 'emerald' | 'hisgrace' | 'fmp') => (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-    <table style={{ width: '100%', borderCollapse: 'collapse', flex: 1, height: '100%' }}>
+    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
       <thead>
-        <tr style={{ height: 1 }}>
+        <tr>
+          <th style={{ ...th, width: 26 }}>{lang === 'ar' ? 'رقم' : 'S/N'}</th>
           <th style={{ ...th, textAlign: rtl ? 'right' : 'left', fontSize: cols === 'hisgrace' ? 15 : 11 }}>{t.subjects}</th>
           {cols === 'fmp' ? <><th style={th}>{t.ca} (20)</th><th style={th}>{t.ca} (20)</th></> : <><th style={th}>{t.ca1}<br />20</th><th style={th}>{t.ca2}<br />20</th></>}
           <th style={th}>{t.exam}<br />60</th><th style={th}>{t.total}<br />100</th>
@@ -127,13 +129,18 @@ export function NigerianReportSheet({ rc, assessments, qrDataUrl, design: design
         </tr>
       </thead>
       <tbody>
-        {assessments.map((a, i) => <tr key={a.id} style={cols === 'fmp' && i % 2 ? { background: `color-mix(in oklab, ${c('rows')} 10%, white)` } : undefined}>
+        {assessments.map((a, i) => <tr key={a.id} style={{ height: ROW_H, ...(cols === 'fmp' && i % 2 ? { background: `color-mix(in oklab, ${c('rows')} 10%, white)` } : {}) }}>
+          <td style={tc}>{num(i + 1)}</td>
           <td style={{ ...cell, fontWeight: 700, textTransform: 'uppercase' }}>{lang === 'ar' ? arabicReportText(a.subjects?.name) : (a.subjects?.name ?? '—')}</td>
           <td style={tc}>{num(a.ca1)}</td><td style={tc}>{num(a.ca2)}</td><td style={tc}>{num(a.exam)}</td><td style={{ ...tc, fontWeight: 700 }}>{num(a.total)}</td>
           {positions.subject && <td style={tc}>{num(a.subject_position)}</td>}
           <td style={tc}>{a.grade ?? '—'}</td><td style={tc}>{tr(a.remark)}</td>
         </tr>)}
-        {!assessments.length && <tr><td colSpan={9} style={{ ...tc, padding: 12 }}>{t.noResults}</td></tr>}
+        {!assessments.length && <tr style={{ height: ROW_H }}><td colSpan={10} style={tc}>{t.noResults}</td></tr>}
+        {Array.from({ length: Math.max(0, STANDARD_ROWS - Math.max(assessments.length, 1)) }, (_, k) => <tr key={`blank-${k}`} style={{ height: ROW_H }}>
+          <td style={tc}>{num(Math.max(assessments.length, 1) + k + 1)}</td><td style={cell} /><td style={tc} /><td style={tc} /><td style={tc} /><td style={tc} />
+          {positions.subject && <td style={tc} />}<td style={tc} /><td style={tc} />
+        </tr>)}
       </tbody>
     </table>
     </div>);

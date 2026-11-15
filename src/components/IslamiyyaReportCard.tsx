@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react';
+import { classDisplayName } from "@/lib/class-label";
 import {
   arabicNumber, arabicReportText, hausaReportText, islamiyyaTotals, plainNumber, REPORT_LABELS,
   type IslamiyyaAssessment, type IslamiyyaProgress, type ReportLabelKey, type ReportLanguage,
@@ -46,7 +47,7 @@ export function IslamiyyaReportCard({ rc, assessments, progress = [], qrDataUrl,
   const arabicAddress = typeof settings.arabic_address === 'string' && settings.arabic_address.trim() ? settings.arabic_address : '';
   const identity: [ReportLabelKey, ReactNode][] = [
     ['name', fullName || '—'], ['admission', student.admission_no || '—'],
-    ['klass', [rc.classes?.name, rc.classes?.arm].filter(Boolean).join(' ') || '—'],
+    ['klass', classDisplayName(rc.classes) || '—'],
     ['session', rc.session || '—'], ['term', T(rc.term)],
   ];
   const plain = (key: ReportLabelKey) => language === 'ar' ? REPORT_LABELS.ar[key] : REPORT_LABELS.ha[key];

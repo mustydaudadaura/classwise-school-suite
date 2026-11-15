@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react';
+import { classDisplayName } from "@/lib/class-label";
 import { resolveReportTemplate, positionVisibility, type ReportLanguage, type ReportSheetId } from '@/lib/report-template';
 import { islamiyyaTotals, arabicReportText, hausaReportText, type IslamiyyaAssessment } from '@/lib/islamiyya-report';
 import type { SchoolReport } from '@/components/SchoolReportLayouts';
@@ -72,7 +73,7 @@ export function NigerianReportSheet({ rc, assessments, qrDataUrl, design: design
   const schoolName = (rtl && template.arabic_school_name) || school.name || '';
   const address = (rtl && template.arabic_address) || school.address || '';
   const fullName = [student.last_name, student.first_name, student.middle_name].filter(Boolean).join(' ').toUpperCase();
-  const className = [rc.classes?.name, rc.classes?.arm].filter(Boolean).join(' ');
+  const className = classDisplayName(rc.classes);
   const termName = rc.term ? (t.termNames[rc.term] ?? rc.term) : '';
   const positions = positionVisibility(template.positions);
   const totals = islamiyyaTotals(assessments);

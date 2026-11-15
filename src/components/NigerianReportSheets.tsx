@@ -139,7 +139,7 @@ export function NigerianReportSheet({ rc, assessments, qrDataUrl, design: design
   </Table>;
 
   const attendanceRows: [string, ReactNode][] = [[t.opened, num(rc.days_total)], [t.present, num(rc.days_present)], [t.absent, num(rc.days_absent)]];
-  const summaryRows: [string, ReactNode][] = [[t.obtainable, num(obtainable || null)], [t.obtained, num(totals.total)], [t.average, num(pct)], ...(positions.class ? [[t.position, num(rc.position)] as [string, ReactNode]] : []), [t.classSize, num(rc.class_size)]];
+  const summaryRows: [string, ReactNode][] = [[t.obtainable, num(obtainable || null)], [t.obtained, num(totals.total)], [t.average, num(pct)], ...(positions.class ? [[t.position, num(assessments.length ? rc.position : null)] as [string, ReactNode]] : []), [t.classSize, num(assessments.length ? rc.class_size : null)]];
 
   let body: ReactNode;
   if (design === 'sheet_emerald') {
@@ -228,7 +228,7 @@ export function NigerianReportSheet({ rc, assessments, qrDataUrl, design: design
         <tr><td style={sc}>{t.opened}</td><td style={cell}>{num(rc.days_total)}</td><td style={sc}>{t.present} / {t.absent}</td><td style={cell}>{num(rc.days_present)} / {num(rc.days_absent)}</td></tr>
       </Table>
       <div style={{ marginTop: 6 }}>{results('fmp')}</div>
-      <Table><tr><td style={sc}>{t.marksObtainable}: {num(obtainable || null)}</td><td style={sc}>{t.marksObtained}: {num(totals.total)}</td><td style={sc}>{t.percentage}: {num(pct)}%</td>{positions.class && <td style={sc}>{t.position}: {num(rc.position)}</td>}</tr></Table>
+      <Table><tr><td style={sc}>{t.marksObtainable}: {num(obtainable || null)}</td><td style={sc}>{t.marksObtained}: {num(totals.total)}</td><td style={sc}>{t.percentage}: {num(pct)}%</td>{positions.class && <td style={sc}>{t.position}: {num(assessments.length ? rc.position : null)}</td>}</tr></Table>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', marginTop: 6 }}>
         <ScoreGrid group="psychomotor" title={t.psychomotor} />
         <ScoreGrid group="affective" title={t.affective} />

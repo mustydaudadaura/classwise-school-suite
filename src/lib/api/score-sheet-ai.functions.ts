@@ -66,5 +66,14 @@ SUBJECTS (id | name):\n${data.subjects.map((s) => `${s.id} | ${s.name}`).join("\
       student_id: r.student_id as string, subject_id: r.subject_id as string,
       ca1: clamp(r.ca1, data.maxes.ca1), ca2: data.maxes.ca2 ? clamp(r.ca2, data.maxes.ca2) : 0, exam: clamp(r.exam, data.maxes.exam),
     })).filter((r) => r.ca1 !== null || r.exam !== null || (r.ca2 ?? null) !== null);
-    return { scores, unclear: (parsed.unclear ?? []).map(String).slice(0, 50) };
+    // A read mark above its column limit is never saved; it is listed for the teacher to retype.
+    const names = new Map(data.students.map((st) => [st.id, st.name])), subjectNames = new Map(data.subjects.map((sb) => [sb.id, sb.name]));
+    const overLimit: string[] = [];
+    for (const r of (parsed.scores ?? []).filter((x) => okStudent.has(x.student_id) && okSubject.has(x.subject_id))) {
+      for (const [field, max, label] of [["ca1", data.maxes.ca1, "1st CA"], ["ca2", data.maxes.ca2, "2nd CA"], ["exam", data.maxes.exam, "Exam"]] as const) {
+        const v = r[field];
+        if (max > 0 && typeof v === "number" && (v < 0 || v > max)) overLimit.push(`${names.get(r.student_id)} — ${subjectNames.get(r.subject_id)} ${label}: read ${v}, more than the limit of ${max}`);
+      }
+    }
+    return { scores, unclear: [...overLimit, ...(parsed.unclear ?? []).map(String)].slice(0, 50) };
   });

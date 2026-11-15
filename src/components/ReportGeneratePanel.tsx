@@ -62,12 +62,12 @@ export function ReportGeneratePanel({ schoolId }: { schoolId: string }) {
   const scoreCount = periods.find((p) => p.session === activeSession && p.term === term)?.n ?? 0;
 
   const run = useMutation({
-    mutationFn: async () => generate({
-      data: { class_id: classId, session: activeSession, term, post_to_portal: post, student_ids: studentId === "all" ? undefined : [studentId] },
+    mutationFn: async (postNow: boolean) => generate({
+      data: { class_id: classId, session: activeSession, term, post_to_portal: postNow, student_ids: studentId === "all" ? undefined : [studentId] },
     }),
-    onSuccess: (r) => {
-      setDone({ count: r.published, posted: post });
-      toast.success(`${r.published} report card(s) generated for ${r.class_name}${post ? " and posted to the parent portal" : ""}${r.skipped_no_scores ? ` — ${r.skipped_no_scores} pupil(s) with no saved scores skipped` : ""}`);
+    onSuccess: (r, postNow) => {
+      setDone({ count: r.published, posted: postNow });
+      toast.success(`${r.published} report card(s) generated for ${r.class_name}${postNow ? " and posted to the parent portal" : ""}${r.skipped_no_scores ? ` — ${r.skipped_no_scores} pupil(s) with no saved scores skipped` : ""}`);
       void qc.invalidateQueries({ queryKey: ["report-cards-list"] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -129,7 +129,7 @@ export function ReportGeneratePanel({ schoolId }: { schoolId: string }) {
           Post to the parent portal now
         </label>
 
-        <Button disabled={!classId || !activeSession || scoreCount === 0 || run.isPending} onClick={() => run.mutate()}>
+        <Button disabled={!classId || !activeSession || scoreCount === 0 || run.isPending} onClick={() => run.mutate(post)}>
           {run.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileCheck2 className="mr-2 h-4 w-4" />}
           Generate {studentId === "all" ? "for whole class" : "for this student"}
         </Button>
@@ -139,7 +139,7 @@ export function ReportGeneratePanel({ schoolId }: { schoolId: string }) {
             <span className="font-medium">{done.count} report card(s) ready{done.posted ? " · posted to parent portal" : " · draft"}.</span>
             <Button asChild size="sm" variant="outline"><Link to="/report-distribution"><MessageCircle className="mr-1 h-3.5 w-3.5" />Send by WhatsApp / PDF</Link></Button>
             <Button asChild size="sm" variant="outline"><Link to="/report-distribution"><Mail className="mr-1 h-3.5 w-3.5" />Send by email</Link></Button>
-            {!done.posted && <Button size="sm" variant="secondary" disabled={run.isPending} onClick={() => { setPost(true); run.mutate(undefined, { onSettled: () => {} }); }}><Globe className="mr-1 h-3.5 w-3.5" />Post to parent portal</Button>}
+            {!done.posted && <Button size="sm" variant="secondary" disabled={run.isPending} onClick={() => { setPost(true); run.mutate(true); }}><Globe className="mr-1 h-3.5 w-3.5" />Post to parent portal</Button>}
           </div>
         )}
       </CardContent>

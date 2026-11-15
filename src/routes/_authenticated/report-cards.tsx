@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Eye, Search, Filter, Calendar, Award, Download } from "lucide-react";
 import { classDisplayName } from "@/lib/class-label";
+import { ReportGeneratePanel } from "@/components/ReportGeneratePanel";
 
 export const Route = createFileRoute("/_authenticated/report-cards")({
   head: () => ({
@@ -30,6 +31,7 @@ export const Route = createFileRoute("/_authenticated/report-cards")({
 function ReportCardsListPage() {
   const { roles, loading, schoolId } = useAuth();
   const isStaff = hasRole(roles, "super_admin", "school_admin", "teacher");
+  const isAdmin = hasRole(roles, "super_admin", "school_admin");
   const loadCards = useServerFn(getReportCardsList);
 
   const [sessionFilter, setSessionFilter] = useState<string>("all");
@@ -76,7 +78,7 @@ function ReportCardsListPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Terminal Report Cards</h1>
           <p className="text-sm text-muted-foreground">
-            Report cards saved and published by your school.
+            Generate report cards from saved scores, then post them to parents or send by WhatsApp or email.
           </p>
         </div>
 
@@ -123,6 +125,8 @@ function ReportCardsListPage() {
           </Button>
         </div>
       </div>
+
+      {isAdmin && schoolId && <ReportGeneratePanel schoolId={schoolId} />}
 
       {/* Filter and Search Bar */}
       <Card>
@@ -188,7 +192,7 @@ function ReportCardsListPage() {
               <SelectContent>
                 <SelectItem value="all">Published and drafts</SelectItem>
                 <SelectItem value="published">Published only</SelectItem>
-                <SelectItem value="draft">Drafts only</SelectItem>
+                <SelectItem value="draft">Not posted yet</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -297,7 +301,7 @@ function ReportCardsListPage() {
                             Published
                           </Badge>
                         ) : (
-                          <Badge variant="secondary">Draft</Badge>
+                          <Badge variant="secondary">Not posted</Badge>
                         )}
                       </TableCell>
                       <TableCell className="text-right">

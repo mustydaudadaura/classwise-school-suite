@@ -204,6 +204,13 @@
       "when": 1794763898195,
       "tag": "0028_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1794768321937,
+      "tag": "0029_assessment_limits_follow_school_split",
+      "breakpoints": true
     }
   ]
 }

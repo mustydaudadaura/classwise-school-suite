@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { FileDown, Files, Archive, MessageCircle, Share2, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { FileDown, Files, Archive, MessageCircle, Share2, CheckCircle2, XCircle, Loader2, Mail } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, hasRole } from "@/hooks/useAuth";
 import { getReportCardsList, getReportCardDetail, getReportRecipients } from "@/lib/api/results.functions";

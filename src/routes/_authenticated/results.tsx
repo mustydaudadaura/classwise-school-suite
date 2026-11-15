@@ -279,6 +279,8 @@ function ResultsPage() {
     setRowSaving((p) => ({ ...p, [studentId]: false }));
     if (error) return fail(error.message);
     if (!saved || saved.student_id !== studentId || saved.subject_id !== filters.subject_id || Number(saved.ca1) !== s.ca1 || Number(saved.exam) !== s.exam) return fail('Saved scores could not be confirmed');
+    const remainingDraft = Object.fromEntries(Object.keys(dirty).filter(id => id !== studentId && dirty[id] && scores[id]).map(id => [`${id}:${filters.subject_id}`, scores[id]]));
+    saveClassScoreDraft([schoolId, filters.class_id, filters.session, filters.term], [filters.subject_id], remainingDraft);
     setDirty((p) => ({ ...p, [studentId]: false }));
     setScores(p => { const next = { ...p }; delete next[studentId]; return next; });
     if (!quiet) toast.success(`Score saved (${gradeDef.grade} — ${gradeDef.remark})`);

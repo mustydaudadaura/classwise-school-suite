@@ -1,6 +1,6 @@
 # Roadmap
 
-- [ ] Keep individual/general scores synchronized, preserve drafts across view switches, and verify saved/published score reads.
+- [x] Keep individual/general scores synchronized and preserve shared device drafts; verified real-school saved marks in both views after reload and existing published-class marks remain in entry.
 
 - [x] Phase 4: report PDFs (individual, whole-class, bulk ZIP) + WhatsApp sending with status tracking
 - [x] Phase 5: position ranking (total / average / custom ranges) with preview

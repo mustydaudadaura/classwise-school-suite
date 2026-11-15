@@ -297,7 +297,9 @@ export const publishReportCards = createServerFn({ method: "POST" })
     });
 
     // Build ranked array
+    // Pupils with no saved scores get no report, so no family receives an all-zero result.
     const ranked = Array.from(agg.entries())
+      .filter(([, v]) => v.count > 0)
       .map(([student_id, v]) => ({
         student_id,
         total_score: v.total,

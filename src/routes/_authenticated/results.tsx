@@ -323,6 +323,14 @@ function ResultsPage() {
     setDraftCount(Object.keys(draft).length);
   }, [draftKey, restoredDraftKey, scores, dirty]);
 
+  const unsavedRows = Object.values(dirty).filter(Boolean).length;
+  useEffect(() => {
+    if (!unsavedRows) return;
+    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [unsavedRows]);
+
   const autoSaveRow = (studentId: string) => {
     if (autoSave && dirty[studentId]) void saveScore(studentId, true);
   };

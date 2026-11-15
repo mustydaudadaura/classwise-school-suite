@@ -98,6 +98,13 @@ export function GeneralSubjectEntry(p: Props) {
     timer.current = setTimeout(() => { void save(true); }, 1500);
   }
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+  const unsavedCount = Object.keys(changes).length;
+  useEffect(() => {
+    if (!unsavedCount) return;
+    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [unsavedCount]);
   async function save(quiet = false) {
     if (savingRef.current) { if (quiet) scheduleAutoSave(); return; }
     const current = changesRef.current;

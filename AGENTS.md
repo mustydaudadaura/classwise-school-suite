@@ -1,6 +1,6 @@
 # Architecture rules
 
-- Individual/general entry and review share paginated class assessments and per-cell device drafts (migrating legacy keys); score mutations refresh related reports/rankings/analytics but never PIN-protected details that consume paid views. Publishing preserves assessments, reads every page, and refuses local unsaved marks; changed cells use grading validation and saved-row checks.
+- Individual/general entry and review share paginated class assessments and per-cell device drafts (migrating legacy keys); score mutations refresh related reports/rankings/analytics but never PIN-protected details that consume paid views. Publishing preserves assessments, reads every page, ranks and shows only approved marks (unapproved ones are left out, not blocking), and refuses local unsaved marks that differ from saved ones (stale device drafts matching saved marks are discarded); changed cells use grading validation and saved-row checks.
 
 - Assign form masters through the school-admin-checked class-assignment RPC; classes.teacher_id is the primary assignment and old class-teacher allocations are reconciled. Score entry defaults to assigned classes, with matching restrictive write policies; subject-teacher allocations remain valid.
 

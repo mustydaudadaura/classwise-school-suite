@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { loadScoreDraft, saveScoreDraft, scoreDraftKey } from '@/lib/score-drafts';
+import { loadClassScoreDraft, saveClassScoreDraft, scoreDraftKey } from '@/lib/score-drafts';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { classAssessmentOptions } from '@/lib/assessment-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,6 +18,7 @@ type Props = {
   students: { id: string; admission_no: string; first_name: string; last_name: string }[];
   subjects: { id: string; name: string }[];
   ratio: CaRatioType; scale: GradingScaleType; canApprove: boolean;
+  registerSave: (save: (() => Promise<boolean>) | null) => void;
 };
 export function GeneralSubjectEntry(p: Props) {
   const qc = useQueryClient();
@@ -24,29 +26,23 @@ export function GeneralSubjectEntry(p: Props) {
   const [changes, setChanges] = useState<Record<string, EntryScore>>({});
   const [saving, setSaving] = useState(false);
   // Device draft: unsaved broadsheet cells survive leaving the tab until the final save.
-  const draftKey = scoreDraftKey(['broadsheet', p.schoolId, p.classId, p.session, p.term]);
+  const draftParts = [p.schoolId, p.classId, p.session, p.term];
+  const draftKey = scoreDraftKey(['shared', ...draftParts]);
   const [restored, setRestored] = useState(false);
   useEffect(() => {
-    const draft = loadScoreDraft(draftKey);
+    const draft = loadClassScoreDraft(draftParts, p.subjects.map(s => s.id));
     setChanges(Object.fromEntries(Object.entries(draft).filter(([id]) => { const [st, sub] = id.split(':'); return p.students.some(s => s.id === st) && p.subjects.some(s => s.id === sub); })));
     setRestored(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draftKey]);
-  useEffect(() => { if (restored) saveScoreDraft(draftKey, changes); }, [restored, draftKey, changes]);
-  const results = useQuery({
-    queryKey: ['assessments', 'broadsheet', p.schoolId, p.classId, p.session, p.term],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('assessments').select('*').eq('school_id', p.schoolId).eq('class_id', p.classId).eq('session', p.session).eq('term', p.term);
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
+  useEffect(() => { if (restored) saveClassScoreDraft(draftParts, p.subjects.map(s => s.id), changes); }, [restored, draftKey, changes]);
+  const results = useQuery(classAssessmentOptions(p.schoolId, p.classId, p.session, p.term));
   const readSheet = useServerFn(readScoreSheet);
   const [reading, setReading] = useState(false);
   const [unclear, setUnclear] = useState<string[]>([]);
   const sorted = [...p.students].sort((a, b) => `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`, undefined, { sensitivity: 'base' }));
   const cols = config.ca2Max > 0 ? [config.ca1Label, config.ca2Label, config.examLabel, 'Total'] : [config.ca1Label, config.examLabel, 'Total'];
-  const esc = (t: string) => t.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
+  const esc = (t: string) => t.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] ?? c));
   function printSheet() {
     const w = window.open('', '_blank');
     if (!w) { toast.error('Allow pop-ups to print the score sheet'); return; }
@@ -105,11 +101,20 @@ export function GeneralSubjectEntry(p: Props) {
     window.addEventListener('beforeunload', warn);
     return () => window.removeEventListener('beforeunload', warn);
   }, [unsavedCount]);
-  async function save(quiet = false) {
-    if (savingRef.current) { if (quiet) scheduleAutoSave(); return; }
+  useEffect(() => {
+    p.registerSave(async () => {
+      if (timer.current) clearTimeout(timer.current);
+      if (!Object.keys(changesRef.current).length) return true;
+      if (!autoSave) return false;
+      return save();
+    });
+    return () => p.registerSave(null);
+  });
+  async function save(quiet = false): Promise<boolean> {
+    if (savingRef.current) { if (quiet) scheduleAutoSave(); return false; }
     const current = changesRef.current;
     const entries = Object.entries(current).filter(([, sc]) => !quiet || validateScores(sc.ca1, sc.ca2, sc.exam, p.ratio).isValid);
-    if (quiet && !entries.length) return;
+    if (!entries.length) return true;
     savingRef.current = true;
     if (!quiet) setSaving(true);
     try {
@@ -125,11 +130,16 @@ export function GeneralSubjectEntry(p: Props) {
       if (error) throw error;
       if (data?.length !== rows.length || rows.some(row => !data.some(saved => saved.student_id === row.student_id && saved.subject_id === row.subject_id && Number(saved.ca1) === row.ca1 && Number(saved.ca2) === row.ca2 && Number(saved.exam) === row.exam && saved.status === 'submitted'))) throw new Error('Saved scores could not be confirmed');
       await qc.invalidateQueries({ queryKey: ['assessments'] });
+      await qc.invalidateQueries({ queryKey: ['class-monitor-assessments'] });
       // Only clear cells that were saved and not edited again while saving.
-      setChanges(prev => Object.fromEntries(Object.entries(prev).filter(([id, sc]) => { const sent = rows.find(r => `${r.student_id}:${r.subject_id}` === id); return !sent || sent.ca1 !== sc.ca1 || sent.exam !== sc.exam || sent.ca2 !== (config.ca2Max > 0 ? sc.ca2 : 0); })));
+      const remaining = Object.fromEntries(Object.entries(changesRef.current).filter(([id, sc]) => { const sent = rows.find(r => `${r.student_id}:${r.subject_id}` === id); return !sent || sent.ca1 !== sc.ca1 || sent.exam !== sc.exam || sent.ca2 !== (config.ca2Max > 0 ? sc.ca2 : 0); }));
+      changesRef.current = remaining;
+      setChanges(remaining);
+      saveClassScoreDraft(draftParts, p.subjects.map(s => s.id), remaining);
       setLastSaved(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
       if (!quiet) toast.success(`${rows.length} subject score(s) saved — awaiting approval`);
-    } catch (error) { toast.error(`${quiet ? 'Auto-save failed: ' : ''}${error instanceof Error ? error.message : (error as { message?: string }).message ?? 'Scores could not be saved'}`); }
+      return true;
+    } catch (error) { toast.error(`${quiet ? 'Auto-save failed: ' : ''}${error instanceof Error ? error.message : (error as { message?: string }).message ?? 'Scores could not be saved'}`); return false; }
     finally { savingRef.current = false; setSaving(false); }
   }
   if (results.error) return <p role="alert" className="text-destructive">Scores could not be loaded: {results.error.message}</p>;

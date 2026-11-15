@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,8 +18,9 @@ import { publishReportCards } from "@/lib/api/results.functions";
 import { scoreEntryClasses, scoreEntrySubjects, isClassFormMaster } from "@/lib/form-master";
 import { buildClassSubmissionSummary } from "@/lib/hierarchical-rbac";
 import { GeneralSubjectEntry } from "@/components/GeneralSubjectEntry";
+import { classAssessmentOptions } from '@/lib/assessment-query';
 import { classSubjects } from '@/lib/broadsheet';
-import { loadScoreDraft, saveScoreDraft, scoreDraftKey } from '@/lib/score-drafts';
+import { loadClassScoreDraft, saveClassScoreDraft, scoreDraftKey } from '@/lib/score-drafts';
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   calculateGrade,
@@ -50,6 +51,8 @@ function ResultsPage() {
   const [rowSaving, setRowSaving] = useState<Record<string, boolean>>({});
   const [dirty, setDirty] = useState<Record<string, boolean>>({});
   const [autoSave, setAutoSave] = useState(true);
+  const generalSave = useRef<(() => Promise<boolean>) | null>(null);
+  const registerGeneralSave = useCallback((save: (() => Promise<boolean>) | null) => { generalSave.current = save; }, []);
 
   const canApprove = access.can("results.publish");
   const [remarks, setRemarks] = useState<Record<string, string>>({});
@@ -58,7 +61,8 @@ function ResultsPage() {
     queryKey: ["active-school-academic", schoolId],
     enabled: !!schoolId,
     queryFn: async () => {
-      const { data } = await supabase.from("schools").select("id, name, report_template").eq("id", schoolId!).maybeSingle();
+      if (!schoolId) return null;
+      const { data } = await supabase.from("schools").select("id, name, report_template").eq("id", schoolId).maybeSingle();
       return data;
     },
   });
@@ -99,7 +103,6 @@ function ResultsPage() {
   useEffect(() => {
     if (!classes) return;
     setFilters(previous => classes.some(c => c.id === previous.class_id) ? previous : { ...previous, class_id: classes[0]?.id ?? '', subject_id: '' });
-    setScores({}); setDirty({});
   }, [classes]);
 
   const selectedClass = classes?.find((c: any) => c.id === filters.class_id);
@@ -235,19 +238,10 @@ function ResultsPage() {
       })
     : [];
 
-  const { data: existing, error: existingError, isPending: existingLoading } = useQuery({
-    queryKey: ["assessments", schoolId, filters],
-    enabled: !!(filters.class_id && filters.subject_id),
-    queryFn: async () => {
-      const { data, error } = await supabase.from("assessments").select("*").eq('school_id', schoolId ?? '')
-        .eq("class_id", filters.class_id).eq("subject_id", filters.subject_id)
-        .eq("session", filters.session).eq("term", filters.term);
-      if (error) throw error;
-      const m: Record<string, any> = {};
-      (data ?? []).forEach((a: any) => { m[a.student_id] = a; });
-      return m;
-    },
-  });
+  const { data: classAssessments, error: existingError, isPending: existingLoading } = useQuery(
+    classAssessmentOptions(schoolId ?? '', filters.class_id, filters.session, filters.term),
+  );
+  const existing = Object.fromEntries((classAssessments ?? []).filter(a => a.subject_id === filters.subject_id).map(a => [a.student_id, a]));
 
   const saveScore = async (studentId: string, quiet = false): Promise<boolean> => {
     if (rowSaving[studentId]) return false;
@@ -286,6 +280,7 @@ function ResultsPage() {
     if (error) return fail(error.message);
     if (!saved || saved.student_id !== studentId || saved.subject_id !== filters.subject_id || Number(saved.ca1) !== s.ca1 || Number(saved.exam) !== s.exam) return fail('Saved scores could not be confirmed');
     setDirty((p) => ({ ...p, [studentId]: false }));
+    setScores(p => { const next = { ...p }; delete next[studentId]; return next; });
     if (!quiet) toast.success(`Score saved (${gradeDef.grade} — ${gradeDef.remark})`);
     qc.invalidateQueries({ queryKey: ["assessments"] });
     qc.invalidateQueries({ queryKey: ["class-monitor-assessments"] });
@@ -303,25 +298,37 @@ function ResultsPage() {
   };
 
   // Device draft: typed scores survive leaving the tab, refreshing or losing connection.
-  const draftKey = scoreDraftKey([schoolId, filters.class_id, filters.subject_id, filters.session, filters.term]);
+  const draftParts = [schoolId ?? '', filters.class_id, filters.session, filters.term];
+  const draftKey = scoreDraftKey(['shared', ...draftParts, filters.subject_id]);
   const [restoredDraftKey, setRestoredDraftKey] = useState<string | null>(null);
   const [draftCount, setDraftCount] = useState(0);
   useEffect(() => {
-    const draft = loadScoreDraft(draftKey);
+    if (entryMode !== 'individual' || !draftKey) return;
+    const cells = loadClassScoreDraft(draftParts, [filters.subject_id]);
+    const draft = Object.fromEntries(Object.entries(cells).filter(([cell]) => cell.split(':')[1] === filters.subject_id).map(([cell, score]) => [cell.split(':')[0], score]));
     const ids = Object.keys(draft);
     if (ids.length) {
-      setScores((prev) => ({ ...prev, ...draft }));
-      setDirty((prev) => ({ ...prev, ...Object.fromEntries(ids.map((id) => [id, true])) }));
-    }
+      setScores(draft);
+      setDirty(Object.fromEntries(ids.map((id) => [id, true])));
+    } else { setScores({}); setDirty({}); }
     setDraftCount(ids.length);
     setRestoredDraftKey(draftKey);
-  }, [draftKey]);
+  }, [draftKey, entryMode]);
   useEffect(() => {
-    if (!draftKey || restoredDraftKey !== draftKey) return;
-    const draft = Object.fromEntries(Object.keys(dirty).filter((id) => dirty[id] && scores[id]).map((id) => [id, scores[id]]));
-    saveScoreDraft(draftKey, draft);
+    if (entryMode !== 'individual' || !draftKey || restoredDraftKey !== draftKey) return;
+    const draft = Object.fromEntries(Object.keys(dirty).filter((id) => dirty[id] && scores[id]).map((id) => [`${id}:${filters.subject_id}`, scores[id]]));
+    saveClassScoreDraft(draftParts, [filters.subject_id], draft);
     setDraftCount(Object.keys(draft).length);
-  }, [draftKey, restoredDraftKey, scores, dirty]);
+  }, [draftKey, restoredDraftKey, scores, dirty, entryMode]);
+
+  const changeEntryMode = async (mode: string) => {
+    if (entryMode === "general" && generalSave.current) await generalSave.current();
+    if (entryMode === "individual" && autoSave) {
+      for (const id of Object.keys(dirty).filter(id => dirty[id])) await saveScore(id, true);
+    }
+    setScores({}); setDirty({}); setRestoredDraftKey(null);
+    setEntryMode(mode);
+  };
 
   const unsavedRows = Object.values(dirty).filter(Boolean).length;
   useEffect(() => {
@@ -378,6 +385,8 @@ function ResultsPage() {
     onSuccess: (r) => {
       toast.success(`Published ${r.published} report card(s) for ${r.class_name}`);
       qc.invalidateQueries({ queryKey: ["report-cards-list"] });
+      qc.invalidateQueries({ queryKey: ["assessments"] });
+      qc.invalidateQueries({ queryKey: ["class-monitor-assessments"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -458,7 +467,7 @@ function ResultsPage() {
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <Tabs value={entryMode} onValueChange={setEntryMode}>
+        <Tabs value={entryMode} onValueChange={mode => void changeEntryMode(mode)}>
           <TabsList className="flex h-auto flex-wrap justify-start">
             <TabsTrigger value="individual">Individual subject entry</TabsTrigger>
             <TabsTrigger value="general">General subject entry</TabsTrigger>
@@ -619,7 +628,7 @@ function ResultsPage() {
         </Card>
       )}
 
-      {entryMode === 'general' && schoolId && filters.class_id && !studentsLoading && !subjectsLoading && !studentsError && !subjectsError && <GeneralSubjectEntry key={`${schoolId}:${filters.class_id}:${filters.session}:${filters.term}`} schoolId={schoolId} classId={filters.class_id} session={filters.session} term={filters.term} students={students ?? []} subjects={subjects ?? []} ratio={academicConfig.caRatio} scale={scaleType} canApprove={canApprove} />}
+      {entryMode === 'general' && schoolId && filters.class_id && !studentsLoading && !subjectsLoading && !studentsError && !subjectsError && <GeneralSubjectEntry key={`${schoolId}:${filters.class_id}:${filters.session}:${filters.term}`} schoolId={schoolId} classId={filters.class_id} session={filters.session} term={filters.term} students={students ?? []} subjects={subjects ?? []} ratio={academicConfig.caRatio} scale={scaleType} canApprove={canApprove} registerSave={registerGeneralSave} />}
 
       {entryMode === 'individual' && filters.class_id && filters.subject_id && !existingError && (
         <Card>
@@ -674,7 +683,7 @@ function ResultsPage() {
                           min={0}
                           max={caRatioConfig.ca1Max}
                           className="w-20"
-                          value={cur.ca1}
+                          aria-label={`${st.first_name} ${st.last_name} CA1`} value={cur.ca1}
                           onChange={(e) => { setScores({ ...scores, [st.id]: { ...cur, ca1: +e.target.value } }); setDirty((p) => ({ ...p, [st.id]: true })); }}
                           onBlur={() => autoSaveRow(st.id)}
                           disabled={ex?.status === "approved" && !canApprove}
@@ -688,7 +697,7 @@ function ResultsPage() {
                             min={0}
                             max={caRatioConfig.ca2Max}
                             className="w-20"
-                            value={cur.ca2}
+                            aria-label={`${st.first_name} ${st.last_name} CA2`} value={cur.ca2}
                             onChange={(e) => { setScores({ ...scores, [st.id]: { ...cur, ca2: +e.target.value } }); setDirty((p) => ({ ...p, [st.id]: true })); }}
                           onBlur={() => autoSaveRow(st.id)}
                           disabled={ex?.status === "approved" && !canApprove}
@@ -702,7 +711,7 @@ function ResultsPage() {
                           min={0}
                           max={caRatioConfig.examMax}
                           className="w-20"
-                          value={cur.exam}
+                          aria-label={`${st.first_name} ${st.last_name} EXAM`} value={cur.exam}
                           onChange={(e) => { setScores({ ...scores, [st.id]: { ...cur, exam: +e.target.value } }); setDirty((p) => ({ ...p, [st.id]: true })); }}
                           onBlur={() => autoSaveRow(st.id)}
                           disabled={ex?.status === "approved" && !canApprove}

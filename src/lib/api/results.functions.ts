@@ -437,7 +437,7 @@ export const previewClassRanking = createServerFn({ method: "POST" })
     if (!ok) throw new Error("Not authorized for this school");
     const [{ data: students, error: sErr }, { data: assess, error: aErr }] = await Promise.all([
       db.from("students").select("id, first_name, last_name, admission_no").eq("class_id", data.class_id),
-      db.from("assessments").select("student_id, total, status").eq("class_id", data.class_id).eq("session", data.session).eq("term", data.term),
+      db.from("assessments").select("student_id, total, status").eq("class_id", data.class_id).eq("session", data.session).eq("term", data.term).eq("status", "approved"),
     ]);
     if (sErr) throw new Error(sErr.message);
     if (aErr) throw new Error(aErr.message);

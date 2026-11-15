@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { FileCheck2, Loader2, MessageCircle, Mail, Globe } from "lucide-react";
+import { FileCheck2, Loader2, MessageCircle, Mail, Globe, Trophy, SlidersHorizontal } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { publishReportCards } from "@/lib/api/results.functions";
 import { classDisplayName } from "@/lib/class-label";
@@ -12,6 +12,9 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { PositionRankingSettings } from "@/components/PositionRankingSettings";
+import { RANKING_METHODS, ordinal, resolveRanking } from "@/lib/position-ranking";
 
 type Term = "first" | "second" | "third";
 
@@ -25,6 +28,19 @@ export function ReportGeneratePanel({ schoolId }: { schoolId: string }) {
   const [studentId, setStudentId] = useState("all");
   const [post, setPost] = useState(true);
   const [done, setDone] = useState<{ count: number; posted: boolean } | null>(null);
+  const [rankingOpen, setRankingOpen] = useState(false);
+
+  // The saved position method is what the server applies when generating.
+  const { data: school } = useQuery({
+    queryKey: ["generate-ranking", schoolId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("schools").select("id, report_template, current_session, current_term").eq("id", schoolId).single();
+      if (error) throw new Error(error.message);
+      return data;
+    },
+  });
+  const ranking = resolveRanking(school?.report_template);
+  const rankingLabel = RANKING_METHODS.find((m) => m.id === ranking.method)?.label ?? "";
 
   const { data: classes = [] } = useQuery({
     queryKey: ["generate-classes", schoolId],
@@ -124,6 +140,20 @@ export function ReportGeneratePanel({ schoolId }: { schoolId: string }) {
           </p>
         )}
 
+        <div className="flex flex-wrap items-start justify-between gap-2 rounded-md border bg-muted/30 p-3 text-sm">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 font-medium"><Trophy className="h-4 w-4 text-primary" />Positions: {rankingLabel}</div>
+            {ranking.method === "ranges" && (
+              <div className="flex flex-wrap gap-1.5 text-xs text-muted-foreground">
+                {[...ranking.ranges].sort((a, b) => b.min - a.min).map((r) => (
+                  <span key={`${r.min}-${r.position}`} className="rounded border bg-background px-1.5 py-0.5">{r.min}–{r.max} → {ordinal(r.position)}</span>
+                ))}
+              </div>
+            )}
+          </div>
+          <Button size="sm" variant="outline" onClick={() => setRankingOpen(true)} disabled={!school}><SlidersHorizontal className="mr-1 h-3.5 w-3.5" />Customise positions</Button>
+        </div>
+
         <label className="flex items-center gap-2 text-sm">
           <Checkbox checked={post} onCheckedChange={(v) => setPost(v === true)} />
           Post to the parent portal now
@@ -143,6 +173,12 @@ export function ReportGeneratePanel({ schoolId }: { schoolId: string }) {
           </div>
         )}
       </CardContent>
+      <Dialog open={rankingOpen} onOpenChange={(open) => { setRankingOpen(open); if (!open) void qc.invalidateQueries({ queryKey: ["generate-ranking", schoolId] }); }}>
+        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+          <DialogHeader><DialogTitle>Customise how positions are given</DialogTitle></DialogHeader>
+          {school && <PositionRankingSettings key={JSON.stringify(school.report_template ?? null)} school={school} />}
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

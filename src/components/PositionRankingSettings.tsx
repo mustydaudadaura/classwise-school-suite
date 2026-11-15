@@ -71,7 +71,8 @@ export function PositionRankingSettings({ school }: { school: School }) {
       if (error || !data) throw new Error(error?.message ?? "Could not save");
       if ((data.report_template as any)?.ranking_method !== method) throw new Error("Setting was not saved");
       await qc.invalidateQueries({ queryKey: ["school-settings", school.id] });
-      toast.success("Position ranking saved. It will be used the next time results are published.");
+      await qc.invalidateQueries({ queryKey: ["generate-ranking", school.id] });
+      toast.success("Position ranking saved. It will be used the next time report cards are generated.");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not save");
     } finally {

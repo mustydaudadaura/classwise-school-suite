@@ -42,4 +42,4 @@
 - The Staff Register keeps every staff member (with or without a login) in its own school-admin-only table; optional logins reuse the checked staff-account server function and sync ID-card details, so login, role and salary data stay separately protected.
 
 - A list page with child detail pages lives in `name.index.tsx` (or renders `<Outlet />`); otherwise detail URLs change but the list stays on screen.
-- Report lists, parent-portal reads and public verification return only real school-scoped rows (empty or an error when missing), never sample records, so families and verifiers never see invented results, fees or attendance.
+- Report lists, parent portal and public verification return only real school-scoped rows, never sample records, so nobody sees invented data.

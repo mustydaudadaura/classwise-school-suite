@@ -3,7 +3,10 @@ import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { FileCheck2, Loader2, MessageCircle, Mail, Globe, Trophy, SlidersHorizontal } from "lucide-react";
+import { FileCheck2, Loader2, MessageCircle, Mail, Globe, Trophy, SlidersHorizontal, AlertTriangle } from "lucide-react";
+import { classAssessmentOptions, refreshScoreViews } from "@/lib/assessment-query";
+import { findMissingScores } from "@/lib/score-limits";
+import { calculateGrade, getScaleForSection, resolveSchoolAcademicConfig } from "@/lib/grading";
 import { supabase } from "@/integrations/supabase/client";
 import { publishReportCards } from "@/lib/api/results.functions";
 import { classDisplayName } from "@/lib/class-label";
@@ -45,7 +48,7 @@ export function ReportGeneratePanel({ schoolId }: { schoolId: string }) {
   const { data: classes = [] } = useQuery({
     queryKey: ["generate-classes", schoolId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("classes").select("id, name, arm").eq("school_id", schoolId).eq("active", true);
+      const { data, error } = await supabase.from("classes").select("id, name, arm, level, section").eq("school_id", schoolId).eq("active", true);
       if (error) throw new Error(error.message);
       return (data ?? []).sort((a, b) => classDisplayName(a).localeCompare(classDisplayName(b), undefined, { numeric: true }));
     },
@@ -67,15 +70,62 @@ export function ReportGeneratePanel({ schoolId }: { schoolId: string }) {
     queryKey: ["generate-students", classId],
     enabled: !!classId,
     queryFn: async () => {
-      const { data, error } = await supabase.from("students").select("id, first_name, last_name, admission_no").eq("class_id", classId);
+      const { data, error } = await supabase.from("students").select("id, first_name, last_name, admission_no, active, pending_activation").eq("class_id", classId);
       if (error) throw new Error(error.message);
       return (data ?? []).sort((a, b) => `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`));
     },
   });
 
   const sessions = useMemo(() => Array.from(new Set(periods.map((p) => p.session))), [periods]);
-  const activeSession = session || sessions[0] || "";
+  const activeSession = session || sessions[0] || school?.current_session || "";
   const scoreCount = periods.find((p) => p.session === activeSession && p.term === term)?.n ?? 0;
+
+  // Class subjects and saved scores, to list every pupil/subject that still has nothing saved.
+  const { data: classSubjectList = [] } = useQuery({
+    queryKey: ["generate-subjects", classId],
+    enabled: !!classId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("subjects").select("id, name").eq("school_id", schoolId).eq("class_id", classId).eq("active", true).eq("pending_activation", false).order("name");
+      if (error) throw new Error(error.message);
+      return data ?? [];
+    },
+  });
+  const savedScores = useQuery({ ...classAssessmentOptions(schoolId, classId, activeSession, term), enabled: Boolean(classId && activeSession) });
+  const scopeStudents = students.filter((s) => s.active && !s.pending_activation && (studentId === "all" || s.id === studentId));
+  const missing = useMemo(
+    () => (savedScores.data ? findMissingScores(scopeStudents.map((s) => s.id), classSubjectList.map((s) => s.id), savedScores.data) : []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [savedScores.data, classSubjectList, students, studentId],
+  );
+  const missingByStudent = useMemo(() => {
+    const names = new Map(classSubjectList.map((s) => [s.id, s.name]));
+    const grouped = new Map<string, string[]>();
+    for (const m of missing) grouped.set(m.student_id, [...(grouped.get(m.student_id) ?? []), names.get(m.subject_id) ?? "Subject"]);
+    return scopeStudents.filter((s) => grouped.has(s.id)).map((s) => ({ student: s, subjects: grouped.get(s.id)! }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [missing, classSubjectList]);
+
+  const fillZeros = useMutation({
+    mutationFn: async () => {
+      const cls = classes.find((c) => c.id === classId);
+      const scale = cls ? getScaleForSection(cls.level || cls.section || cls.name) : resolveSchoolAcademicConfig(school?.report_template).secondaryScale;
+      const grade = calculateGrade(0, scale);
+      const rows = missing.map((m) => ({ school_id: schoolId, class_id: classId, student_id: m.student_id, subject_id: m.subject_id, session: activeSession, term, ca1: 0, ca2: 0, exam: 0, grade: grade.grade, remark: grade.remark, status: "submitted" as const }));
+      for (let i = 0; i < rows.length; i += 500) {
+        // ignoreDuplicates: a score saved meanwhile by a teacher is never overwritten with 0.
+        const { error } = await supabase.from("assessments").upsert(rows.slice(i, i + 500), { onConflict: "student_id,subject_id,session,term", ignoreDuplicates: true });
+        if (error) throw new Error(error.message);
+      }
+      await refreshScoreViews(qc);
+      await qc.invalidateQueries({ queryKey: ["generate-periods", classId] });
+      const after = await qc.fetchQuery(classAssessmentOptions(schoolId, classId, activeSession, term));
+      const still = findMissingScores(missing.map((m) => m.student_id), classSubjectList.map((s) => s.id), after).filter((x) => missing.some((m) => m.student_id === x.student_id && m.subject_id === x.subject_id));
+      if (still.length) throw new Error(`${still.length} score(s) could not be saved — you may not have permission for those subjects`);
+      return rows.length;
+    },
+    onSuccess: (n) => toast.success(`${n} missing score(s) saved as 0 — you can now generate report cards`),
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const run = useMutation({
     mutationFn: async (postNow: boolean) => generate({
@@ -138,6 +188,21 @@ export function ReportGeneratePanel({ schoolId }: { schoolId: string }) {
           <p className="text-xs text-muted-foreground">
             {scoreCount > 0 ? `${scoreCount} saved score(s) found for this class and term.` : "No saved scores for this class and term yet. Scores still on a teacher's phone must be saved first in Results Entry."}
           </p>
+        )}
+
+        {classId && activeSession && missing.length > 0 && (
+          <div role="alert" className="space-y-2 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm">
+            <div className="flex items-center gap-2 font-semibold text-destructive"><AlertTriangle className="h-4 w-4" />{missing.length} score(s) have not been saved for {missingByStudent.length} pupil(s)</div>
+            <p className="text-xs text-muted-foreground">These boxes were left blank in Results Entry (for example, a pupil who did not sit the CA or exam). Save them as 0 so every subject appears on the report card.</p>
+            <ul className="max-h-48 space-y-0.5 overflow-y-auto text-xs">
+              {missingByStudent.map(({ student, subjects }) => (
+                <li key={student.id}><span className="font-medium">{student.first_name} {student.last_name}</span> — {subjects.join(", ")}</li>
+              ))}
+            </ul>
+            <Button size="sm" variant="destructive" disabled={fillZeros.isPending} onClick={() => { if (window.confirm(`Save ${missing.length} missing score(s) as 0? Scores already saved are not changed.`)) fillZeros.mutate(); }}>
+              {fillZeros.isPending ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : null}Save all missing scores as 0
+            </Button>
+          </div>
         )}
 
         <div className="flex flex-wrap items-start justify-between gap-2 rounded-md border bg-muted/30 p-3 text-sm">

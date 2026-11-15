@@ -32,14 +32,16 @@
 - Form masters admit students into their own class through a checked database function; those students stay inactive until a school admin activates them, so admin approval cannot be bypassed.
 - Registration controls use school-scoped permission checks; only school administrators register classes, subjects and general admissions, while form masters admit into their own class through the checked RPC as inactive rows awaiting admin activation. Preserve the assigned-class form-master path and verify saved approval state.
 - Registration editing/rejection uses a field-allowlisted invoker RPC with school-administrator checks and preserved activation state; rejection reasons remain on inactive records. Staff profile and custom-role editors use school-scoped RLS updates without changing login identities or school affiliation, so editing cannot grant cross-school access.
-- Passport photo AI enhancement runs in the signed-in /api/passport-enhance route (staff-role checked) via Lovable AI image edits; the browser only uploads the photo and receives the white-background result.
+- Passport photo AI enhancement runs in the staff-checked /api/passport-enhance route; the browser only uploads and receives the result.
 - Class positions come only from the shared position-ranking module (school-chosen method stored in the report template); report PDFs are made in the browser from the same report renderer, and WhatsApp delivery status rows are bound to the report card's own student so a result never reaches another parent.
 - Scratch-card PINs are stored only as school-bound hashes and redeemed through one atomic service-only database function; each card copies price/views/expiry at creation so rule changes never alter sold cards.
-- ID cards get a random verification code per holder; the public QR check shows only what is printed on the card.
+- ID cards get a random verification code; the public QR check shows only printed card details.
 - Unsaved score entries persist as per-device drafts (shared score-drafts helper); auto-save (on by default, teacher can switch off) writes only complete valid cells through the same approval-checked save, and publishing is refused for a class with no saved scores so zero reports never reach parents.
 - Form masters may edit biodata/passport of students in their assigned class through a dedicated RLS update policy; a trigger blocks class, status, login and school changes by non-administrators so edits never move or promote students.
 
 - The Staff Register keeps every staff member (with or without a login) in its own school-admin-only table; optional logins reuse the checked staff-account server function and sync ID-card details, so login, role and salary data stay separately protected.
 
-- List pages with child detail routes live in `name.index.tsx` (or render `<Outlet />`) so details replace the list.
-- Report lists, parent portal and public verification return only real school-scoped rows, never sample records, so nobody sees invented data.
+- List pages with detail routes live in `name.index.tsx` so details replace the list.
+- Report lists, parent portal and public verification show only real school-scoped rows, never samples.
+
+- Score limits/missing-score checks use the shared score-limits helper; zero-fill never overwrites saved scores.

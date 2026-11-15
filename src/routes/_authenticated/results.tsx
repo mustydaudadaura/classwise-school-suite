@@ -18,7 +18,7 @@ import { publishReportCards } from "@/lib/api/results.functions";
 import { scoreEntryClasses, scoreEntrySubjects, isClassFormMaster } from "@/lib/form-master";
 import { buildClassSubmissionSummary } from "@/lib/hierarchical-rbac";
 import { GeneralSubjectEntry } from "@/components/GeneralSubjectEntry";
-import { classAssessmentOptions } from '@/lib/assessment-query';
+import { classAssessmentOptions, refreshScoreViews } from '@/lib/assessment-query';
 import { classSubjects } from '@/lib/broadsheet';
 import { loadClassScoreDraft, saveClassScoreDraft, scoreDraftKey } from '@/lib/score-drafts';
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -136,8 +136,7 @@ function ResultsPage() {
     const { error } = await supabase.from("assessments").update({ status, review_remark: remark?.trim() || null }).in("id", ids);
     if (error) return toast.error(error.message);
     toast.success(status === "approved" ? `Approved ${ids.length} result(s)` : `Unlocked ${ids.length} result(s) — teacher can now edit`);
-    qc.invalidateQueries({ queryKey: ["assessments"] });
-    qc.invalidateQueries({ queryKey: ["class-monitor-assessments"] });
+    await refreshScoreViews(qc);
   };
 
   // All subjects registered in the selected class (used by Form Masters & Admins for monitoring, and filtered for Subject Teachers)
@@ -214,6 +213,8 @@ function ResultsPage() {
           .eq("school_id", schoolId)
           .eq("class_id", filters.class_id),
       ]);
+      if (assessRes.error) throw assessRes.error;
+      if (allocRes.error) throw allocRes.error;
       const teacherIds = Array.from(new Set((allocRes.data ?? []).map((a: any) => a.teacher_id).filter(Boolean)));
       const profRes = teacherIds.length
         ? await supabase.from("profiles").select("user_id, full_name").in("user_id", teacherIds)
@@ -279,13 +280,14 @@ function ResultsPage() {
     setRowSaving((p) => ({ ...p, [studentId]: false }));
     if (error) return fail(error.message);
     if (!saved || saved.student_id !== studentId || saved.subject_id !== filters.subject_id || Number(saved.ca1) !== s.ca1 || Number(saved.exam) !== s.exam) return fail('Saved scores could not be confirmed');
-    const remainingDraft = Object.fromEntries(Object.keys(dirty).filter(id => id !== studentId && dirty[id] && scores[id]).map(id => [`${id}:${filters.subject_id}`, scores[id]]));
-    saveClassScoreDraft([schoolId, filters.class_id, filters.session, filters.term], [filters.subject_id], remainingDraft);
+    const remainingDraft = loadClassScoreDraft([schoolId, filters.class_id, filters.session, filters.term], [filters.subject_id]);
+    delete remainingDraft[`${studentId}:${filters.subject_id}`];
+    const subjectDraft = Object.fromEntries(Object.entries(remainingDraft).filter(([cell]) => cell.split(':')[1] === filters.subject_id));
+    saveClassScoreDraft([schoolId, filters.class_id, filters.session, filters.term], [filters.subject_id], subjectDraft);
     setDirty((p) => ({ ...p, [studentId]: false }));
     setScores(p => { const next = { ...p }; delete next[studentId]; return next; });
     if (!quiet) toast.success(`Score saved (${gradeDef.grade} — ${gradeDef.remark})`);
-    qc.invalidateQueries({ queryKey: ["assessments"] });
-    qc.invalidateQueries({ queryKey: ["class-monitor-assessments"] });
+    await refreshScoreViews(qc);
     return true;
   };
 
@@ -376,19 +378,20 @@ function ResultsPage() {
 
   const publish = useServerFn(publishReportCards);
   const publishMutation = useMutation({
-    mutationFn: () =>
-      publish({
+    mutationFn: async () => {
+      if (generalSave.current && !(await generalSave.current())) throw new Error('Save the broadsheet changes before publishing.');
+      if (unsavedRows || Object.keys(loadClassScoreDraft(draftParts, (subjects ?? []).map(s => s.id))).length) throw new Error('There are unsaved scores on this device. Save and approve them before publishing.');
+      return publish({
         data: {
           class_id: filters.class_id,
           session: filters.session,
           term: filters.term,
         },
-      }),
+      });
+    },
     onSuccess: (r) => {
       toast.success(`Published ${r.published} report card(s) for ${r.class_name}`);
-      qc.invalidateQueries({ queryKey: ["report-cards-list"] });
-      qc.invalidateQueries({ queryKey: ["assessments"] });
-      qc.invalidateQueries({ queryKey: ["class-monitor-assessments"] });
+      void refreshScoreViews(qc);
     },
     onError: (e: Error) => toast.error(e.message),
   });

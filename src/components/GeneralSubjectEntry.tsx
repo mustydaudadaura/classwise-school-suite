@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { loadClassScoreDraft, saveClassScoreDraft, scoreDraftKey } from '@/lib/score-drafts';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { classAssessmentOptions } from '@/lib/assessment-query';
+import { classAssessmentOptions, refreshScoreViews } from '@/lib/assessment-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -129,8 +129,7 @@ export function GeneralSubjectEntry(p: Props) {
       const { data, error } = await supabase.from('assessments').upsert(rows, { onConflict: 'student_id,subject_id,session,term' }).select('student_id,subject_id,ca1,ca2,exam,status');
       if (error) throw error;
       if (data?.length !== rows.length || rows.some(row => !data.some(saved => saved.student_id === row.student_id && saved.subject_id === row.subject_id && Number(saved.ca1) === row.ca1 && Number(saved.ca2) === row.ca2 && Number(saved.exam) === row.exam && saved.status === 'submitted'))) throw new Error('Saved scores could not be confirmed');
-      await qc.invalidateQueries({ queryKey: ['assessments'] });
-      await qc.invalidateQueries({ queryKey: ['class-monitor-assessments'] });
+      await refreshScoreViews(qc);
       // Only clear cells that were saved and not edited again while saving.
       const remaining = Object.fromEntries(Object.entries(changesRef.current).filter(([id, sc]) => { const sent = rows.find(r => `${r.student_id}:${r.subject_id}` === id); return !sent || sent.ca1 !== sc.ca1 || sent.exam !== sc.exam || sent.ca2 !== (config.ca2Max > 0 ? sc.ca2 : 0); }));
       changesRef.current = remaining;

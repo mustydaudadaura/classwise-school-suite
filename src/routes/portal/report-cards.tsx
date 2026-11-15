@@ -37,7 +37,7 @@ function Page() {
   const kids = ctx?.students ?? [];
   const sid = kids.some((k: any) => k.id === activeSid) ? activeSid : kids[0]?.id;
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ["portal-rc", token, sid],
     queryFn: () => getPortalReportCards({ data: { token: token!, student_id: sid! } }),
     enabled: !!token && !!sid,
@@ -96,7 +96,8 @@ function Page() {
         <Card><CardContent className="p-6 text-center text-sm text-muted-foreground">Loading terminal reports…</CardContent></Card>
       )}
 
-      {!isLoading && rows.length === 0 && (
+      {error && <p role="alert" className="text-destructive">Report cards could not be loaded. Please try again.</p>}
+      {!isLoading && !error && rows.length === 0 && (
         <Card><CardContent className="p-6 text-center text-sm text-muted-foreground">No published report cards for this filter.</CardContent></Card>
       )}
 

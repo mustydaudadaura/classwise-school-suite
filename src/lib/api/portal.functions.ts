@@ -64,7 +64,7 @@ export const getPortalSummary = createServerFn({ method: "POST" })
     if (att.error || invs.error || notifs.error || rc.error) throw new Error("Family summary could not be loaded. Please try again.");
     const present = (att.data ?? []).filter((a: any) => a.status === "present" || a.status === "late").length;
     const total = (att.data ?? []).length;
-    const balance = (invs.data ?? []).reduce((s: number, i: any) => s + invoiceOutstanding(i), 0);
+    const balance = (invs.data ?? []).reduce((s: number, i: any) => s + Math.max(0, invoiceOutstanding(i)), 0);
     return {
       attendance: { present, total },
       balance,

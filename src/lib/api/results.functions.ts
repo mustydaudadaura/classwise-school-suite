@@ -275,13 +275,16 @@ export const publishReportCards = createServerFn({ method: "POST" })
     if (!students?.length) throw new Error("No students in this class");
 
     // Fetch all assessments for this class/session/term
-    const { data: assess, error: assessmentError } = await db
-      .from("assessments")
-      .select("student_id, total, status")
-      .eq("class_id", data.class_id)
-      .eq("session", data.session)
-      .eq("term", data.term);
-    if (assessmentError) throw new Error('Saved scores could not be loaded. Nothing was published.');
+    const assess: { student_id: string; total: number | null; status: string }[] = [];
+    for (let from = 0; ; from += 1000) {
+      const { data: page, error: assessmentError } = await db.from('assessments')
+        .select('id, student_id, total, status').eq('school_id', cls.school_id)
+        .eq('class_id', data.class_id).eq('session', data.session).eq('term', data.term)
+        .order('id').range(from, from + 999);
+      if (assessmentError) throw new Error('Saved scores could not be loaded. Nothing was published.');
+      assess.push(...(page ?? []));
+      if (!page || page.length < 1000) break;
+    }
     if (!(assess ?? []).some((a: any) => Number(a.total ?? 0) > 0)) {
       throw new Error("No scores have been saved for this class this term. Enter and save the scores, approve them, then publish.");
     }

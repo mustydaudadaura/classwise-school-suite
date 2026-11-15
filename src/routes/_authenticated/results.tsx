@@ -199,21 +199,14 @@ function ResultsPage() {
     enabled: Boolean(schoolId && filters.class_id && canMonitorSelectedClass),
     queryFn: async () => {
       if (!schoolId || !filters.class_id) return { assessments: [], allocations: [], teachers: [] };
-      const [assessRes, allocRes] = await Promise.all([
-        supabase
-          .from("assessments")
-          .select("id, student_id, subject_id, status, total, grade, review_remark")
-          .eq("school_id", schoolId)
-          .eq("class_id", filters.class_id)
-          .eq("session", filters.session)
-          .eq("term", filters.term),
+      const [assessmentRows, allocRes] = await Promise.all([
+        qc.fetchQuery(classAssessmentOptions(schoolId, filters.class_id, filters.session, filters.term)),
         supabase
           .from("teacher_allocations")
           .select("teacher_id, class_id, subject_id, is_class_teacher")
           .eq("school_id", schoolId)
           .eq("class_id", filters.class_id),
       ]);
-      if (assessRes.error) throw assessRes.error;
       if (allocRes.error) throw allocRes.error;
       const teacherIds = Array.from(new Set((allocRes.data ?? []).map((a: any) => a.teacher_id).filter(Boolean)));
       const profRes = teacherIds.length
@@ -221,7 +214,7 @@ function ResultsPage() {
         : { data: [] };
       const teachers = (profRes.data ?? []).map((p: any) => ({ id: p.user_id, name: p.full_name || "Subject Teacher" }));
       return {
-        assessments: assessRes.data ?? [],
+        assessments: assessmentRows,
         allocations: allocRes.data ?? [],
         teachers,
       };

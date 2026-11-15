@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { loadScoreDraft, saveScoreDraft, scoreDraftKey } from '@/lib/score-drafts';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { calculateGrade, CA_RATIOS, type CaRatioType, type GradingScaleType } from '@/lib/grading';
+import { calculateGrade, CA_RATIOS, validateScores, type CaRatioType, type GradingScaleType } from '@/lib/grading';
 import { validateBroadsheet, type EntryScore } from '@/lib/broadsheet';
 import { toast } from 'sonner';
 import { useServerFn } from '@tanstack/react-start';
@@ -85,11 +85,29 @@ export function GeneralSubjectEntry(p: Props) {
     finally { setReading(false); }
   }
   const key = (student: string, subject: string) => `${student}:${subject}`;
-  async function save() {
-    setSaving(true);
+  const [autoSave, setAutoSave] = useState(true);
+  const [lastSaved, setLastSaved] = useState<string | null>(null);
+  const savingRef = useRef(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const changesRef = useRef(changes);
+  changesRef.current = changes;
+  // Auto-save writes complete, valid cells to the school's records shortly after the teacher leaves a box.
+  function scheduleAutoSave() {
+    if (!autoSave) return;
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => { void save(true); }, 1500);
+  }
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+  async function save(quiet = false) {
+    if (savingRef.current) { if (quiet) scheduleAutoSave(); return; }
+    const current = changesRef.current;
+    const entries = Object.entries(current).filter(([, sc]) => !quiet || validateScores(sc.ca1, sc.ca2, sc.exam, p.ratio).isValid);
+    if (quiet && !entries.length) return;
+    savingRef.current = true;
+    if (!quiet) setSaving(true);
     try {
-      validateBroadsheet(Object.values(changes), p.ratio);
-      const rows = Object.entries(changes).map(([id, score]) => {
+      validateBroadsheet(entries.map(([, sc]) => sc), p.ratio);
+      const rows = entries.map(([id, score]) => {
         const [student_id, subject_id] = id.split(':');
         if (!p.students.some(s => s.id === student_id) || !p.subjects.some(s => s.id === subject_id)) throw new Error('Choose students and subjects in this class');
         const total = score.ca1 + (config.ca2Max > 0 ? score.ca2 : 0) + score.exam;
@@ -99,16 +117,18 @@ export function GeneralSubjectEntry(p: Props) {
       const { data, error } = await supabase.from('assessments').upsert(rows, { onConflict: 'student_id,subject_id,session,term' }).select('student_id,subject_id,ca1,ca2,exam,status');
       if (error) throw error;
       if (data?.length !== rows.length || rows.some(row => !data.some(saved => saved.student_id === row.student_id && saved.subject_id === row.subject_id && Number(saved.ca1) === row.ca1 && Number(saved.ca2) === row.ca2 && Number(saved.exam) === row.exam && saved.status === 'submitted'))) throw new Error('Saved scores could not be confirmed');
-      setChanges({});
       await qc.invalidateQueries({ queryKey: ['assessments'] });
-      toast.success(`${rows.length} subject score(s) saved — awaiting approval`);
-    } catch (error) { toast.error(error instanceof Error ? error.message : (error as { message?: string }).message ?? 'Scores could not be saved'); }
-    finally { setSaving(false); }
+      // Only clear cells that were saved and not edited again while saving.
+      setChanges(prev => Object.fromEntries(Object.entries(prev).filter(([id, sc]) => { const sent = rows.find(r => `${r.student_id}:${r.subject_id}` === id); return !sent || sent.ca1 !== sc.ca1 || sent.exam !== sc.exam || sent.ca2 !== (config.ca2Max > 0 ? sc.ca2 : 0); })));
+      setLastSaved(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+      if (!quiet) toast.success(`${rows.length} subject score(s) saved — awaiting approval`);
+    } catch (error) { toast.error(`${quiet ? 'Auto-save failed: ' : ''}${error instanceof Error ? error.message : (error as { message?: string }).message ?? 'Scores could not be saved'}`); }
+    finally { savingRef.current = false; setSaving(false); }
   }
   if (results.error) return <p role="alert" className="text-destructive">Scores could not be loaded: {results.error.message}</p>;
   if (results.isPending) return <p>Loading scores…</p>;
   return <section className="space-y-3">
-    <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-semibold">General subject broadsheet</h2><div className="flex flex-wrap items-center gap-2"><Button variant="outline" size="sm" disabled={!sorted.length} onClick={printSheet}><Printer className="mr-1 h-4 w-4" />Print blank sheet</Button><Button variant="outline" size="sm" disabled={!sorted.length} onClick={exportExcel}><FileDown className="mr-1 h-4 w-4" />Export Excel</Button><Button asChild variant="outline" size="sm" disabled={reading || !sorted.length}><label className="cursor-pointer"><ScanLine className="mr-1 h-4 w-4" />{reading ? 'Reading sheet…' : 'Upload filled sheet (AI)'}<input type="file" accept="image/*,application/pdf" capture="environment" className="sr-only" disabled={reading} onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void uploadSheet(f); }} /></label></Button>{Object.keys(changes).length > 0 && <span className="text-xs text-muted-foreground">Draft kept on this device — saved automatically as you type</span>}<Button disabled={saving || !Object.keys(changes).length} onClick={save}>{saving ? 'Saving…' : `Final save (${Object.keys(changes).length})`}</Button></div></div>
+    <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-semibold">General subject broadsheet</h2><div className="flex flex-wrap items-center gap-2"><Button variant="outline" size="sm" disabled={!sorted.length} onClick={printSheet}><Printer className="mr-1 h-4 w-4" />Print blank sheet</Button><Button variant="outline" size="sm" disabled={!sorted.length} onClick={exportExcel}><FileDown className="mr-1 h-4 w-4" />Export Excel</Button><Button asChild variant="outline" size="sm" disabled={reading || !sorted.length}><label className="cursor-pointer"><ScanLine className="mr-1 h-4 w-4" />{reading ? 'Reading sheet…' : 'Upload filled sheet (AI)'}<input type="file" accept="image/*,application/pdf" capture="environment" className="sr-only" disabled={reading} onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void uploadSheet(f); }} /></label></Button><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={autoSave} onChange={e => setAutoSave(e.target.checked)} /> Save automatically</label>{Object.keys(changes).length > 0 ? <span role="status" className="text-xs font-medium text-destructive">{Object.keys(changes).length} score(s) not yet saved to the school — press Save now</span> : lastSaved ? <span role="status" className="text-xs text-muted-foreground">All scores saved at {lastSaved}</span> : null}<Button disabled={saving || !Object.keys(changes).length} onClick={() => void save()}>{saving ? 'Saving…' : `Save now (${Object.keys(changes).length})`}</Button></div></div>
     {unclear.length > 0 && <div role="status" className="rounded-md border border-border bg-muted p-3 text-sm"><p className="font-medium">The AI could not read these clearly — please type them in:</p><ul className="ml-4 list-disc">{unclear.map((u, i) => <li key={i}>{u}</li>)}</ul></div>}
     <Table>
       <TableHeader><TableRow><TableHead className="min-w-44">Student</TableHead>{p.subjects.map(s => <TableHead key={s.id} colSpan={config.ca2Max > 0 ? 4 : 3} className="border-l text-center">{s.name}</TableHead>)}</TableRow>
@@ -118,7 +138,7 @@ export function GeneralSubjectEntry(p: Props) {
         const existing = results.data.find(r => r.student_id === student.id && r.subject_id === subject.id);
         const score = changes[id] ?? { ca1: Number(existing?.ca1 ?? 0), ca2: Number(existing?.ca2 ?? 0), exam: Number(existing?.exam ?? 0) };
         const fields = config.ca2Max > 0 ? ['ca1', 'ca2', 'exam'] as const : ['ca1', 'exam'] as const;
-        return <TableCell key={subject.id} colSpan={config.ca2Max > 0 ? 4 : 3} className="border-l"><div className={`grid gap-2 ${config.ca2Max > 0 ? 'grid-cols-4' : 'grid-cols-3'}`}>{fields.map(field => <Input key={field} aria-label={`${student.first_name} ${student.last_name} ${subject.name} ${field.toUpperCase()}`} type="number" min={0} max={field === 'ca1' ? config.ca1Max : field === 'ca2' ? config.ca2Max : config.examMax} className="w-20" disabled={saving || (existing?.status === 'approved' && !p.canApprove)} value={changes[id] || existing ? score[field] : ''} onChange={e => setChanges(prev => ({ ...prev, [id]: { ...score, [field]: Number(e.target.value) } }))} />)}<span className="flex w-20 items-center justify-center font-semibold">{changes[id] || existing ? score.ca1 + (config.ca2Max > 0 ? score.ca2 : 0) + score.exam : '—'}</span></div>{existing && <p className="mt-1 text-xs text-muted-foreground">{existing.status === 'approved' ? 'Approved' : existing.status === 'submitted' ? 'Awaiting approval' : 'Returned'}</p>}</TableCell>;
+        return <TableCell key={subject.id} colSpan={config.ca2Max > 0 ? 4 : 3} className="border-l"><div className={`grid gap-2 ${config.ca2Max > 0 ? 'grid-cols-4' : 'grid-cols-3'}`}>{fields.map(field => <Input key={field} aria-label={`${student.first_name} ${student.last_name} ${subject.name} ${field.toUpperCase()}`} type="number" min={0} max={field === 'ca1' ? config.ca1Max : field === 'ca2' ? config.ca2Max : config.examMax} className="w-20" disabled={saving || (existing?.status === 'approved' && !p.canApprove)} value={changes[id] || existing ? score[field] : ''} onChange={e => setChanges(prev => ({ ...prev, [id]: { ...score, [field]: Number(e.target.value) } }))} onBlur={scheduleAutoSave} />)}<span className="flex w-20 items-center justify-center font-semibold">{changes[id] || existing ? score.ca1 + (config.ca2Max > 0 ? score.ca2 : 0) + score.exam : '—'}</span></div>{existing && <p className="mt-1 text-xs text-muted-foreground">{existing.status === 'approved' ? 'Approved' : existing.status === 'submitted' ? 'Awaiting approval' : 'Returned'}</p>}</TableCell>;
       })}</TableRow>)}</TableBody>
     </Table>
   </section>;

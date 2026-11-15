@@ -279,6 +279,9 @@ export const publishReportCards = createServerFn({ method: "POST" })
       .eq("class_id", data.class_id)
       .eq("session", data.session)
       .eq("term", data.term);
+    if (!(assess ?? []).some((a: any) => Number(a.total ?? 0) > 0)) {
+      throw new Error("No scores have been saved for this class this term. Enter and save the scores, approve them, then publish.");
+    }
     const pending = (assess ?? []).filter((a: any) => a.status !== "approved").length;
     if (pending) throw new Error(`${pending} result(s) in this class are not approved yet. Approve them before publishing.`);
 

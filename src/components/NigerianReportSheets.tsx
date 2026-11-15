@@ -109,11 +109,46 @@ export function NigerianReportSheet({ rc, assessments, qrDataUrl, design: design
   const RatingKey = () => <div style={{ fontSize: 9.5, marginTop: 4 }}><strong>{t.ratingKey}:</strong> {t.ratings.map((r, i) => `${num(5 - i)} = ${r}`).join(' · ')}</div>;
   const Sig = ({ url }: { url?: string | null }) => url ? <img src={url} alt="" crossOrigin="anonymous" style={{ height: 26, maxWidth: 110, objectFit: 'contain', verticalAlign: 'middle' }} /> : <span style={{ display: 'inline-block', width: 110, borderBottom: '1px solid #555' }} />;
   const Verify = () => <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 9 }}>{qrDataUrl && rc.verification_code && <img src={qrDataUrl} alt="Verify report" style={{ width: 62, height: 62 }} />}{rc.verification_code && <span>{t.verify}: <bdi>{rc.verification_code}</bdi></span>}</div>;
+  // 3D school name: stacked shadows in a darker shade of the school's heading colour (logo palette).
+  const SchoolTitle = ({ size = 26, onDark = false }: { size?: number; onDark?: boolean }) => {
+    const base = onDark ? 'white' : primary;
+    const deep = `color-mix(in oklab, ${onDark ? head : primary} 55%, black)`;
+    return <div style={{ fontSize: size, fontWeight: 900, letterSpacing: 1.2, lineHeight: 1.1, color: base, fontFamily: rtl ? undefined : "Georgia, 'Times New Roman', serif", textShadow: `1px 1px 0 ${deep}, 2px 2px 0 ${deep}, 3px 3px 0 ${deep}, 4px 4px 5px rgba(0,0,0,0.35)` }}>{schoolName.toUpperCase()}</div>;
+  };
+  const SectionHead = ({ children }: { children: ReactNode }) => <div style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '6px 0 4px', color: primary, fontWeight: 800, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase' }}><span style={{ flex: 1, height: 2, background: `linear-gradient(90deg, transparent, ${line})` }} />{children}<span style={{ flex: 1, height: 2, background: `linear-gradient(90deg, ${line}, transparent)` }} /></div>;
+  // Analytics drawn as SVG so screen, print and PDF all match; only real saved totals are plotted.
+  const Charts = () => {
+    const rows = assessments.filter(a => a.total != null);
+    if (!rows.length) return null;
+    const W = 520, H = 120, pad = 18, bw = Math.min(26, (W - pad * 2) / rows.length - 4);
+    const step = (W - pad * 2) / rows.length;
+    const avg = pct ?? 0, R = 38, C = 2 * Math.PI * R;
+    const colourFor = (v: number) => v >= 70 ? primary : v >= 50 ? head : 'var(--report-colour-red, #c0392b)';
+    return <div style={{ marginTop: 6 }}>
+      <SectionHead>{lang === 'ar' ? 'تحليل الأداء' : lang === 'ha' ? 'Nazarin Sakamako' : 'Performance Analysis'}</SectionHead>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 150px', gap: 8, border: `1.5px solid ${line}`, borderRadius: 6, padding: 6, background: `color-mix(in oklab, ${head} 5%, white)` }}>
+        <svg viewBox={`0 0 ${W} ${H + 26}`} style={{ width: '100%', height: 130 }} role="img" aria-label="Subject scores chart">
+          {[0, 25, 50, 75, 100].map(g => { const y = pad + H - pad - (g / 100) * (H - pad); return <g key={g}><line x1={pad} x2={W - 4} y1={y} y2={y} stroke="#ccc" strokeDasharray="2 3" strokeWidth={0.6} /><text x={2} y={y + 3} fontSize={7} fill="#666">{g}</text></g>; })}
+          {rows.map((a, i) => { const v = Math.max(0, Math.min(100, Number(a.total))); const h = (v / 100) * (H - pad); const x = pad + i * step + (step - bw) / 2; const y = H - h; const name = (lang === 'ar' ? arabicReportText(a.subjects?.name) : a.subjects?.name ?? '').slice(0, 8);
+            return <g key={a.id}><rect x={x} y={y} width={bw} height={h} rx={2} fill={colourFor(v)} opacity={0.9} /><text x={x + bw / 2} y={y - 2} fontSize={7} textAnchor="middle" fontWeight={700} fill="#222">{num(v)}</text><text x={x + bw / 2} y={H + 10} fontSize={6.5} textAnchor="middle" fill="#333">{name}</text></g>; })}
+          <line x1={pad} x2={W - 4} y1={H} y2={H} stroke={line} strokeWidth={1} />
+        </svg>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+          <svg viewBox="0 0 100 100" style={{ width: 96, height: 96 }} role="img" aria-label="Average score">
+            <circle cx={50} cy={50} r={R} fill="none" stroke="#e5e5e5" strokeWidth={11} />
+            <circle cx={50} cy={50} r={R} fill="none" stroke={primary} strokeWidth={11} strokeLinecap="round" strokeDasharray={`${(Math.min(avg, 100) / 100) * C} ${C}`} transform="rotate(-90 50 50)" />
+            <text x={50} y={54} textAnchor="middle" fontSize={16} fontWeight={900} fill={primary}>{num(Math.round(avg))}%</text>
+          </svg>
+          <div style={{ fontSize: 9.5, fontWeight: 700, color: primary }}>{t.average}</div>
+        </div>
+      </div>
+    </div>;
+  };
   const Stamp = () => school.stamp_url ? <img src={school.stamp_url} alt="School stamp" crossOrigin="anonymous" style={{ height: 70, maxWidth: 110, objectFit: 'contain', opacity: 0.9 }} /> : null;
 
   // The subject table is the stretchy part of every layout: its wrapper takes all spare
   // A4 height and the rows share it, so 3 subjects or 15 always fill the page.
-  const ROW_H = 22, STANDARD_ROWS = 15;
+  const ROW_H = 21, STANDARD_ROWS = 12;
   const results = (cols: 'alqalam' | 'emerald' | 'hisgrace' | 'fmp') => (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -159,7 +194,7 @@ export function NigerianReportSheet({ rc, assessments, qrDataUrl, design: design
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: head, color: 'white', padding: '8px 10px', borderBottom: `5px solid ${primary}` }}>
         <div style={{ background: 'white', borderRadius: 6, padding: 2 }}><Logo size={72} /></div>
         <div style={{ flex: 1, textAlign: 'center' }}>
-          <div style={{ fontSize: 24, fontWeight: 900, letterSpacing: 1 }}>{schoolName.toUpperCase()}</div>
+          <SchoolTitle size={24} onDark />
           {school.motto && <div style={{ fontStyle: 'italic', fontSize: 11 }}>...{school.motto}</div>}
           <div style={{ fontSize: 10 }}>{address}</div>
         </div>
@@ -171,7 +206,7 @@ export function NigerianReportSheet({ rc, assessments, qrDataUrl, design: design
         <tr><td style={{ ...cell, fontWeight: 700 }}>{t.admission}</td><td style={cell}>{student.admission_no ?? '—'}</td><td style={{ ...cell, fontWeight: 700 }}>{t.dob}</td><td style={cell}>{student.dob ?? '—'}</td><td style={{ ...cell, fontWeight: 700 }}>{t.session}</td><td style={cell}>{rc.session ?? '—'}</td></tr>
         <tr><td style={{ ...cell, fontWeight: 700 }}>{t.klass}</td><td style={cell}>{className || '—'}</td><td style={{ ...cell, fontWeight: 700 }}>{t.gender}</td><td style={cell}>{gender}</td><td style={{ ...cell, fontWeight: 700 }}>{t.nextTerm}</td><td style={cell}>—</td></tr>
       </Table>
-      {results('emerald')}
+      {results('emerald')}<Charts />
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
         <Table><KV rows={summaryRows} /></Table>
         <Table><tr><td colSpan={2} style={boxTitle(t.attendance, true)}>{t.attendance}</td></tr><KV rows={attendanceRows} /></Table>
@@ -190,7 +225,7 @@ export function NigerianReportSheet({ rc, assessments, qrDataUrl, design: design
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, borderBottom: `3px solid ${line}`, paddingBottom: 8 }}>
         <Logo size={96} />
         <div style={{ flex: 1, textAlign: 'center' }}>
-          <div style={{ fontSize: 26, fontWeight: 900, color: primary }}>{schoolName.toUpperCase()}</div>
+          <SchoolTitle />
           {rc.classes?.section && <div style={{ fontSize: 11 }}>({rc.classes.section.toUpperCase()})</div>}
           <div style={{ fontSize: 11 }}>{address}</div>
           {school.motto && <div style={{ fontSize: 11 }}>{school.motto}</div>}
@@ -204,7 +239,7 @@ export function NigerianReportSheet({ rc, assessments, qrDataUrl, design: design
         <Table><KV rows={summaryRows} /></Table>
       </div>
       <div style={{ ...boxTitle(t.cognitive), border: `1px solid ${line}`, marginTop: 8 }}>{t.cognitive}</div>
-      {results('hisgrace')}
+      {results('hisgrace')}<Charts />
       <div style={{ ...boxTitle(t.gradeScale), border: `1px solid ${line}`, marginTop: 8 }}>{t.gradeScale}</div>
       <Table><tr>{GRADE_SCALE.map(([g, r, w]) => <td key={g} style={{ ...tc, fontSize: 9.5 }}>{r} ({g} – {tr(w)})</td>)}</tr></Table>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
@@ -227,7 +262,7 @@ export function NigerianReportSheet({ rc, assessments, qrDataUrl, design: design
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <Photo w={80} h={80} />
         <div style={{ flex: 1, textAlign: 'center' }}>
-          <div style={{ fontSize: 24, fontWeight: 900, color: primary, fontFamily: rtl ? undefined : 'Georgia, serif' }}>{schoolName.toUpperCase()}</div>
+          <SchoolTitle size={24} />
           <div style={{ fontSize: 12, marginTop: 4 }}>{address}</div>
           <div style={{ fontSize: 15, fontWeight: 800, marginTop: 8 }}>{t.caReport} — {termName} {rc.session ?? ''}</div>
         </div>
@@ -239,7 +274,7 @@ export function NigerianReportSheet({ rc, assessments, qrDataUrl, design: design
         <tr><td style={sc}>{t.admission}</td><td style={cell}>{student.admission_no ?? '—'}</td><td style={sc}>{t.classSize}</td><td style={cell}>{num(rc.class_size)}</td></tr>
         <tr><td style={sc}>{t.opened}</td><td style={cell}>{num(rc.days_total)}</td><td style={sc}>{t.present} / {t.absent}</td><td style={cell}>{num(rc.days_present)} / {num(rc.days_absent)}</td></tr>
       </Table>
-      <div style={{ marginTop: 6, flex: 1, display: 'flex', flexDirection: 'column' }}>{results('fmp')}</div>
+      <div style={{ marginTop: 6, flex: 1, display: 'flex', flexDirection: 'column' }}>{results('fmp')}<Charts /></div>
       <Table><tr><td style={sc}>{t.marksObtainable}: {num(obtainable || null)}</td><td style={sc}>{t.marksObtained}: {num(totals.total)}</td><td style={sc}>{t.percentage}: {num(pct)}%</td>{positions.class && <td style={sc}>{t.position}: {num(assessments.length ? rc.position : null)}</td>}</tr></Table>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', marginTop: 6 }}>
         <ScoreGrid group="psychomotor" title={t.psychomotor} />
@@ -259,7 +294,7 @@ export function NigerianReportSheet({ rc, assessments, qrDataUrl, design: design
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <Logo size={92} />
         <div style={{ flex: 1, textAlign: 'center' }}>
-          <div style={{ fontSize: 26, fontWeight: 900, color: primary }}>{schoolName.toUpperCase()}</div>
+          <SchoolTitle />
           {school.motto && <div style={{ fontSize: 11, fontWeight: 700 }}>{school.motto}</div>}
           <div style={{ fontSize: 11 }}>{address}</div>
           <div style={{ fontSize: 14, fontWeight: 900, marginTop: 6, textDecoration: 'underline' }}>{rc.session ?? ''} – {termName} {t.report}</div>
@@ -272,7 +307,7 @@ export function NigerianReportSheet({ rc, assessments, qrDataUrl, design: design
         <Table><tr><td colSpan={2} style={boxTitle(t.summary)}>{t.summary}</td></tr><KV rows={summaryRows} /></Table>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 230px', gap: 8, marginTop: 8, alignItems: 'stretch', flex: 1 }}>
-        <div style={{ display: 'flex', flexDirection: 'column' }}><div style={{ ...boxTitle(t.cognitive), border: `1px solid ${line}` }}>{t.cognitive}</div>{results('alqalam')}</div>
+        <div style={{ display: 'flex', flexDirection: 'column' }}><div style={{ ...boxTitle(t.cognitive), border: `1px solid ${line}` }}>{t.cognitive}</div>{results('alqalam')}<Charts /></div>
         <div style={{ display: 'grid', gap: 8, alignContent: 'start' }}>
           <TickGrid group="affective" title={t.affective} />
           <TickGrid group="psychomotor" title={t.psychomotor} />
@@ -287,6 +322,7 @@ export function NigerianReportSheet({ rc, assessments, qrDataUrl, design: design
 
   return <article className="print-doc report-sheet" style={sheet} dir={rtl ? 'rtl' : 'ltr'} lang={lang} data-report-layout={design} aria-label={`${schoolName} ${t.report}`}>
     <Watermark />
+    <div aria-hidden="true" style={{ position: 'absolute', inset: 8, border: `3px double ${line}`, borderRadius: 4, pointerEvents: 'none', boxShadow: `inset 0 0 0 4px white, inset 0 0 0 5px color-mix(in oklab, ${primary} 45%, white)` }} />
     <div style={{ position: 'relative', zIndex: 1, flex: 1, display: 'flex', flexDirection: 'column' }}>{body}</div>
   </article>;
 }

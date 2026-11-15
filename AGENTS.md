@@ -36,7 +36,7 @@
 - Class positions come only from the shared position-ranking module (school-chosen method stored in the report template); report PDFs are made in the browser from the same report renderer, and WhatsApp delivery status rows are bound to the report card's own student so a result never reaches another parent.
 - Scratch-card PINs are stored only as school-bound hashes and redeemed through one atomic service-only database function; each card copies price/views/expiry at creation so rule changes never alter sold cards.
 - ID cards get a random verification code per holder; the public QR check shows only what is printed on the card.
-- Unsaved score entries persist as per-device drafts (shared score-drafts helper) until the normal approval-checked final save; drafts never write assessments on their own.
+- Unsaved score entries persist as per-device drafts (shared score-drafts helper); auto-save (on by default, teacher can switch off) writes only complete valid cells through the same approval-checked save, and publishing is refused for a class with no saved scores so zero reports never reach parents.
 - Form masters may edit biodata/passport of students in their assigned class through a dedicated RLS update policy; a trigger blocks class, status, login and school changes by non-administrators so edits never move or promote students.
 
 - The Staff Register keeps every staff member (with or without a login) in its own school-admin-only table; optional logins reuse the checked staff-account server function and sync ID-card details, so login, role and salary data stay separately protected.

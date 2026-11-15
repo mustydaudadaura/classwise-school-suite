@@ -160,7 +160,7 @@ export const getReportCardDetail = createServerFn({ method: "GET" })
       throw new Error("Access Denied: You are not authorized to view this report card.");
     }
 
-    const [{ data: school }, { data: student }, { data: klass }, { data: rawAssessments }, { data: termReports }] = await Promise.all([
+    const [{ data: school }, { data: student }, { data: klass }, { data: rawAssessments, error: scoreError }, { data: termReports }] = await Promise.all([
       db.from("schools").select("name, motto, address, email, phone, logo_url, stamp_url, website, branch_name, principal_name, principal_signature_url, report_template, current_session, current_term").eq("id", (rc as any).school_id).maybeSingle(),
       db.from("students").select("first_name, middle_name, last_name, admission_no, gender, dob, photo_url, house, next_resumption_date").eq("id", (rc as any).student_id).maybeSingle(),
       (rc as any).class_id
@@ -169,6 +169,8 @@ export const getReportCardDetail = createServerFn({ method: "GET" })
       db.from("assessments").select("id, subject_id, ca1, ca2, exam, total, grade, remark, created_at").eq("student_id", (rc as any).student_id).eq("session", (rc as any).session).eq("term", (rc as any).term).order("created_at"),
       db.from("report_cards").select("term, average, total_score, position").eq("student_id", (rc as any).student_id).eq("session", (rc as any).session),
     ]);
+
+    if (scoreError) throw new Error('Report scores could not be loaded. Please try again.');
 
     const { data: subjectPositions, error: positionError } = await db.rpc("report_subject_positions", { _report_id: rc.id });
     if (positionError) throw new Error(positionError.message);
@@ -273,12 +275,13 @@ export const publishReportCards = createServerFn({ method: "POST" })
     if (!students?.length) throw new Error("No students in this class");
 
     // Fetch all assessments for this class/session/term
-    const { data: assess } = await db
+    const { data: assess, error: assessmentError } = await db
       .from("assessments")
       .select("student_id, total, status")
       .eq("class_id", data.class_id)
       .eq("session", data.session)
       .eq("term", data.term);
+    if (assessmentError) throw new Error('Saved scores could not be loaded. Nothing was published.');
     if (!(assess ?? []).some((a: any) => Number(a.total ?? 0) > 0)) {
       throw new Error("No scores have been saved for this class this term. Enter and save the scores, approve them, then publish.");
     }
@@ -429,7 +432,8 @@ export const previewClassRanking = createServerFn({ method: "POST" })
       db.from("students").select("id, first_name, last_name, admission_no").eq("class_id", data.class_id),
       db.from("assessments").select("student_id, total, status").eq("class_id", data.class_id).eq("session", data.session).eq("term", data.term),
     ]);
-    if (sErr || aErr) throw new Error((sErr ?? aErr)!.message);
+    if (sErr) throw new Error(sErr.message);
+    if (aErr) throw new Error(aErr.message);
     const agg = new Map<string, { total: number; count: number }>();
     for (const s of students ?? []) agg.set(s.id, { total: 0, count: 0 });
     for (const a of assess ?? []) {

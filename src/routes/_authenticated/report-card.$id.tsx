@@ -21,7 +21,8 @@ function ReportCardPage() {
   });
 
   if (isLoading) return <div className="p-8 text-muted-foreground">Loading report card…</div>;
-  if (error || !data?.rc) return <div className="p-8 text-destructive">Report card not found.</div>;
+  if (error) return <div role="alert" className="p-8 text-destructive">Report card could not be loaded. Please try again.</div>;
+  if (!data?.rc) return <div className="p-8 text-destructive">Report card not found.</div>;
 
   return (
     <div className="bg-muted/30 min-h-screen">

@@ -1,6 +1,6 @@
 # Architecture rules
 
-- Individual and general broadsheet score entry write the existing assessments with shared grading validation and persisted-row checks; only changed broadsheet cells are submitted, preserving untouched scores and approval rules.
+- Individual/general entry and review share paginated class assessments and per-cell device drafts (migrating legacy keys); score mutations refresh related reports/rankings/analytics but never PIN-protected details that consume paid views. Publishing preserves assessments, reads every page, and refuses local unsaved marks; changed cells use grading validation and saved-row checks.
 
 - Assign form masters through the school-admin-checked class-assignment RPC; classes.teacher_id is the primary assignment and old class-teacher allocations are reconciled. Score entry defaults to assigned classes, with matching restrictive write policies; subject-teacher allocations remain valid.
 

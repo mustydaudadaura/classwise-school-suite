@@ -21,7 +21,10 @@ function Page() {
   const [submittedPin, setSubmittedPin] = useState("");
   const { data, isLoading, error, isFetching } = useQuery({
     queryKey: ["portal-rc-detail", token, id, submittedPin],
-    queryFn: () => getPortalReportCardDetail({ data: { token: token!, id, pin: submittedPin || undefined } }),
+    queryFn: () => {
+      if (!token) throw new Error('Sign in to view this report.');
+      return getPortalReportCardDetail({ data: { token, id, pin: submittedPin || undefined } });
+    },
     enabled: !!token,
     staleTime: Infinity, // each opening with a PIN uses one view; don't re-use views on refocus
     gcTime: Infinity,

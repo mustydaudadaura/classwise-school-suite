@@ -143,7 +143,7 @@ async function assembleFridayData(
   // 2. Fetch parallel data: Attendance, Assessments, Fee Invoices, Parent Links, Parents, School
   const [
     { data: attRows },
-    { data: rawAssessments },
+    { data: rawAssessments, error: scoreError },
     { data: invoices },
     { data: links },
     { data: parents },
@@ -217,6 +217,7 @@ async function assembleFridayData(
   }
 
   // 3. Perform Student Analyses
+  if (scoreError) throw new Error('Saved scores could not be loaded. No weekly score summary was generated.');
   const studentAnalyses: StudentAnalysisResult[] = [];
   const analysisByStudentId = new Map<string, StudentAnalysisResult>();
 

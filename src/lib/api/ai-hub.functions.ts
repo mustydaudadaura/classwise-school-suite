@@ -88,7 +88,7 @@ export const autoGenerateStudentReportSummaryFn = createServerFn({ method: "POST
         .maybeSingle(),
       supabase
         .from("assessments")
-        .select("ca1, ca2, exam, subjects(name)")
+        .select("ca1, ca2, exam, total, grade, subjects(name)")
         .eq("student_id", data.student_id)
         .eq("session", data.session)
         .eq("term", data.term as any),
@@ -98,6 +98,7 @@ export const autoGenerateStudentReportSummaryFn = createServerFn({ method: "POST
     ]);
 
     const student = studentRes.data;
+    if (assessmentsRes.error) throw new Error('Student scores could not be loaded. Please try again.');
     if (!student) {
       throw new Error("Student record not found");
     }
@@ -107,7 +108,7 @@ export const autoGenerateStudentReportSummaryFn = createServerFn({ method: "POST
 
     (assessmentsRes.data || []).forEach((a: any) => {
       const subjectName = a.subjects?.name || "Subject";
-      const total = Number(a.ca1 || 0) + Number(a.ca2 || 0) + Number(a.exam || 0);
+      const total = Number(a.total ?? (Number(a.ca1 || 0) + Number(a.ca2 || 0) + Number(a.exam || 0)));
       totalScore += total;
       let grade = "F";
       if (total >= 75) grade = "A1";
@@ -117,6 +118,7 @@ export const autoGenerateStudentReportSummaryFn = createServerFn({ method: "POST
       else if (total >= 50) grade = "C6";
       else if (total >= 45) grade = "P7";
       else if (total >= 40) grade = "E8";
+      if (a.grade) grade = a.grade;
 
       scoresList.push({ subject: subjectName, score: total, grade });
     });

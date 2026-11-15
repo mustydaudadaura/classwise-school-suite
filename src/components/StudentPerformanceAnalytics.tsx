@@ -124,14 +124,16 @@ export function StudentPerformanceAnalytics({
   // 4. Fetch actual assessments if any exist
   const { data: assessmentsData = [], isLoading: loadingAssessments } = useQuery({
     queryKey: ["analytics-assessments", schoolId, selectedSession, selectedTerm],
+    enabled: Boolean(schoolId),
     queryFn: async () => {
       const query = supabase
         .from("assessments")
         .select("id, class_id, subject_id, student_id, ca1, ca2, exam, total, session, term, status")
+        .eq('school_id', schoolId ?? '')
         .eq("session", selectedSession)
         .eq("term", selectedTerm);
       const { data, error } = await query;
-      if (error) return [];
+      if (error) throw error;
       return data ?? [];
     },
   });

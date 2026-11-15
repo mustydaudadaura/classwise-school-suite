@@ -131,14 +131,10 @@ export const getPortalReportCards = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     if (!data.student_id) return { rows: [] };
     const claims = await verify(data.token, data.student_id);
-    try {
-      const db = await admin();
-      const { data: rows } = await db.from("report_cards").select("id, session, term, average, total_score, position, class_size, gpa, published, verification_code").eq("student_id", data.student_id).eq("published", true).order("created_at", { ascending: false });
-      if (rows && rows.length > 0) return { rows };
-    } catch {
-      // fallback
-    }
-    return { rows: [] };
+    const db = await admin();
+    const { data: rows, error } = await db.from("report_cards").select("id, session, term, average, total_score, position, class_size, gpa, published, verification_code").eq("student_id", data.student_id).eq("published", true).order("created_at", { ascending: false });
+    if (error) throw new Error('Report cards could not be loaded. Please try again.');
+    return { rows: rows ?? [] };
   });
 
 export const getPortalReportCardDetail = createServerFn({ method: "POST" })
@@ -168,7 +164,7 @@ export const getPortalReportCardDetail = createServerFn({ method: "POST" })
       access = { remaining: res.remaining ?? 0, valid_until: res.valid_until ?? "", serial_no: res.serial_no ?? "" };
     }
 
-    const [{ data: school }, { data: student }, { data: klass }, { data: rawAssessments }] = await Promise.all([
+    const [{ data: school }, { data: student }, { data: klass }, { data: rawAssessments, error: scoreError }] = await Promise.all([
       db.from("schools").select("name, motto, address, email, phone, logo_url, stamp_url, website, branch_name, principal_name, principal_signature_url, report_template, current_session, current_term").eq("id", (rc as any).school_id).maybeSingle(),
       db.from("students").select("first_name, middle_name, last_name, admission_no, gender, dob, photo_url, house, next_resumption_date").eq("id", (rc as any).student_id).maybeSingle(),
       (rc as any).class_id
@@ -176,6 +172,8 @@ export const getPortalReportCardDetail = createServerFn({ method: "POST" })
         : Promise.resolve({ data: null }),
       db.from("assessments").select("id, subject_id, ca1, ca2, exam, total, grade, remark, created_at").eq("student_id", (rc as any).student_id).eq("session", (rc as any).session).eq("term", (rc as any).term).order("created_at"),
     ]);
+
+    if (scoreError) throw new Error('Report scores could not be loaded. Please try again.');
 
     const subjectIds = Array.from(new Set((rawAssessments ?? []).map((a: any) => a.subject_id).filter(Boolean)));
     const { data: subjects } = subjectIds.length

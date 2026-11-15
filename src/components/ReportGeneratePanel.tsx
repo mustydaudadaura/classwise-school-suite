@@ -136,7 +136,7 @@ export function ReportGeneratePanel({ schoolId }: { schoolId: string }) {
 
         {done && (
           <div className="flex flex-wrap items-center gap-2 rounded-md border border-primary/30 bg-primary/5 p-3 text-sm">
-            <span className="font-medium">{done.count} report card(s) ready{done.posted ? " · posted to parent portal" : " · draft"}.</span>
+            <span className="font-medium">{done.count} report card(s) ready{done.posted ? " · posted to parent portal" : " · saved (cards already posted stay posted)"}.</span>
             <Button asChild size="sm" variant="outline"><Link to="/report-distribution"><MessageCircle className="mr-1 h-3.5 w-3.5" />Send by WhatsApp / PDF</Link></Button>
             <Button asChild size="sm" variant="outline"><Link to="/report-distribution"><Mail className="mr-1 h-3.5 w-3.5" />Send by email</Link></Button>
             {!done.posted && <Button size="sm" variant="secondary" disabled={run.isPending} onClick={() => { setPost(true); run.mutate(true); }}><Globe className="mr-1 h-3.5 w-3.5" />Post to parent portal</Button>}

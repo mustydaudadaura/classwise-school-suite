@@ -60,3 +60,16 @@ export function saveClassScoreDraft(parts: string[], subjects: string[], draft: 
   saveScoreDraft(scoreDraftKey(['broadsheet', school, classId, session, term]), Object.fromEntries(Object.entries(legacy).filter(([cell]) => !subjects.includes(cell.split(':')[1]))), store);
   for (const subject of subjects) saveScoreDraft(scoreDraftKey([school, classId, subject, session, term]), {}, store);
 }
+
+// Drop device draft cells that already match the saved mark, so an old draft
+// never hides scores saved from the other entry view or blocks publishing.
+export function withoutSavedCells(
+  draft: ScoreDraft,
+  saved: { student_id: string; subject_id: string; ca1: unknown; ca2: unknown; exam: unknown }[],
+): ScoreDraft {
+  const byCell = new Map(saved.map((r) => [`${r.student_id}:${r.subject_id}`, r]));
+  return Object.fromEntries(Object.entries(draft).filter(([cell, s]) => {
+    const r = byCell.get(cell);
+    return !r || Number(r.ca1 ?? 0) !== s.ca1 || Number(r.ca2 ?? 0) !== s.ca2 || Number(r.exam ?? 0) !== s.exam;
+  }));
+}

@@ -20,7 +20,7 @@ import { buildClassSubmissionSummary } from "@/lib/hierarchical-rbac";
 import { GeneralSubjectEntry } from "@/components/GeneralSubjectEntry";
 import { classAssessmentOptions, refreshScoreViews } from '@/lib/assessment-query';
 import { classSubjects } from '@/lib/broadsheet';
-import { loadClassScoreDraft, saveClassScoreDraft, scoreDraftKey } from '@/lib/score-drafts';
+import { loadClassScoreDraft, saveClassScoreDraft, scoreDraftKey, withoutSavedCells } from '@/lib/score-drafts';
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   calculateGrade,
@@ -300,8 +300,8 @@ function ResultsPage() {
   const [restoredDraftKey, setRestoredDraftKey] = useState<string | null>(null);
   const [draftCount, setDraftCount] = useState(0);
   useEffect(() => {
-    if (entryMode !== 'individual' || !draftKey) return;
-    const cells = loadClassScoreDraft(draftParts, [filters.subject_id]);
+    if (entryMode !== 'individual' || !draftKey || restoredDraftKey === draftKey || !classAssessments) return;
+    const cells = withoutSavedCells(loadClassScoreDraft(draftParts, [filters.subject_id]), classAssessments);
     const draft = Object.fromEntries(Object.entries(cells).filter(([cell]) => cell.split(':')[1] === filters.subject_id).map(([cell, score]) => [cell.split(':')[0], score]));
     const ids = Object.keys(draft);
     if (ids.length) {
@@ -310,7 +310,7 @@ function ResultsPage() {
     } else { setScores({}); setDirty({}); }
     setDraftCount(ids.length);
     setRestoredDraftKey(draftKey);
-  }, [draftKey, entryMode]);
+  }, [draftKey, entryMode, classAssessments, restoredDraftKey]);
   useEffect(() => {
     if (entryMode !== 'individual' || !draftKey || restoredDraftKey !== draftKey) return;
     const draft = Object.fromEntries(Object.keys(dirty).filter((id) => dirty[id] && scores[id]).map((id) => [`${id}:${filters.subject_id}`, scores[id]]));
@@ -373,7 +373,7 @@ function ResultsPage() {
   const publishMutation = useMutation({
     mutationFn: async () => {
       if (generalSave.current && !(await generalSave.current())) throw new Error('Save the broadsheet changes before publishing.');
-      if (unsavedRows || Object.keys(loadClassScoreDraft(draftParts, (subjects ?? []).map(s => s.id))).length) throw new Error('There are unsaved scores on this device. Save and approve them before publishing.');
+      if (unsavedRows || Object.keys(withoutSavedCells(loadClassScoreDraft(draftParts, (subjects ?? []).map(s => s.id)), classAssessments ?? [])).length) throw new Error('There are unsaved scores on this device. Save and approve them before publishing.');
       return publish({
         data: {
           class_id: filters.class_id,
@@ -383,7 +383,7 @@ function ResultsPage() {
       });
     },
     onSuccess: (r) => {
-      toast.success(`Published ${r.published} report card(s) for ${r.class_name}`);
+      toast.success(`Published ${r.published} report card(s) for ${r.class_name}${r.not_approved ? ` — ${r.not_approved} score(s) not yet approved were left out` : ''}`);
       void refreshScoreViews(qc);
     },
     onError: (e: Error) => toast.error(e.message),

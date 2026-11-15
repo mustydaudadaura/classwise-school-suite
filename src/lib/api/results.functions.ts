@@ -166,7 +166,7 @@ export const getReportCardDetail = createServerFn({ method: "GET" })
       (rc as any).class_id
         ? db.from("classes").select("name, arm, level, section").eq("id", (rc as any).class_id).maybeSingle()
         : Promise.resolve({ data: null }),
-      db.from("assessments").select("id, subject_id, ca1, ca2, exam, total, grade, remark, created_at").eq("student_id", (rc as any).student_id).eq("session", (rc as any).session).eq("term", (rc as any).term).order("created_at"),
+      db.from("assessments").select("id, subject_id, ca1, ca2, exam, total, grade, remark, created_at").eq("student_id", (rc as any).student_id).eq("session", (rc as any).session).eq("term", (rc as any).term).eq("status", "approved").order("created_at"),
       db.from("report_cards").select("term, average, total_score, position").eq("student_id", (rc as any).student_id).eq("session", (rc as any).session),
     ]);
 
@@ -288,14 +288,18 @@ export const publishReportCards = createServerFn({ method: "POST" })
     if (!(assess ?? []).some((a: any) => Number(a.total ?? 0) > 0)) {
       throw new Error("No scores have been saved for this class this term. Enter and save the scores, approve them, then publish.");
     }
-    const pending = (assess ?? []).filter((a: any) => a.status !== "approved").length;
-    if (pending) throw new Error(`${pending} result(s) in this class are not approved yet. Approve them before publishing.`);
+    // Publish what the administrator has approved; scores still awaiting approval are left out.
+    const notApproved = assess.filter((a) => a.status !== "approved").length;
+    const approvedAssess = assess.filter((a) => a.status === "approved");
+    if (!approvedAssess.some((a) => Number(a.total ?? 0) > 0)) {
+      throw new Error(`None of the ${notApproved} saved score(s) in this class are approved yet. Approve them, then publish.`);
+    }
 
     // Aggregate per student
     type Agg = { total: number; count: number };
     const agg = new Map<string, Agg>();
     for (const s of students) agg.set(s.id, { total: 0, count: 0 });
-    (assess ?? []).forEach((a: any) => {
+    approvedAssess.forEach((a: any) => {
       const cur = agg.get(a.student_id) ?? { total: 0, count: 0 };
       cur.total += Number(a.total ?? 0);
       cur.count += 1;
@@ -361,7 +365,7 @@ export const publishReportCards = createServerFn({ method: "POST" })
       written++;
     }
 
-    return { ok: true, published: written, class_name: cls.name };
+    return { ok: true, published: written, class_name: cls.name, not_approved: notApproved };
   });
 
 const UpdateRemarksInput = z.object({

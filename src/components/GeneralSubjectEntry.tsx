@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { loadClassScoreDraft, saveClassScoreDraft, scoreDraftKey } from '@/lib/score-drafts';
+import { loadClassScoreDraft, saveClassScoreDraft, scoreDraftKey, withoutSavedCells } from '@/lib/score-drafts';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { classAssessmentOptions, refreshScoreViews } from '@/lib/assessment-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -29,14 +29,16 @@ export function GeneralSubjectEntry(p: Props) {
   const draftParts = [p.schoolId, p.classId, p.session, p.term];
   const draftKey = scoreDraftKey(['shared', ...draftParts]);
   const [restored, setRestored] = useState(false);
+  const results = useQuery(classAssessmentOptions(p.schoolId, p.classId, p.session, p.term));
   useEffect(() => {
-    const draft = loadClassScoreDraft(draftParts, p.subjects.map(s => s.id));
+    if (restored || !results.data) return;
+    const draft = withoutSavedCells(loadClassScoreDraft(draftParts, p.subjects.map(s => s.id)), results.data);
     setChanges(Object.fromEntries(Object.entries(draft).filter(([id]) => { const [st, sub] = id.split(':'); return p.students.some(s => s.id === st) && p.subjects.some(s => s.id === sub); })));
     setRestored(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draftKey]);
+  }, [draftKey, results.data, restored]);
+  useEffect(() => { setRestored(false); }, [draftKey]);
   useEffect(() => { if (restored) saveClassScoreDraft(draftParts, p.subjects.map(s => s.id), changes); }, [restored, draftKey, changes]);
-  const results = useQuery(classAssessmentOptions(p.schoolId, p.classId, p.session, p.term));
   const readSheet = useServerFn(readScoreSheet);
   const [reading, setReading] = useState(false);
   const [unclear, setUnclear] = useState<string[]>([]);

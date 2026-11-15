@@ -43,3 +43,5 @@
 
 - List pages with child detail routes live in `name.index.tsx` (or render `<Outlet />`) so details replace the list.
 - Report lists, parent portal and public verification return only real school-scoped rows, never sample records, so nobody sees invented data.
+
+- Score limits and missing-score detection live in the shared score-limits helper used by both entry modes and report generation; over-limit marks are refused at typing time, and "save missing as 0" never overwrites a saved score (ignore-duplicates upsert, re-read to confirm).

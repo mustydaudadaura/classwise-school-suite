@@ -333,7 +333,7 @@ function VerifyCredentialPage() {
                     <div className="rounded-lg border p-3 bg-card">
                       <span className="text-[10px] text-muted-foreground uppercase font-semibold">Cumulative GPA</span>
                       <div className="text-2xl font-extrabold font-mono text-primary mt-0.5">
-                        {data.gpa || "3.8"} / 4.0
+                        {data.gpa ? `${data.gpa} / 4.0` : "—"}
                       </div>
                     </div>
                   </div>

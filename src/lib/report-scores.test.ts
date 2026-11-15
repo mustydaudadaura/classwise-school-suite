@@ -1,4 +1,4 @@
-import { expect, test } from "vitest";
+import { expect, test } from "./test-compat";
 import { aggregateEnteredScores, hasEnteredScore } from "./report-scores";
 
 test("a draft or submitted score counts without approval", () => {

@@ -17,6 +17,6 @@ describe('score refresh', () => {
     const refresh = vi.spyOn(client, 'invalidateQueries').mockResolvedValue();
     await refreshScoreViews(client);
     expect(refresh).not.toHaveBeenCalledWith({ queryKey: ['portal-rc-detail'] });
-    expect(refresh.mock.calls.length).toBe(16);
+    expect(refresh.mock.calls.length).toBe(15);
   });
 });

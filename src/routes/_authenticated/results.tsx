@@ -20,7 +20,7 @@ import { buildClassSubmissionSummary } from "@/lib/hierarchical-rbac";
 import { GeneralSubjectEntry } from "@/components/GeneralSubjectEntry";
 import { classAssessmentOptions, refreshScoreViews } from '@/lib/assessment-query';
 import { classSubjects } from '@/lib/broadsheet';
-import { checkScoreLimit } from '@/lib/score-limits';
+import { checkScoreLimit, findMissingScores } from '@/lib/score-limits';
 import { loadClassScoreDraft, saveClassScoreDraft, scoreDraftKey, withoutSavedCells } from '@/lib/score-drafts';
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -396,6 +396,8 @@ function ResultsPage() {
     },
     onSuccess: (r) => {
       toast.success(`Generated and posted ${r.published} report card(s) for ${r.class_name}${r.skipped_no_scores ? ` — ${r.skipped_no_scores} pupil(s) with no saved scores were skipped` : ''}`);
+      const missing = findMissingScores((students ?? []).map(st => st.id), (allClassSubjects ?? []).map(sb => sb.id), classAssessments ?? []);
+      if (missing.length) toast.warning(`${missing.length} score(s) in this class have not been saved. Open Report Cards → Generate report cards to see them and save them as 0.`, { duration: 10000 });
       void refreshScoreViews(qc);
     },
     onError: (e: Error) => toast.error(e.message),

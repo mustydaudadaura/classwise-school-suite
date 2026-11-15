@@ -90,7 +90,7 @@ function ReportCardsListPage() {
                 `"${c.session || ""}"`,
                 `"${c.term || ""}"`,
                 c.average || 0,
-                c.position || 0,
+                Number(c.subjects_count ?? 0) > 0 ? c.position || 0 : "",
                 c.class_size || 0,
                 c.published ? "Published" : "Draft",
                 `"${c.verification_code || ""}"`
@@ -239,7 +239,7 @@ function ReportCardsListPage() {
                       <TableCell>
                         <span className="font-bold text-foreground">{c.average}%</span>
                       </TableCell>
-                      <TableCell>{c.position} / {c.class_size}</TableCell>
+                      <TableCell>{Number(c.subjects_count ?? 0) > 0 ? `${c.position ?? "—"} / ${c.class_size ?? "—"}` : "No scores"}</TableCell>
                       <TableCell>
                         <span className="font-mono text-[11px] text-muted-foreground">
                           {c.verification_code || "AK-VERIFIED"}

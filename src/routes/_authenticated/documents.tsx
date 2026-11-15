@@ -14,6 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Printer, FileBadge } from 'lucide-react';
 import { toast } from 'sonner';
 import { yearlySummary, type TermReport } from '@/lib/yearly-summary';
+import { ordinal, resolveRanking } from '@/lib/position-ranking';
 
 export const Route = createFileRoute('/_authenticated/documents')({
   head: () => ({ meta: [
@@ -142,7 +143,7 @@ function YearlySummary({ schoolId, school, classes, students }: { schoolId: stri
     const { data, error } = await supabase.from('report_cards').select('student_id,term,average,total_score,days_present,days_total').eq('school_id', schoolId).eq('class_id', classId).eq('session', session);
     if (error) throw error; return (data ?? []) as TermReport[];
   } });
-  const rows = q.data ? yearlySummary(q.data) : [];
+  const rows = q.data ? yearlySummary(q.data, resolveRanking((school as { report_template?: unknown } | null)?.report_template)) : [];
   const cls = classes.find(c => c.id === classId)?.name;
   const nm = (id: string) => { const s = students.find(x => x.id === id); return s ? `${s.last_name} ${s.first_name}` : '—'; };
   return <div className="space-y-4">
@@ -155,7 +156,7 @@ function YearlySummary({ schoolId, school, classes, students }: { schoolId: stri
     <div className="print-doc overflow-x-auto">
       <div className="mb-3 text-center"><h2 className="text-lg font-bold uppercase">{school.name}</h2><p className="text-sm">Yearly summary — {cls} — {session} session</p></div>
       <Table><TableHeader><TableRow><TableHead>Pos.</TableHead><TableHead>Student</TableHead><TableHead className="text-right">1st term</TableHead><TableHead className="text-right">2nd term</TableHead><TableHead className="text-right">3rd term</TableHead><TableHead className="text-right">Yearly avg.</TableHead><TableHead className="text-right">Attendance</TableHead><TableHead>Decision</TableHead></TableRow></TableHeader><TableBody>
-        {rows.map(r => <TableRow key={r.student_id}><TableCell>{r.position}</TableCell><TableCell>{nm(r.student_id)}</TableCell>{(['first', 'second', 'third'] as const).map(t => <TableCell key={t} className="text-right">{r.terms[t]?.toFixed(1) ?? '—'}</TableCell>)}<TableCell className="text-right font-semibold">{r.average.toFixed(1)}</TableCell><TableCell className="text-right">{r.daysTotal ? `${r.daysPresent}/${r.daysTotal}` : '—'}</TableCell><TableCell>{r.average >= 40 ? 'Promoted' : 'Repeat / review'}</TableCell></TableRow>)}
+        {rows.map(r => <TableRow key={r.student_id}><TableCell>{r.position == null ? '—' : ordinal(r.position)}</TableCell><TableCell>{nm(r.student_id)}</TableCell>{(['first', 'second', 'third'] as const).map(t => <TableCell key={t} className="text-right">{r.terms[t]?.toFixed(1) ?? '—'}</TableCell>)}<TableCell className="text-right font-semibold">{r.average.toFixed(1)}</TableCell><TableCell className="text-right">{r.daysTotal ? `${r.daysPresent}/${r.daysTotal}` : '—'}</TableCell><TableCell>{r.average >= 40 ? 'Promoted' : 'Repeat / review'}</TableCell></TableRow>)}
         {!rows.length && <TableRow><TableCell colSpan={8} className="text-muted-foreground">No report cards for this class and session yet</TableCell></TableRow>}
       </TableBody></Table>
       {rows.length > 0 && <p className="mt-2 text-xs text-muted-foreground">Yearly average = average of the terms with results. Pass mark 40%. Class average: {(rows.reduce((a, r) => a + r.average, 0) / rows.length).toFixed(1)}</p>}

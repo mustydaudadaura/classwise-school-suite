@@ -18,3 +18,10 @@ test('ties share a position', () => {
   const rows = yearlySummary([r('a', 'first', 80), r('b', 'first', 80), r('c', 'first', 50)]);
   assert.deepEqual(rows.map(x => x.position), [1, 1, 3]);
 });
+
+test('custom ranges decide yearly positions when the school uses them', () => {
+  const ranges = [{ min: 95, max: 100, position: 1 }, { min: 90, max: 94, position: 2 }];
+  const rows = yearlySummary([r('a', 'first', 96), r('b', 'first', 98), r('c', 'first', 92), r('d', 'first', 60)], { method: 'ranges', ranges });
+  const pos = Object.fromEntries(rows.map(x => [x.student_id, x.position]));
+  assert.deepEqual(pos, { a: 1, b: 1, c: 2, d: null });
+});

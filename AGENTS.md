@@ -35,7 +35,7 @@
 - Passport photo AI enhancement runs in the signed-in /api/passport-enhance route (staff-role checked) via Lovable AI image edits; the browser only uploads the photo and receives the white-background result.
 - Class positions come only from the shared position-ranking module (school-chosen method stored in the report template); report PDFs are made in the browser from the same report renderer, and WhatsApp delivery status rows are bound to the report card's own student so a result never reaches another parent.
 - Scratch-card PINs are stored only as school-bound hashes and redeemed through one atomic service-only database function; each card copies price/views/expiry at creation so rule changes never alter sold cards.
-- ID cards get a random verification code per holder; the public QR check shows only what is printed on the card.
+- ID cards get a random verification code; the public QR check shows only printed card details.
 - Unsaved score entries persist as per-device drafts (shared score-drafts helper); auto-save (on by default, teacher can switch off) writes only complete valid cells through the same approval-checked save, and publishing is refused for a class with no saved scores so zero reports never reach parents.
 - Form masters may edit biodata/passport of students in their assigned class through a dedicated RLS update policy; a trigger blocks class, status, login and school changes by non-administrators so edits never move or promote students.
 
@@ -44,4 +44,4 @@
 - List pages with detail routes live in `name.index.tsx` so details replace the list.
 - Report lists, parent portal and public verification show only real school-scoped rows, never samples.
 
-- Score limits and missing-score checks use the shared score-limits helper; zero-filling never overwrites saved scores.
+- Score limits/missing-score checks use the shared score-limits helper; zero-fill never overwrites saved scores.

@@ -3,7 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import type { QueryClient } from '@tanstack/react-query';
 
 export async function refreshScoreViews(client: QueryClient) {
-  await Promise.all(['assessments', 'class-monitor-assessments', 'report-card', 'report-cards-list', 'islamiyya-report', 'yearly', 'student-360', 'analytics-assessments', 'dashboard-metrics', 'dashboard-stats', 'super-admin-dashboard-metrics', 'my-results', 'portal-rc', 'portal-summary'].map(key => client.invalidateQueries({ queryKey: [key] })));
+  // PIN-protected report details are intentionally excluded: refetching consumes a paid view.
+  await Promise.all(['assessments', 'class-monitor-assessments', 'ranking-preview', 'report-card', 'report-cards-list', 'islamiyya-report', 'yearly', 'student-360', 'analytics-assessments', 'dashboard-metrics', 'dashboard-stats', 'super-admin-dashboard-metrics', 'my-results', 'portal-rc', 'portal-summary'].map(key => client.invalidateQueries({ queryKey: [key] })));
 }
 
 export function classAssessmentOptions(schoolId: string, classId: string, session: string, term: 'first' | 'second' | 'third') {

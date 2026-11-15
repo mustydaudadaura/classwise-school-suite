@@ -339,6 +339,11 @@
 .report-comments strong { color: var(--rc-comments); }
 .report-swatch { background: var(--swatch); }
 @media print { .report-sheet, .report-sheet * { print-color-adjust: exact; -webkit-print-color-adjust: exact; } }
+/* Report sheets are drawn at full A4 with their own inner margin: print them edge to edge, one per page. */
+@page report-sheet { size: A4 portrait; margin: 0; }
+@media print {
+  .report-sheet { page: report-sheet; width: 210mm !important; min-height: 297mm !important; break-after: page; break-inside: avoid; }
+}
 @media print {
   body:has(.print-doc) * { visibility: hidden; }
   body:has(.print-doc) .print-doc, body:has(.print-doc) .print-doc * { visibility: visible; }

@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { classDisplayName } from "@/lib/class-label";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -64,7 +65,7 @@ function VerifyCredentialPage() {
       // 1. Try Supabase RPC verify_report_card
       try {
         const { data: rpcRes, error: rpcErr } = await supabase.rpc("verify_report_card", { _code: trimmed });
-        if (!rpcErr && rpcRes && rpcRes.length > 0) {
+        if (!rpcErr && rpcRes && rpcRes.length > 0 && rpcRes[0].published !== false) {
           const item = rpcRes[0];
           return {
             valid: true,
@@ -78,7 +79,7 @@ function VerifyCredentialPage() {
             average: item.average,
             position: item.position,
             verificationCode: trimmed,
-            issuedDate: (item as any).created_at ? new Date((item as any).created_at).toLocaleDateString("en-NG", { dateStyle: "long" }) : "Current Academic Year",
+            issuedDate: (item as any).created_at ? new Date((item as any).created_at).toLocaleDateString("en-NG", { dateStyle: "long" }) : "—",
             schoolLogo: null,
             stampUrl: null,
             signatureUrl: null,
@@ -111,19 +112,19 @@ function VerifyCredentialPage() {
           const cls: any = rc.classes;
           return {
             valid: true,
-            schoolName: sch?.name || "Result Arena Academy",
+            schoolName: sch?.name || "—",
             schoolAddress: sch?.address,
-            principalName: sch?.principal_name || "Principal",
-            studentName: `${st?.first_name || ""} ${st?.last_name || ""}`.trim() || "Student Candidate",
-            admissionNo: st?.admission_no || "ADM/VERIFIED",
+            principalName: sch?.principal_name || "—",
+            studentName: `${st?.first_name || ""} ${st?.last_name || ""}`.trim() || "—",
+            admissionNo: st?.admission_no || "—",
             gender: st?.gender,
-            className: `${cls?.name || ""} ${cls?.arm || ""}`.trim() || "Secondary Class",
+            className: classDisplayName(cls) || "—",
             session: rc.session,
             term: rc.term,
             totalScore: rc.total_score,
             average: rc.average,
-            position: rc.position ? `${rc.position} of ${rc.class_size || 35}` : "Certified",
-            gpa: rc.gpa || 3.8,
+            position: rc.position ? (rc.class_size ? `${rc.position} of ${rc.class_size}` : `${rc.position}`) : "—",
+            gpa: rc.gpa ?? null,
             verificationCode: rc.verification_code || trimmed,
             issuedDate: new Date(rc.created_at).toLocaleDateString("en-NG", { dateStyle: "long" }),
             schoolLogo: sch?.logo_url,
@@ -133,31 +134,6 @@ function VerifyCredentialPage() {
         }
       } catch {
         // Mock fallback
-      }
-
-      // 3. Graceful demo fallback for test verification codes (e.g. DEMO-123 or sample verification)
-      if (trimmed.toUpperCase().includes("DEMO") || trimmed.toUpperCase().includes("SAMPLE") || trimmed.length === 8) {
-        return {
-          valid: true,
-          schoolName: "Result Arena Academy",
-          schoolAddress: "14 Ahmadu Bello Way, Central District, Abuja, Nigeria",
-          principalName: "Dr. Aliyu Mohammed (FIMC, MNIM)",
-          studentName: "Zainab Abubakar Bello",
-          admissionNo: "ADM/2026/014",
-          gender: "female",
-          className: "JSS 1 Gold",
-          session: "2025/2026",
-          term: "second",
-          totalScore: 782,
-          average: 86.9,
-          position: "1 of 32",
-          gpa: 4.0,
-          verificationCode: trimmed.toUpperCase(),
-          issuedDate: "October 16, 2026",
-          schoolLogo: null,
-          stampUrl: null,
-          signatureUrl: null,
-        };
       }
 
       return null;

@@ -88,9 +88,9 @@ export function NigerianReportSheet({ rc, assessments, qrDataUrl, design: design
   const th: CSSProperties = { ...cell, fontWeight: 700, background: `color-mix(in oklab, ${head} 18%, white)`, textAlign: 'center' };
   const tc: CSSProperties = { ...cell, textAlign: 'center' };
   const boxTitle = (text: string, filled = false): CSSProperties => ({ ...th, background: filled ? head : th.background, color: filled ? 'white' : undefined, fontSize: 11 });
-  const sheet: CSSProperties = { width: 794, minHeight: 1123, margin: '0 auto', background: 'white', color: '#111', padding: 22, position: 'relative', fontFamily: rtl ? "'Amiri', 'Noto Naskh Arabic', serif" : 'inherit', direction: rtl ? 'rtl' : 'ltr', border: design === 'sheet_hisgrace' ? `3px solid ${line}` : `1px solid ${line}`, boxSizing: 'border-box' };
+  const sheet: CSSProperties = { width: 794, minHeight: 1123, display: 'flex', flexDirection: 'column', margin: '0 auto', background: 'white', color: '#111', padding: 22, position: 'relative', fontFamily: rtl ? "'Amiri', 'Noto Naskh Arabic', serif" : 'inherit', direction: rtl ? 'rtl' : 'ltr', border: design === 'sheet_hisgrace' ? `3px solid ${line}` : `1px solid ${line}`, boxSizing: 'border-box' };
 
-  const Logo = ({ size = 82 }: { size?: number }) => school.logo_url ? <img src={school.logo_url} alt="School logo" crossOrigin="anonymous" style={{ width: size, height: size, objectFit: 'contain' }} /> : <div style={{ width: size, height: size }} />;
+  const Logo = ({ size = 82 }: { size?: number }) => school.logo_url ? <img src={school.logo_url} alt="School logo" crossOrigin="anonymous" style={{ width: size, height: size, objectFit: 'contain', imageRendering: 'auto' }} /> : <div style={{ width: size, height: size }} />;
   const Photo = ({ w = 82, h = 96 }: { w?: number; h?: number }) => <div style={{ width: w, height: h, border: `1px solid ${line}`, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', fontSize: 9, color: '#777' }}>{student.photo_url ? <img src={student.photo_url} alt="Student passport" crossOrigin="anonymous" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : 'Passport'}</div>;
   const Watermark = () => school.logo_url ? <img src={school.logo_url} alt="" aria-hidden="true" crossOrigin="anonymous" style={{ position: 'absolute', inset: 0, margin: 'auto', width: 420, opacity: 0.06, pointerEvents: 'none' }} /> : null;
   const Table = ({ children, style }: { children: ReactNode; style?: CSSProperties }) => <table style={{ width: '100%', borderCollapse: 'collapse', ...style }}><tbody>{children}</tbody></table>;
@@ -111,10 +111,13 @@ export function NigerianReportSheet({ rc, assessments, qrDataUrl, design: design
   const Verify = () => <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 9 }}>{qrDataUrl && rc.verification_code && <img src={qrDataUrl} alt="Verify report" style={{ width: 62, height: 62 }} />}{rc.verification_code && <span>{t.verify}: <bdi>{rc.verification_code}</bdi></span>}</div>;
   const Stamp = () => school.stamp_url ? <img src={school.stamp_url} alt="School stamp" crossOrigin="anonymous" style={{ height: 70, maxWidth: 110, objectFit: 'contain', opacity: 0.9 }} /> : null;
 
+  // The subject table is the stretchy part of every layout: its wrapper takes all spare
+  // A4 height and the rows share it, so 3 subjects or 15 always fill the page.
   const results = (cols: 'alqalam' | 'emerald' | 'hisgrace' | 'fmp') => (
-    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+    <table style={{ width: '100%', borderCollapse: 'collapse', flex: 1, height: '100%' }}>
       <thead>
-        <tr>
+        <tr style={{ height: 1 }}>
           <th style={{ ...th, textAlign: rtl ? 'right' : 'left', fontSize: cols === 'hisgrace' ? 15 : 11 }}>{t.subjects}</th>
           {cols === 'fmp' ? <><th style={th}>{t.ca} (20)</th><th style={th}>{t.ca} (20)</th></> : <><th style={th}>{t.ca1}<br />20</th><th style={th}>{t.ca2}<br />20</th></>}
           <th style={th}>{t.exam}<br />60</th><th style={th}>{t.total}<br />100</th>
@@ -132,7 +135,8 @@ export function NigerianReportSheet({ rc, assessments, qrDataUrl, design: design
         </tr>)}
         {!assessments.length && <tr><td colSpan={9} style={{ ...tc, padding: 12 }}>{t.noResults}</td></tr>}
       </tbody>
-    </table>);
+    </table>
+    </div>);
 
   const remarks = <Table>
     <tr><td style={{ ...cell, fontWeight: 700, width: '28%' }}>{t.teacher}</td><td style={cell}>{rc.teacher_remark || '—'}</td><td style={{ ...cell, width: 130 }}>{t.sign}: <Sig /></td></tr>
@@ -228,7 +232,7 @@ export function NigerianReportSheet({ rc, assessments, qrDataUrl, design: design
         <tr><td style={sc}>{t.admission}</td><td style={cell}>{student.admission_no ?? '—'}</td><td style={sc}>{t.classSize}</td><td style={cell}>{num(rc.class_size)}</td></tr>
         <tr><td style={sc}>{t.opened}</td><td style={cell}>{num(rc.days_total)}</td><td style={sc}>{t.present} / {t.absent}</td><td style={cell}>{num(rc.days_present)} / {num(rc.days_absent)}</td></tr>
       </Table>
-      <div style={{ marginTop: 6 }}>{results('fmp')}</div>
+      <div style={{ marginTop: 6, flex: 1, display: 'flex', flexDirection: 'column' }}>{results('fmp')}</div>
       <Table><tr><td style={sc}>{t.marksObtainable}: {num(obtainable || null)}</td><td style={sc}>{t.marksObtained}: {num(totals.total)}</td><td style={sc}>{t.percentage}: {num(pct)}%</td>{positions.class && <td style={sc}>{t.position}: {num(assessments.length ? rc.position : null)}</td>}</tr></Table>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', marginTop: 6 }}>
         <ScoreGrid group="psychomotor" title={t.psychomotor} />
@@ -260,9 +264,9 @@ export function NigerianReportSheet({ rc, assessments, qrDataUrl, design: design
         <Table><tr><td colSpan={3} style={boxTitle(t.attendance)}>{t.attendance}</td></tr><tr>{attendanceRows.map(([k]) => <td key={k} style={{ ...tc, fontSize: 9.5 }}>{k}</td>)}</tr><tr>{attendanceRows.map(([k, v]) => <td key={k} style={{ ...tc, fontWeight: 700 }}>{v}</td>)}</tr></Table>
         <Table><tr><td colSpan={2} style={boxTitle(t.summary)}>{t.summary}</td></tr><KV rows={summaryRows} /></Table>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 230px', gap: 8, marginTop: 8, alignItems: 'start' }}>
-        <div><div style={{ ...boxTitle(t.cognitive), border: `1px solid ${line}` }}>{t.cognitive}</div>{results('alqalam')}</div>
-        <div style={{ display: 'grid', gap: 8 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 230px', gap: 8, marginTop: 8, alignItems: 'stretch', flex: 1 }}>
+        <div style={{ display: 'flex', flexDirection: 'column' }}><div style={{ ...boxTitle(t.cognitive), border: `1px solid ${line}` }}>{t.cognitive}</div>{results('alqalam')}</div>
+        <div style={{ display: 'grid', gap: 8, alignContent: 'start' }}>
           <TickGrid group="affective" title={t.affective} />
           <TickGrid group="psychomotor" title={t.psychomotor} />
           <GradeScale />
@@ -276,6 +280,6 @@ export function NigerianReportSheet({ rc, assessments, qrDataUrl, design: design
 
   return <article className="print-doc report-sheet" style={sheet} dir={rtl ? 'rtl' : 'ltr'} lang={lang} data-report-layout={design} aria-label={`${schoolName} ${t.report}`}>
     <Watermark />
-    <div style={{ position: 'relative', zIndex: 1 }}>{body}</div>
+    <div style={{ position: 'relative', zIndex: 1, flex: 1, display: 'flex', flexDirection: 'column' }}>{body}</div>
   </article>;
 }

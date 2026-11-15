@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { invoiceOutstanding } from "@/lib/finance-math";
 
 const TokenOnly = z.object({ token: z.string().min(10) });
 const WithChild = z.object({ token: z.string().min(10), student_id: z.string().uuid().optional() });
@@ -25,26 +26,6 @@ async function requireActiveChild(claims: { parent_id: string; school_id: string
   if (!link.data || !student.data) throw new Error("Student access is unavailable until the school administrator activates the admission");
 }
 
-const DEMO_SCHOOL = {
-  id: "22222222-2222-2222-2222-222222222222",
-  name: "Result Arena Academy",
-  address: "14 Ahmadu Bello Way, Abuja, Nigeria",
-  phone: "+234 803 123 4567",
-  email: "info@eduerp-demo.ng",
-  motto: "Knowledge, Character and Excellence",
-  branch_name: "Main Campus",
-  current_session: "2025/2026",
-  current_term: "first",
-};
-
-const DEMO_STUDENT = {
-  id: "33333333-3333-3333-3333-333333333333",
-  admission_no: "ADM/2026/014",
-  first_name: "Zainab",
-  last_name: "Bello",
-  classes: { name: "Primary 5A" },
-};
-
 /** List parent's children + school. */
 export const getPortalContext = createServerFn({ method: "POST" })
   .inputValidator((d) => TokenOnly.parse(d))
@@ -69,36 +50,26 @@ export const getPortalSummary = createServerFn({ method: "POST" })
     const sid = data.student_id;
     if (!sid) return { attendance: { present: 0, total: 0 }, balance: 0, unreadCount: 0, latestReport: null };
 
-    try {
-      const db = await admin();
-      const { data: ok } = await db.from("student_parents").select("student_id").eq("parent_id", claims.parent_id).eq("student_id", sid).maybeSingle();
-      if (ok) {
-        const since = new Date(); since.setDate(since.getDate() - 30);
-        const [{ data: att }, { data: invs }, { data: notifs }, { data: rc }] = await Promise.all([
-          db.from("attendance").select("status").eq("student_id", sid).gte("date", since.toISOString().slice(0, 10)),
-          db.from("fee_invoices").select("amount_due, amount_paid, status").eq("student_id", sid),
-          db.from("parent_notifications").select("id", { count: "exact", head: true }).eq("parent_id", claims.parent_id).is("read_at", null).lte("visible_from", new Date().toISOString()),
-          db.from("report_cards").select("id, session, term, average, position, class_size, published").eq("student_id", sid).eq("published", true).order("created_at", { ascending: false }).limit(1),
-        ]);
-        const present = (att ?? []).filter((a: any) => a.status === "present" || a.status === "late").length;
-        const total = (att ?? []).length;
-        const balance = (invs ?? []).reduce((s: number, i: any) => s + (Number(i.amount_due) - Number(i.amount_paid)), 0);
-        return {
-          attendance: { present, total },
-          balance,
-          unreadCount: (notifs as any)?.length ?? 1,
-          latestReport: rc?.[0] ?? null,
-        };
-      }
-    } catch {
-      // DB offline fallback
-    }
-
+    const db = await admin();
+    const { data: ok, error: linkError } = await db.from("student_parents").select("student_id").eq("parent_id", claims.parent_id).eq("student_id", sid).maybeSingle();
+    if (linkError) throw new Error("Family details could not be loaded");
+    if (!ok) throw new Error("Student access is unavailable");
+    const since = new Date(); since.setDate(since.getDate() - 30);
+    const [att, invs, notifs, rc] = await Promise.all([
+      db.from("attendance").select("status").eq("student_id", sid).gte("date", since.toISOString().slice(0, 10)),
+      db.from("fee_invoices").select("amount_due, amount_paid, discount_amount, status").eq("student_id", sid),
+      db.from("parent_notifications").select("id", { count: "exact", head: true }).eq("parent_id", claims.parent_id).is("read_at", null).lte("visible_from", new Date().toISOString()),
+      db.from("report_cards").select("id, session, term, average, position, class_size, published").eq("student_id", sid).eq("published", true).order("created_at", { ascending: false }).limit(1),
+    ]);
+    if (att.error || invs.error || notifs.error || rc.error) throw new Error("Family summary could not be loaded. Please try again.");
+    const present = (att.data ?? []).filter((a: any) => a.status === "present" || a.status === "late").length;
+    const total = (att.data ?? []).length;
+    const balance = (invs.data ?? []).reduce((s: number, i: any) => s + Math.max(0, invoiceOutstanding(i)), 0);
     return {
-      attendance: { present: 19, total: 20 },
-      balance: 20000,
-      unreadCount: 1,
-      latestReport: { average: 88.4, session: "2025/2026", term: "first" },
+      attendance: { present, total },
+      balance,
+      unreadCount: notifs.count ?? 0,
+      latestReport: rc.data?.[0] ?? null,
     };
   });
 
@@ -107,23 +78,10 @@ export const getPortalAttendance = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     if (!data.student_id) throw new Error("Choose an activated student");
     const claims = await verify(data.token, data.student_id);
-    try {
-      const db = await admin();
-      const { data: rows } = await db.from("attendance").select("date, status, note").eq("student_id", data.student_id).gte("date", data.from).lte("date", data.to).order("date", { ascending: false });
-      if (rows && rows.length > 0) return { rows };
-    } catch {
-      // fallback
-    }
-
-    return {
-      rows: [
-        { date: "2026-10-16", status: "present", note: "Prompt arrival" },
-        { date: "2026-10-15", status: "present", note: "On time" },
-        { date: "2026-10-14", status: "present", note: "On time" },
-        { date: "2026-10-13", status: "present", note: "On time" },
-        { date: "2026-10-12", status: "present", note: "On time" },
-      ],
-    };
+    const db = await admin();
+    const { data: rows, error } = await db.from("attendance").select("date, status, note").eq("student_id", data.student_id).gte("date", data.from).lte("date", data.to).order("date", { ascending: false });
+    if (error) throw new Error("Attendance could not be loaded. Please try again.");
+    return { rows: rows ?? [] };
   });
 
 export const getPortalReportCards = createServerFn({ method: "POST" })
@@ -210,101 +168,34 @@ export const getPortalFees = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     if (!data.student_id) throw new Error("Choose an activated student");
     const claims = await verify(data.token, data.student_id);
-    try {
-      const db = await admin();
-      const [{ data: invoices }, { data: payments }, { data: student }, { data: school }] = await Promise.all([
-        db.from("fee_invoices").select("id, title, session, term, amount_due, amount_paid, discount_amount, discount_reason, discount_kind, status, due_date").eq("student_id", data.student_id).order("created_at", { ascending: false }),
-        db.from("fee_payments").select("id, invoice_id, amount, method, reference, paid_at, receipt_no, notes").eq("student_id", data.student_id).order("paid_at", { ascending: false }),
-        db.from("students").select("id, first_name, middle_name, last_name, admission_no, classes(name)").eq("id", data.student_id).maybeSingle(),
-        db.from("schools").select("id, name, address, phone, email, logo_url, motto, branch_name").eq("id", claims.school_id).maybeSingle(),
-      ]);
-      if (invoices && invoices.length > 0) {
-        return { invoices, payments: payments ?? [], student, school };
-      }
-    } catch {
-      // fallback
-    }
-
-    // Default demo fee state
-    const demoInvoices = [
-      {
-        id: "demo-inv-1",
-        title: "First Term Tuition & Academic Materials",
-        session: "2025/2026",
-        term: "first",
-        amount_due: 75000,
-        amount_paid: 50000,
-        discount_amount: 5000,
-        discount_reason: "50% Sibling concession approved",
-        discount_kind: "sibling",
-        status: "partial",
-        due_date: "2026-10-31",
-      },
-    ];
-
-    const demoPayments = [
-      {
-        id: "demo-pay-1",
-        invoice_id: "demo-inv-1",
-        amount: 50000,
-        method: "bank_transfer",
-        reference: "ZENITH/TRF-98231",
-        paid_at: "2026-10-12T10:30:00Z",
-        receipt_no: "RCP-001042",
-        notes: "Part payment received via mobile bank transfer",
-      },
-    ];
-
-    return {
-      invoices: demoInvoices,
-      payments: demoPayments,
-      student: DEMO_STUDENT,
-      school: DEMO_SCHOOL,
-    };
+    const db = await admin();
+    const [inv, pay, stu, sch] = await Promise.all([
+      db.from("fee_invoices").select("id, title, session, term, amount_due, amount_paid, discount_amount, discount_reason, discount_kind, status, due_date").eq("student_id", data.student_id).order("created_at", { ascending: false }),
+      db.from("fee_payments").select("id, invoice_id, amount, method, reference, paid_at, receipt_no, notes").eq("student_id", data.student_id).order("paid_at", { ascending: false }),
+      db.from("students").select("id, first_name, middle_name, last_name, admission_no, classes(name)").eq("id", data.student_id).maybeSingle(),
+      db.from("schools").select("id, name, address, phone, email, logo_url, motto, branch_name").eq("id", claims.school_id).maybeSingle(),
+    ]);
+    if (inv.error || pay.error || stu.error || sch.error) throw new Error("Fees could not be loaded. Please try again.");
+    return { invoices: inv.data ?? [], payments: pay.data ?? [], student: stu.data, school: sch.data };
   });
 
 export const getPortalNotifications = createServerFn({ method: "POST" })
   .inputValidator((d) => TokenOnly.parse(d))
   .handler(async ({ data }) => {
     const claims = await verify(data.token);
-    try {
-      const db = await admin();
-      const { data: rows } = await db.from("parent_notifications").select("id, type, title, body, meta, read_at, created_at, visible_from, student_id").eq("parent_id", claims.parent_id).lte("visible_from", new Date().toISOString()).order("visible_from", { ascending: false }).limit(100);
-      if (rows && rows.length > 0) return { rows };
-    } catch {
-      // fallback
-    }
-
-    return {
-      rows: [
-        {
-          id: "demo-notif-1",
-          type: "message",
-          title: "Weekly Friday Student Update (2026-10-16)",
-          body: "Dear Mrs. Hauwa Bello. Result Arena Academy Friday Update (2026-10-16): Zainab Bello: 5/5 days present, 88% test avg. Commendable punctuality and conduct this week. Well done!",
-          meta: {
-            friday_digest: true,
-            overall_flag: "praise",
-            children: [{ name: "Zainab Bello", punctuality: "perfect", flags: [] }],
-          },
-          read_at: null,
-          created_at: new Date().toISOString(),
-          visible_from: new Date().toISOString(),
-        },
-      ],
-    };
+    const db = await admin();
+    const { data: rows, error } = await db.from("parent_notifications").select("id, type, title, body, meta, read_at, created_at, visible_from, student_id").eq("parent_id", claims.parent_id).lte("visible_from", new Date().toISOString()).order("visible_from", { ascending: false }).limit(100);
+    if (error) throw new Error("Messages could not be loaded. Please try again.");
+    return { rows: rows ?? [] };
   });
 
 export const markNotificationRead = createServerFn({ method: "POST" })
   .inputValidator((d) => TokenOnly.extend({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data }) => {
     const claims = await verify(data.token);
-    try {
-      const db = await admin();
-      await db.from("parent_notifications").update({ read_at: new Date().toISOString() }).eq("id", data.id).eq("parent_id", claims.parent_id);
-    } catch {
-      // ok
-    }
+    const db = await admin();
+    const { error } = await db.from("parent_notifications").update({ read_at: new Date().toISOString() }).eq("id", data.id).eq("parent_id", claims.parent_id);
+    if (error) throw new Error("Message could not be updated");
     return { ok: true };
   });
 
@@ -316,48 +207,15 @@ export const getReceipt = createServerFn({ method: "POST" })
     const payment = await receiptDb.from("fee_payments").select("student_id").eq("id", data.payment_id).maybeSingle();
     if (payment.error || !payment.data) throw new Error("Receipt not found");
     await requireActiveChild(claims, payment.data.student_id);
-    try {
-      const db = await admin();
-      const { data: p } = await db.from("fee_payments").select("id, amount, method, reference, paid_at, receipt_no, invoice_id, student_id, school_id, notes").eq("id", data.payment_id).maybeSingle();
-      if (p) {
-        const [{ data: inv }, { data: stu }, { data: sch }] = await Promise.all([
-          db.from("fee_invoices").select("id, title, session, term, amount_due, amount_paid, discount_amount, discount_reason, discount_kind, status, due_date").eq("id", p.invoice_id).maybeSingle(),
-          db.from("students").select("first_name, middle_name, last_name, admission_no, classes(name)").eq("id", p.student_id).maybeSingle(),
-          db.from("schools").select("name, address, phone, email, logo_url, motto, branch_name").eq("id", p.school_id).maybeSingle(),
-        ]);
-        return { payment: p, invoice: inv, student: stu, school: sch };
-      }
-    } catch {
-      // fallback
-    }
-
-    return {
-      payment: {
-        id: data.payment_id || "demo-pay-1",
-        receipt_no: "RCP-001042",
-        amount: 50000,
-        method: "bank_transfer",
-        reference: "ZENITH/TRF-98231",
-        paid_at: "2026-10-12T10:30:00Z",
-        notes: "Part payment received via mobile bank transfer",
-        recorded_by_name: "Bursary Staff",
-      },
-      invoice: {
-        id: "demo-inv-1",
-        title: "First Term Tuition & Academic Materials",
-        session: "2025/2026",
-        term: "first",
-        amount_due: 75000,
-        amount_paid: 50000,
-        discount_amount: 5000,
-        discount_reason: "50% Sibling concession approved",
-        discount_kind: "sibling",
-        status: "partial",
-        due_date: "2026-10-31",
-      },
-      student: DEMO_STUDENT,
-      school: DEMO_SCHOOL,
-    };
+    const { data: p, error: pErr } = await receiptDb.from("fee_payments").select("id, amount, method, reference, paid_at, receipt_no, invoice_id, student_id, school_id, notes").eq("id", data.payment_id).maybeSingle();
+    if (pErr || !p) throw new Error("Receipt not found");
+    const [inv, stu, sch] = await Promise.all([
+      receiptDb.from("fee_invoices").select("id, title, session, term, amount_due, amount_paid, discount_amount, discount_reason, discount_kind, status, due_date").eq("id", p.invoice_id).maybeSingle(),
+      receiptDb.from("students").select("first_name, middle_name, last_name, admission_no, classes(name)").eq("id", p.student_id).maybeSingle(),
+      receiptDb.from("schools").select("name, address, phone, email, logo_url, motto, branch_name").eq("id", p.school_id).maybeSingle(),
+    ]);
+    if (inv.error || stu.error || sch.error) throw new Error("Receipt could not be loaded. Please try again.");
+    return { payment: p, invoice: inv.data, student: stu.data, school: sch.data };
   });
 
 export const getParentPreferences = createServerFn({ method: "POST" })

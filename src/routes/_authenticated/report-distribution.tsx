@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { classDisplayName } from "@/lib/class-label";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -36,15 +37,15 @@ type Card_ = {
   classes?: { id?: string; name?: string; arm?: string | null } | null;
 };
 const studentName = (c: Card_) => `${c.students?.first_name ?? ""} ${c.students?.last_name ?? ""}`.trim() || "Student";
-const className = (c: Card_) => [c.classes?.name, c.classes?.arm].filter(Boolean).join(" ") || "Class";
+const className = (c: Card_) => classDisplayName(c.classes) || "Class";
 const fileFor = (c: Card_) => reportFileName({ studentName: studentName(c), admissionNo: c.students?.admission_no, className: className(c), term: c.term, session: c.session });
 
 function ReportDistributionPage() {
-  const { roles } = useAuth();
+  const { roles, schoolId, loading: authLoading } = useAuth();
   const isAdmin = hasRole(roles, "super_admin", "school_admin");
   const loadCards = useServerFn(getReportCardsList);
   const loadDetail = useServerFn(getReportCardDetail);
-  const { data: cards = [], isLoading } = useQuery({ queryKey: ["report-cards-list", "published-only"], queryFn: async () => (((await loadCards()).cards ?? []) as Card_[]).filter((c) => c.published === true) });
+  const { data: cards = [], isLoading } = useQuery({ queryKey: ["report-cards-list", "published-only", schoolId], enabled: !authLoading && !!schoolId, queryFn: async () => (((await loadCards({ data: { schoolId, publishedOnly: true } })).cards ?? []) as Card_[]).filter((c) => c.published === true) });
 
   const periods = useMemo(() => Array.from(new Set(cards.map((c) => `${c.session}|${c.term}`))).sort().reverse(), [cards]);
   const [period, setPeriod] = useState("");

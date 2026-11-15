@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Eye, Search, Filter, Calendar, Award, Download } from "lucide-react";
+import { classDisplayName } from "@/lib/class-label";
 
 export const Route = createFileRoute("/_authenticated/report-cards")({
   head: () => ({
@@ -27,21 +28,23 @@ export const Route = createFileRoute("/_authenticated/report-cards")({
 });
 
 function ReportCardsListPage() {
-  const { roles, loading } = useAuth();
+  const { roles, loading, schoolId } = useAuth();
   const isStaff = hasRole(roles, "super_admin", "school_admin", "teacher");
   const loadCards = useServerFn(getReportCardsList);
 
   const [sessionFilter, setSessionFilter] = useState<string>("all");
   const [termFilter, setTermFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [classFilter, setClassFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
 
   const { data: cards, isLoading } = useQuery({
-    queryKey: ["report-cards-list"],
+    queryKey: ["report-cards-list", schoolId],
     queryFn: async () => {
-      const data = await loadCards();
+      const data = await loadCards({ data: { schoolId } });
       return data.cards ?? [];
     },
-    enabled: !loading,
+    enabled: !loading && !!schoolId,
   });
 
   const filteredCards = useMemo(() => {
@@ -52,9 +55,20 @@ function ReportCardsListPage() {
       const stName = `${c.students?.first_name || ""} ${c.students?.last_name || ""}`.toLowerCase();
       const adm = (c.students?.admission_no || "").toLowerCase();
       const matchSearch = !q || stName.includes(q) || adm.includes(q);
-      return matchSession && matchTerm && matchSearch;
+      const matchClass = classFilter === "all" || c.class_id === classFilter;
+      const matchStatus = statusFilter === "all" || (statusFilter === "published" ? c.published : !c.published);
+      return matchSession && matchTerm && matchSearch && matchClass && matchStatus;
     });
-  }, [cards, sessionFilter, termFilter, searchQuery]);
+  }, [cards, sessionFilter, termFilter, searchQuery, classFilter, statusFilter]);
+  const sessionOptions = useMemo(
+    () => Array.from(new Set((cards ?? []).map((c: any) => c.session).filter(Boolean))).sort().reverse() as string[],
+    [cards],
+  );
+  const classOptions = useMemo(() => {
+    const m = new Map<string, string>();
+    (cards ?? []).forEach((c: any) => c.class_id && m.set(c.class_id, classDisplayName(c.classes) || "Unnamed class"));
+    return Array.from(m.entries()).sort((a, b) => a[1].localeCompare(b[1], undefined, { numeric: true }));
+  }, [cards]);
 
   return (
     <div className="space-y-6">
@@ -86,7 +100,7 @@ function ReportCardsListPage() {
               const rows = filteredCards.map((c: any) => [
                 `"${c.students?.admission_no || ""}"`,
                 `"${(c.students?.first_name || "") + " " + (c.students?.last_name || "")}"`,
-                `"${c.classes?.name || ""}"`,
+                `"${classDisplayName(c.classes)}"`,
                 `"${c.session || ""}"`,
                 `"${c.term || ""}"`,
                 c.average || 0,
@@ -131,8 +145,9 @@ function ReportCardsListPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Sessions</SelectItem>
-                <SelectItem value="2025/2026">2025/2026 Session (Current)</SelectItem>
-                <SelectItem value="2024/2025">2024/2025 Session</SelectItem>
+                {sessionOptions.map((s) => (
+                  <SelectItem key={s} value={s}>{s} Session</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -151,8 +166,35 @@ function ReportCardsListPage() {
             </Select>
           </div>
 
+          <div className="sm:col-span-6">
+            <Select value={classFilter} onValueChange={setClassFilter}>
+              <SelectTrigger aria-label="Class">
+                <SelectValue placeholder="Class" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Classes</SelectItem>
+                {classOptions.map(([id, label]) => (
+                  <SelectItem key={id} value={id}>{label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="sm:col-span-5">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger aria-label="Status">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Published and drafts</SelectItem>
+                <SelectItem value="published">Published only</SelectItem>
+                <SelectItem value="draft">Drafts only</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="sm:col-span-1 flex justify-end">
-            {(sessionFilter !== "all" || termFilter !== "all" || searchQuery) && (
+            {(sessionFilter !== "all" || termFilter !== "all" || searchQuery || classFilter !== "all" || statusFilter !== "all") && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -160,6 +202,8 @@ function ReportCardsListPage() {
                   setSessionFilter("all");
                   setTermFilter("all");
                   setSearchQuery("");
+                  setClassFilter("all");
+                  setStatusFilter("all");
                 }}
                 className="text-xs text-muted-foreground"
               >
@@ -174,7 +218,7 @@ function ReportCardsListPage() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle className="text-base font-semibold">
-            Published Report Cards ({filteredCards.length} of {cards?.length || 0})
+            Report Cards {isLoading ? "" : `(${filteredCards.length} of ${cards?.length || 0})`}
           </CardTitle>
           <div className="text-xs text-muted-foreground">
             EduERP National & Standard Single-Page A4 Templates
@@ -195,6 +239,8 @@ function ReportCardsListPage() {
                   setSessionFilter("all");
                   setTermFilter("all");
                   setSearchQuery("");
+                  setClassFilter("all");
+                  setStatusFilter("all");
                 }}
               >
                 Clear Filters
@@ -227,7 +273,7 @@ function ReportCardsListPage() {
                           {c.students?.admission_no}
                         </div>
                       </TableCell>
-                      <TableCell>{c.classes?.name || "Class 2A"} {c.classes?.arm || ""}</TableCell>
+                      <TableCell>{classDisplayName(c.classes) || "—"}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className="font-mono text-xs">
                           {c.session}
@@ -242,7 +288,7 @@ function ReportCardsListPage() {
                       <TableCell>{Number(c.subjects_count ?? 0) > 0 ? `${c.position ?? "—"} / ${c.class_size ?? "—"}` : "No scores"}</TableCell>
                       <TableCell>
                         <span className="font-mono text-[11px] text-muted-foreground">
-                          {c.verification_code || "AK-VERIFIED"}
+                          {c.verification_code || "—"}
                         </span>
                       </TableCell>
                       <TableCell>

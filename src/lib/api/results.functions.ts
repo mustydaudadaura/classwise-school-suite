@@ -108,16 +108,31 @@ async function resolveCallerHierarchyContext(context: {
   };
 }
 
+const ReportCardsListInput = z
+  .object({ schoolId: z.string().uuid().nullable().optional(), publishedOnly: z.boolean().optional() })
+  .optional();
+
 export const getReportCardsList = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
+  .inputValidator((d) => ReportCardsListInput.parse(d))
+  .handler(async ({ data, context }) => {
     const db = context.supabase;
     const { actor, classes: authClasses, allocations } = await resolveCallerHierarchyContext(context);
-    const res = await db.from("report_cards")
-      .select("id, school_id, student_id, class_id, session, term, total_score, average, gpa, position, class_size, subjects_count, published, verification_code, created_at")
-      .order("created_at", { ascending: false }).limit(500);
-    if (res.error) throw new Error(res.error.message);
-    const rows: any[] = res.data ?? [];
+    // Read every page (not just the newest 500) and keep to the selected school.
+    const rows: any[] = [];
+    const PAGE = 1000;
+    for (let from = 0; ; from += PAGE) {
+      let q = db.from("report_cards")
+        .select("id, school_id, student_id, class_id, session, term, total_score, average, gpa, position, class_size, subjects_count, published, verification_code, created_at")
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: true });
+      if (data?.schoolId) q = q.eq("school_id", data.schoolId);
+      if (data?.publishedOnly) q = q.eq("published", true);
+      const res = await q.range(from, from + PAGE - 1);
+      if (res.error) throw new Error(res.error.message);
+      rows.push(...(res.data ?? []));
+      if ((res.data ?? []).length < PAGE || from > 50_000) break;
+    }
 
     const authorizedRows = rows.filter((r: any) =>
       canAccessReportCardRecord(actor, r, authClasses, allocations)

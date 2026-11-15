@@ -114,7 +114,7 @@ export const getReportCardsList = createServerFn({ method: "GET" })
     const db = context.supabase;
     const { actor, classes: authClasses, allocations } = await resolveCallerHierarchyContext(context);
     const res = await db.from("report_cards")
-      .select("id, school_id, student_id, class_id, session, term, total_score, average, gpa, position, class_size, published, verification_code, created_at")
+      .select("id, school_id, student_id, class_id, session, term, total_score, average, gpa, position, class_size, subjects_count, published, verification_code, created_at")
       .order("created_at", { ascending: false }).limit(500);
     if (res.error) throw new Error(res.error.message);
     const rows: any[] = res.data ?? [];

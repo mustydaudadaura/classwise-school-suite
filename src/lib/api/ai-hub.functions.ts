@@ -91,8 +91,7 @@ export const autoGenerateStudentReportSummaryFn = createServerFn({ method: "POST
         .select("ca1, ca2, exam, total, grade, subjects(name)")
         .eq("student_id", data.student_id)
         .eq("session", data.session)
-        .eq("term", data.term as any)
-        // every saved score counts, as on the report card
+        .eq("term", data.term as any), // every saved score counts, as on the report card
       supabase
         .from("students")
         .select("id", { count: "exact", head: true }),

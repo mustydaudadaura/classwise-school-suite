@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { FileDown, Files, Archive, MessageCircle, Share2, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { FileDown, Files, Archive, MessageCircle, Share2, CheckCircle2, XCircle, Loader2, Mail } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, hasRole } from "@/hooks/useAuth";
 import { getReportCardsList, getReportCardDetail, getReportRecipients } from "@/lib/api/results.functions";
@@ -45,7 +45,7 @@ function ReportDistributionPage() {
   const isAdmin = hasRole(roles, "super_admin", "school_admin");
   const loadCards = useServerFn(getReportCardsList);
   const loadDetail = useServerFn(getReportCardDetail);
-  const { data: cards = [], isLoading } = useQuery({ queryKey: ["report-cards-list", "published-only", schoolId], enabled: !authLoading && !!schoolId, queryFn: async () => (((await loadCards({ data: { schoolId, publishedOnly: true } })).cards ?? []) as Card_[]).filter((c) => c.published === true) });
+  const { data: cards = [], isLoading } = useQuery({ queryKey: ["report-cards-list", "generated", schoolId], enabled: !authLoading && !!schoolId, queryFn: async () => (((await loadCards({ data: { schoolId } })).cards ?? []) as Card_[]).filter((c) => Number((c as any).subjects_count ?? 0) > 0) });
 
   const periods = useMemo(() => Array.from(new Set(cards.map((c) => `${c.session}|${c.term}`))).sort().reverse(), [cards]);
   const [period, setPeriod] = useState("");
@@ -96,14 +96,14 @@ function ReportDistributionPage() {
       </Card>
 
       {!isLoading && !cards.length ? (
-        <p className="text-sm text-muted-foreground">No report cards yet. Publish results first from the Results page.</p>
+        <p className="text-sm text-muted-foreground">No report cards yet. Generate them first from the Report Cards page.</p>
       ) : (
         <Tabs defaultValue="individual">
           <TabsList className="flex h-auto flex-wrap">
             <TabsTrigger value="individual"><FileDown className="mr-2 h-4 w-4" />One student</TabsTrigger>
             <TabsTrigger value="class"><Files className="mr-2 h-4 w-4" />Whole class</TabsTrigger>
             <TabsTrigger value="bulk"><Archive className="mr-2 h-4 w-4" />Bulk (ZIP)</TabsTrigger>
-            <TabsTrigger value="whatsapp"><MessageCircle className="mr-2 h-4 w-4" />WhatsApp</TabsTrigger>
+            <TabsTrigger value="whatsapp"><MessageCircle className="mr-2 h-4 w-4" />WhatsApp &amp; email</TabsTrigger>
           </TabsList>
           <TabsContent value="individual"><IndividualTab cards={inPeriod} classList={classList} busy={!!progress} onRun={run} pdfFor={pdfFor} /></TabsContent>
           <TabsContent value="class">
@@ -281,6 +281,14 @@ function WhatsAppTab({ cards, classList, isAdmin, pdfFor, busy, onRun }: { cards
     void setStatus(c, "sent").catch((e) => toast.error(e.message));
   };
 
+  const openEmail = (c: Card_) => {
+    const email = recipients.get(c.id)?.email;
+    if (!email) return;
+    const subject = `${studentName(c)} — ${c.term} term report card (${c.session})`;
+    window.location.href = `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(messageFor(c) + "\n\nThe report card PDF is attached.")}`;
+    void setStatus(c, "sent").catch((e) => toast.error(e.message));
+  };
+
   const sharePdf = async (c: Card_) => {
     const blob = prepared[c.id];
     if (!blob) return;
@@ -305,6 +313,7 @@ function WhatsAppTab({ cards, classList, isAdmin, pdfFor, busy, onRun }: { cards
         <Button size="sm" variant="outline" disabled={busy} onClick={() => prepare(c)}><FileDown className="mr-1 h-3.5 w-3.5" />1. PDF</Button>
         <Button size="sm" disabled={!valid || !prepared[c.id]} onClick={() => openWhatsApp(c)}><MessageCircle className="mr-1 h-3.5 w-3.5" />2. WhatsApp</Button>
         {canShareFiles && <Button size="sm" variant="secondary" disabled={!prepared[c.id]} onClick={() => sharePdf(c)}><Share2 className="mr-1 h-3.5 w-3.5" />Share PDF</Button>}
+        <Button size="sm" variant="outline" disabled={!r?.email || !prepared[c.id]} title={r?.email ? `Email ${r.email}` : "No parent email registered"} onClick={() => openEmail(c)}><Mail className="mr-1 h-3.5 w-3.5" />Email</Button>
         <Button size="sm" variant="ghost" onClick={() => setStatus(c, "failed").catch((e) => toast.error(e.message))}><XCircle className="mr-1 h-3.5 w-3.5" />Failed</Button>
         {isAdmin && <Button size="sm" variant="ghost" onClick={() => setStatus(c, "confirmed").then(() => toast.success("Delivery confirmed")).catch((e) => toast.error(e.message))}><CheckCircle2 className="mr-1 h-3.5 w-3.5" />Confirm</Button>}
       </div>
@@ -313,7 +322,7 @@ function WhatsAppTab({ cards, classList, isAdmin, pdfFor, busy, onRun }: { cards
 
   return (
     <Card>
-      <CardHeader><CardTitle className="text-base">Send to parents on WhatsApp</CardTitle></CardHeader>
+      <CardHeader><CardTitle className="text-base">Send to parents on WhatsApp or email</CardTitle></CardHeader>
       <CardContent className="space-y-4">
         <p className="text-xs text-muted-foreground">
           Each report goes only to the parent registered for that student. Step 1 makes the PDF; step 2 opens WhatsApp with the message to that parent — attach the downloaded PDF there
@@ -354,7 +363,7 @@ function WhatsAppTab({ cards, classList, isAdmin, pdfFor, busy, onRun }: { cards
                     <Checkbox checked={picked.has(c.id)} onCheckedChange={() => setPicked((s) => { const n = new Set(s); n.has(c.id) ? n.delete(c.id) : n.add(c.id); return n; })} aria-label={`Select ${studentName(c)}`} />
                     <div className="min-w-0 flex-1 text-sm">
                       <div className="font-medium">{studentName(c)} <span className="text-muted-foreground">· {c.students?.admission_no}</span></div>
-                      <div className="text-xs text-muted-foreground">{r?.parent_name ?? "No parent linked"} · {r?.phone ?? "no phone"}</div>
+                      <div className="text-xs text-muted-foreground">{r?.parent_name ?? "No parent linked"} · {r?.phone ?? "no phone"}{r?.email ? ` · ${r.email}` : ""}</div>
                     </div>
                     <Badge variant={STATUS_VARIANT[status]}>{DELIVERY_LABELS[status]}</Badge>
                     {rowActions(c)}

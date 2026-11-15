@@ -1,6 +1,7 @@
 import { computePositions, resolveRanking } from "@/lib/position-ranking";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { aggregateEnteredScores } from "@/lib/report-scores";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   calculateGrade,
@@ -24,6 +25,10 @@ const PublishInput = z.object({
   next_resumption_date: z.string().optional().nullable(),
   teacher_remark_default: z.string().max(500).optional(),
   principal_remark_default: z.string().max(500).optional(),
+  // Generate only these pupils (positions still ranked against the whole class).
+  student_ids: z.array(z.string().uuid()).max(500).optional(),
+  // true = post to parent portal; false = generate as draft (keeps an already-posted card posted).
+  post_to_portal: z.boolean().optional().default(true),
 });
 
 const ReportCardDetailInput = z.object({ id: z.string().min(1) });
@@ -181,7 +186,7 @@ export const getReportCardDetail = createServerFn({ method: "GET" })
       (rc as any).class_id
         ? db.from("classes").select("name, arm, level, section").eq("id", (rc as any).class_id).maybeSingle()
         : Promise.resolve({ data: null }),
-      db.from("assessments").select("id, subject_id, ca1, ca2, exam, total, grade, remark, created_at").eq("student_id", (rc as any).student_id).eq("session", (rc as any).session).eq("term", (rc as any).term).eq("status", "approved").order("created_at"),
+      db.from("assessments").select("id, subject_id, ca1, ca2, exam, total, grade, remark, created_at").eq("student_id", (rc as any).student_id).eq("session", (rc as any).session).eq("term", (rc as any).term).order("created_at"),
       db.from("report_cards").select("term, average, total_score, position").eq("student_id", (rc as any).student_id).eq("session", (rc as any).session),
     ]);
 
@@ -289,39 +294,22 @@ export const publishReportCards = createServerFn({ method: "POST" })
       .eq("class_id", data.class_id);
     if (!students?.length) throw new Error("No students in this class");
 
-    // Fetch all assessments for this class/session/term
-    const assess: { student_id: string; total: number | null; status: string }[] = [];
+    // Fetch all assessments for this class/session/term — every saved score counts, approved or not.
+    const assess: { student_id: string; total: number | null; ca1: number | null; ca2: number | null; exam: number | null; status: string }[] = [];
     for (let from = 0; ; from += 1000) {
       const { data: page, error: assessmentError } = await db.from('assessments')
-        .select('id, student_id, total, status').eq('school_id', cls.school_id)
+        .select('id, student_id, total, ca1, ca2, exam, status').eq('school_id', cls.school_id)
         .eq('class_id', data.class_id).eq('session', data.session).eq('term', data.term)
         .order('id').range(from, from + 999);
-      if (assessmentError) throw new Error('Saved scores could not be loaded. Nothing was published.');
-      assess.push(...(page ?? []));
+      if (assessmentError) throw new Error('Saved scores could not be loaded. Nothing was generated.');
+      assess.push(...((page ?? []) as any));
       if (!page || page.length < 1000) break;
     }
-    if (!(assess ?? []).some((a: any) => Number(a.total ?? 0) > 0)) {
-      throw new Error("No scores have been saved for this class this term. Enter and save the scores, approve them, then publish.");
-    }
-    // Publish what the administrator has approved; scores still awaiting approval are left out.
-    const notApproved = assess.filter((a) => a.status !== "approved").length;
-    const approvedAssess = assess.filter((a) => a.status === "approved");
-    if (!approvedAssess.some((a) => Number(a.total ?? 0) > 0)) {
-      throw new Error(`None of the ${notApproved} saved score(s) in this class are approved yet. Approve them, then publish.`);
+    const agg = aggregateEnteredScores(students.map((s) => s.id), assess);
+    if (![...agg.values()].some((v) => v.count > 0)) {
+      throw new Error(`No scores have been saved for this class in ${data.session} ${data.term} term. Scores still on a teacher's phone must be saved first.`);
     }
 
-    // Aggregate per student
-    type Agg = { total: number; count: number };
-    const agg = new Map<string, Agg>();
-    for (const s of students) agg.set(s.id, { total: 0, count: 0 });
-    approvedAssess.forEach((a: any) => {
-      const cur = agg.get(a.student_id) ?? { total: 0, count: 0 };
-      cur.total += Number(a.total ?? 0);
-      cur.count += 1;
-      agg.set(a.student_id, cur);
-    });
-
-    // Build ranked array
     // Pupils with no saved scores get no report, so no family receives an all-zero result.
     const ranked = Array.from(agg.entries())
       .filter(([, v]) => v.count > 0)
@@ -332,6 +320,8 @@ export const publishReportCards = createServerFn({ method: "POST" })
         average: v.count > 0 ? +(v.total / v.count).toFixed(2) : 0,
       }))
       .sort((a, b) => b.total_score - a.total_score);
+    const wanted = data.student_ids?.length ? new Set(data.student_ids) : null;
+    const skippedNoScores = wanted ? [...wanted].filter((id) => !(agg.get(id)?.count)).length : students.length - ranked.length;
 
     const gradeToGpa = (avg: number) => calculateGrade(avg, scaleType).gpa;
 
@@ -342,6 +332,7 @@ export const publishReportCards = createServerFn({ method: "POST" })
 
     for (let i = 0; i < ranked.length; i++) {
       const r = ranked[i];
+      if (wanted && !wanted.has(r.student_id)) continue;
       const position = positions.get(r.student_id) ?? null;
       const payload = {
         school_id: cls.school_id,
@@ -364,13 +355,18 @@ export const publishReportCards = createServerFn({ method: "POST" })
       // Find existing
       const { data: existing } = await db
         .from("report_cards")
-        .select("id")
+        .select("id, published, teacher_remark, principal_remark, next_resumption_date")
         .eq("student_id", r.student_id)
         .eq("session", data.session)
         .eq("term", data.term)
         .maybeSingle();
 
+      if (!data.post_to_portal) payload.published = Boolean((existing as any)?.published);
+      // Keep remarks already typed on the card unless new defaults were given.
       if (existing) {
+        if (!data.teacher_remark_default) payload.teacher_remark = (existing as any).teacher_remark ?? null;
+        if (!data.principal_remark_default) payload.principal_remark = (existing as any).principal_remark ?? null;
+        if (!data.next_resumption_date) payload.next_resumption_date = (existing as any).next_resumption_date ?? null;
         const { error } = await db.from("report_cards").update(payload).eq("id", existing.id);
         if (error) throw new Error(error.message);
       } else {
@@ -380,7 +376,7 @@ export const publishReportCards = createServerFn({ method: "POST" })
       written++;
     }
 
-    return { ok: true, published: written, class_name: cls.name, not_approved: notApproved };
+    return { ok: true, published: written, posted: data.post_to_portal, class_name: cls.name, skipped_no_scores: skippedNoScores };
   });
 
 const UpdateRemarksInput = z.object({
@@ -452,22 +448,15 @@ export const previewClassRanking = createServerFn({ method: "POST" })
     if (!ok) throw new Error("Not authorized for this school");
     const [{ data: students, error: sErr }, { data: assess, error: aErr }] = await Promise.all([
       db.from("students").select("id, first_name, last_name, admission_no").eq("class_id", data.class_id),
-      db.from("assessments").select("student_id, total, status").eq("class_id", data.class_id).eq("session", data.session).eq("term", data.term).eq("status", "approved"),
+      db.from("assessments").select("student_id, total, ca1, ca2, exam, status").eq("class_id", data.class_id).eq("session", data.session).eq("term", data.term),
     ]);
     if (sErr) throw new Error(sErr.message);
     if (aErr) throw new Error(aErr.message);
-    const agg = new Map<string, { total: number; count: number }>();
-    for (const s of students ?? []) agg.set(s.id, { total: 0, count: 0 });
-    for (const a of assess ?? []) {
-      const cur = agg.get(a.student_id) ?? { total: 0, count: 0 };
-      cur.total += Number(a.total ?? 0);
-      cur.count += 1;
-      agg.set(a.student_id, cur);
-    }
+    const agg = aggregateEnteredScores((students ?? []).map((s) => s.id), (assess ?? []) as any);
     const nameMap = new Map((students ?? []).map((s) => [s.id, s]));
     return {
       class_name: [cls.name, cls.arm].filter(Boolean).join(" "),
-      pending: (assess ?? []).filter((a) => a.status !== "approved").length,
+      pending: 0,
       rows: Array.from(agg.entries()).map(([student_id, v]) => {
         const s = nameMap.get(student_id);
         return {
@@ -503,7 +492,7 @@ export const getReportRecipients = createServerFn({ method: "POST" })
     if (lErr) throw new Error(lErr.message);
     const parentIds = Array.from(new Set((links ?? []).map((l) => l.parent_id)));
     const { data: parents, error: pErr } = parentIds.length
-      ? await db.from("parents").select("id, full_name, phone, school_id").in("id", parentIds)
+      ? await db.from("parents").select("id, full_name, phone, email, school_id").in("id", parentIds)
       : { data: [], error: null };
     if (pErr) throw new Error(pErr.message);
     const parentMap = new Map((parents ?? []).map((p) => [p.id, p]));
@@ -525,6 +514,7 @@ export const getReportRecipients = createServerFn({ method: "POST" })
           parent_id: chosen?.id ?? null,
           parent_name: chosen?.full_name ?? null,
           phone: chosen?.phone ?? null,
+          email: (chosen as any)?.email ?? null,
           status: (d?.status ?? null) as string | null,
           note: d?.note ?? null,
           updated_at: d?.updated_at ?? null,

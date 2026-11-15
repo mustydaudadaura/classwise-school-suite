@@ -76,7 +76,7 @@ async function assembleFridayData(
       .from("assessments")
       .select("student_id, subject_id, ca1, ca2, exam, total, grade, subjects(name)")
       .in("student_id", studentIds)
-      .eq("status", "approved") // parents only ever see approved marks
+      // every saved score counts, as on the report card
       .order("created_at", { ascending: false })
       .limit(500),
     supabase

@@ -1,6 +1,6 @@
 # Architecture rules
 
-- Individual/general entry and review share paginated class assessments and per-cell device drafts (migrating legacy keys); score mutations refresh related reports/rankings/analytics but never PIN-protected details that consume paid views. Publishing preserves assessments, reads every page, ranks and shows only approved marks (unapproved ones are left out, not blocking), and refuses local unsaved marks that differ from saved ones (stale device drafts matching saved marks are discarded); changed cells use grading validation and saved-row checks.
+- Individual/general entry and review share paginated class assessments and per-cell device drafts (migrating legacy keys); score mutations refresh related reports/rankings/analytics but never PIN-protected details that consume paid views. Report generation reads every page and ranks/shows every saved score regardless of approval (shared report-scores helper); it targets one pupil or a class, posted or draft. Results refuses local unsaved marks that differ from saved ones (stale device drafts matching saved marks are discarded); changed cells use grading validation and saved-row checks.
 
 - Assign form masters through the school-admin-checked class-assignment RPC; classes.teacher_id is the primary assignment and old class-teacher allocations are reconciled. Score entry defaults to assigned classes, with matching restrictive write policies; subject-teacher allocations remain valid.
 
@@ -41,5 +41,5 @@
 
 - The Staff Register keeps every staff member (with or without a login) in its own school-admin-only table; optional logins reuse the checked staff-account server function and sync ID-card details, so login, role and salary data stay separately protected.
 
-- A list page with child detail pages lives in `name.index.tsx` (or renders `<Outlet />`); otherwise detail URLs change but the list stays on screen.
+- List pages with child detail routes live in `name.index.tsx` (or render `<Outlet />`) so details replace the list.
 - Report lists, parent portal and public verification return only real school-scoped rows, never sample records, so nobody sees invented data.

@@ -44,7 +44,7 @@ function ReportDistributionPage() {
   const isAdmin = hasRole(roles, "super_admin", "school_admin");
   const loadCards = useServerFn(getReportCardsList);
   const loadDetail = useServerFn(getReportCardDetail);
-  const { data: cards = [], isLoading } = useQuery({ queryKey: ["report-cards-list"], queryFn: async () => ((await loadCards()).cards ?? []) as Card_[] });
+  const { data: cards = [], isLoading } = useQuery({ queryKey: ["report-cards-list", "published-only"], queryFn: async () => (((await loadCards()).cards ?? []) as Card_[]).filter((c) => c.published === true) });
 
   const periods = useMemo(() => Array.from(new Set(cards.map((c) => `${c.session}|${c.term}`))).sort().reverse(), [cards]);
   const [period, setPeriod] = useState("");

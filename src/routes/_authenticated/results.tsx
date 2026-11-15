@@ -363,7 +363,6 @@ function ResultsPage() {
         .in("student_id", allowedStudentIds)
         .eq("session", filters.session)
         .eq("term", filters.term)
-        .eq("status", "approved")
         .order("created_at", { ascending: false });
       return data ?? [];
     },
@@ -373,7 +372,7 @@ function ResultsPage() {
   const publishMutation = useMutation({
     mutationFn: async () => {
       if (generalSave.current && !(await generalSave.current())) throw new Error('Save the broadsheet changes before publishing.');
-      if (unsavedRows || Object.keys(withoutSavedCells(loadClassScoreDraft(draftParts, (subjects ?? []).map(s => s.id)), classAssessments ?? [])).length) throw new Error('There are unsaved scores on this device. Save and approve them before publishing.');
+      if (unsavedRows || Object.keys(withoutSavedCells(loadClassScoreDraft(draftParts, (subjects ?? []).map(s => s.id)), classAssessments ?? [])).length) throw new Error('There are unsaved scores on this device. Save them before generating report cards.');
       return publish({
         data: {
           class_id: filters.class_id,
@@ -383,7 +382,7 @@ function ResultsPage() {
       });
     },
     onSuccess: (r) => {
-      toast.success(`Published ${r.published} report card(s) for ${r.class_name}${r.not_approved ? ` — ${r.not_approved} score(s) not yet approved were left out` : ''}`);
+      toast.success(`Generated and posted ${r.published} report card(s) for ${r.class_name}${r.skipped_no_scores ? ` — ${r.skipped_no_scores} pupil(s) with no saved scores were skipped` : ''}`);
       void refreshScoreViews(qc);
     },
     onError: (e: Error) => toast.error(e.message),
@@ -451,7 +450,7 @@ function ResultsPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Results Entry</h1>
-          <p className="text-sm text-muted-foreground">CA1 (max 20) · CA2 (max 20) · Exam (max 60). Grading is automatic. Results must be approved before report cards can be published.</p>
+          <p className="text-sm text-muted-foreground">CA1 (max 20) · CA2 (max 20) · Exam (max 60). Grading is automatic. Saved scores go straight onto report cards — approval is optional.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button asChild variant="outline"><Link to="/report-cards"><FileDown className="mr-2 h-4 w-4" /> Report cards</Link></Button>

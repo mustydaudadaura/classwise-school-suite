@@ -128,7 +128,7 @@ export const getPortalReportCardDetail = createServerFn({ method: "POST" })
       (rc as any).class_id
         ? db.from("classes").select("name, arm, level, section").eq("id", (rc as any).class_id).maybeSingle()
         : Promise.resolve({ data: null }),
-      db.from("assessments").select("id, subject_id, ca1, ca2, exam, total, grade, remark, created_at").eq("student_id", (rc as any).student_id).eq("session", (rc as any).session).eq("term", (rc as any).term).eq("status", "approved").order("created_at"),
+      db.from("assessments").select("id, subject_id, ca1, ca2, exam, total, grade, remark, created_at").eq("student_id", (rc as any).student_id).eq("session", (rc as any).session).eq("term", (rc as any).term).order("created_at"),
     ]);
 
     if (scoreError) throw new Error('Report scores could not be loaded. Please try again.');

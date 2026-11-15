@@ -218,7 +218,7 @@ function ReportCardsListPage() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle className="text-base font-semibold">
-            Report Cards ({filteredCards.length} of {cards?.length || 0})
+            Report Cards {isLoading ? "" : `(${filteredCards.length} of ${cards?.length || 0})`}
           </CardTitle>
           <div className="text-xs text-muted-foreground">
             EduERP National & Standard Single-Page A4 Templates

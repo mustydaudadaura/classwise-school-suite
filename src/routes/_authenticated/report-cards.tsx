@@ -166,8 +166,35 @@ function ReportCardsListPage() {
             </Select>
           </div>
 
+          <div className="sm:col-span-6">
+            <Select value={classFilter} onValueChange={setClassFilter}>
+              <SelectTrigger aria-label="Class">
+                <SelectValue placeholder="Class" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Classes</SelectItem>
+                {classOptions.map(([id, label]) => (
+                  <SelectItem key={id} value={id}>{label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="sm:col-span-5">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger aria-label="Status">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Published and drafts</SelectItem>
+                <SelectItem value="published">Published only</SelectItem>
+                <SelectItem value="draft">Drafts only</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="sm:col-span-1 flex justify-end">
-            {(sessionFilter !== "all" || termFilter !== "all" || searchQuery) && (
+            {(sessionFilter !== "all" || termFilter !== "all" || searchQuery || classFilter !== "all" || statusFilter !== "all") && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -175,6 +202,8 @@ function ReportCardsListPage() {
                   setSessionFilter("all");
                   setTermFilter("all");
                   setSearchQuery("");
+                  setClassFilter("all");
+                  setStatusFilter("all");
                 }}
                 className="text-xs text-muted-foreground"
               >
@@ -210,6 +239,8 @@ function ReportCardsListPage() {
                   setSessionFilter("all");
                   setTermFilter("all");
                   setSearchQuery("");
+                  setClassFilter("all");
+                  setStatusFilter("all");
                 }}
               >
                 Clear Filters

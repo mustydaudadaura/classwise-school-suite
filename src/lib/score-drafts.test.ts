@@ -57,3 +57,11 @@ describe('score drafts', () => {
     expect(scoreDraftKey(['school', '', 'maths', 'x', 't'])).toBeNull();
   });
 });
+
+import { withoutSavedCells as dropSaved } from './score-drafts';
+import { test as t2, expect as e2 } from 'vitest';
+t2('drafts matching the saved mark are dropped, changed ones kept', () => {
+  const draft = { 'a:m': { ca1: 10, ca2: 5, exam: 40 }, 'b:m': { ca1: 0, ca2: 0, exam: 0 }, 'c:m': { ca1: 3, ca2: 0, exam: 0 } };
+  const saved = [{ student_id: 'a', subject_id: 'm', ca1: 10, ca2: 5, exam: 40 }, { student_id: 'b', subject_id: 'm', ca1: 12, ca2: 6, exam: 30 }];
+  e2(Object.keys(dropSaved(draft, saved)).sort()).toEqual(['b:m', 'c:m']);
+});

@@ -36,6 +36,13 @@ import {
 } from "@/lib/api/rbac.functions";
 import type { PlatformUserRecord, RegistrationCode } from "@/lib/server/rbac-store.server";
 
+function makeInitialPassword() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+  const bytes = new Uint32Array(10);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => chars[b % chars.length]).join("") + "#" + (bytes[0] % 90 + 10);
+}
+
 export const Route = createFileRoute("/_authenticated/users")({
   head: () => ({
     meta: [
@@ -130,7 +137,7 @@ function UsersPage() {
     email: "",
     role: "teacher" as AppRole,
     schoolId: "",
-    password: "StaffPass#2026",
+    password: makeInitialPassword(),
   });
   const [createdCreds, setCreatedCreds] = useState<{
     user: PlatformUserRecord;
@@ -275,7 +282,7 @@ function UsersPage() {
         email: "",
         role: isSuper ? "school_admin" : "teacher",
         schoolId: isSuper ? "" : (mySchoolId || ""),
-        password: "StaffPass#2026",
+        password: makeInitialPassword(),
       });
       refetchUsers();
     },

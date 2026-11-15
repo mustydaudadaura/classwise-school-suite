@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { useServerFn } from '@tanstack/react-start';
 import { readScoreSheet } from '@/lib/api/score-sheet-ai.functions';
 import { FileDown, Printer, ScanLine } from 'lucide-react';
+import { checkScoreLimit } from '@/lib/score-limits';
 
 type Props = {
   schoolId: string; classId: string; session: string; term: 'first' | 'second' | 'third';
@@ -25,6 +26,8 @@ export function GeneralSubjectEntry(p: Props) {
   const config = CA_RATIOS[p.ratio];
   const [changes, setChanges] = useState<Record<string, EntryScore>>({});
   const [saving, setSaving] = useState(false);
+  // Marks above a column's limit are refused and explained in red.
+  const [limitErrors, setLimitErrors] = useState<Record<string, string>>({});
   // Device draft: unsaved broadsheet cells survive leaving the tab until the final save.
   const draftParts = [p.schoolId, p.classId, p.session, p.term];
   const draftKey = scoreDraftKey(['shared', ...draftParts]);
@@ -156,7 +159,15 @@ export function GeneralSubjectEntry(p: Props) {
         const existing = results.data.find(r => r.student_id === student.id && r.subject_id === subject.id);
         const score = changes[id] ?? { ca1: Number(existing?.ca1 ?? 0), ca2: Number(existing?.ca2 ?? 0), exam: Number(existing?.exam ?? 0) };
         const fields = config.ca2Max > 0 ? ['ca1', 'ca2', 'exam'] as const : ['ca1', 'exam'] as const;
-        return <TableCell key={subject.id} colSpan={config.ca2Max > 0 ? 4 : 3} className="border-l"><div className={`grid gap-2 ${config.ca2Max > 0 ? 'grid-cols-4' : 'grid-cols-3'}`}>{fields.map(field => <Input key={field} aria-label={`${student.first_name} ${student.last_name} ${subject.name} ${field.toUpperCase()}`} type="number" min={0} max={field === 'ca1' ? config.ca1Max : field === 'ca2' ? config.ca2Max : config.examMax} className="w-20" disabled={saving || (existing?.status === 'approved' && !p.canApprove)} value={changes[id] || existing ? score[field] : ''} onChange={e => setChanges(prev => ({ ...prev, [id]: { ...score, [field]: Number(e.target.value) } }))} onBlur={scheduleAutoSave} />)}<span className="flex w-20 items-center justify-center font-semibold">{changes[id] || existing ? score.ca1 + (config.ca2Max > 0 ? score.ca2 : 0) + score.exam : '—'}</span></div>{existing && <p className="mt-1 text-xs text-muted-foreground">{existing.status === 'approved' ? 'Approved' : existing.status === 'submitted' ? 'Saved' : 'Saved (returned)'}</p>}</TableCell>;
+        return <TableCell key={subject.id} colSpan={config.ca2Max > 0 ? 4 : 3} className="border-l"><div className={`grid gap-2 ${config.ca2Max > 0 ? 'grid-cols-4' : 'grid-cols-3'}`}>{fields.map(field => <Input key={field} aria-label={`${student.first_name} ${student.last_name} ${subject.name} ${field.toUpperCase()}`} type="number" min={0} max={field === 'ca1' ? config.ca1Max : field === 'ca2' ? config.ca2Max : config.examMax} className="w-20" disabled={saving || (existing?.status === 'approved' && !p.canApprove)} value={changes[id] || existing ? score[field] : ''} aria-invalid={Boolean(limitErrors[`${id}:${field}`])} onChange={e => {
+          const max = field === 'ca1' ? config.ca1Max : field === 'ca2' ? config.ca2Max : config.examMax;
+          const label = field === 'ca1' ? config.ca1Label : field === 'ca2' ? config.ca2Label : config.examLabel;
+          const check = checkScoreLimit(e.target.value, max, label);
+          const cell = `${id}:${field}`;
+          if (!check.ok) { setLimitErrors(prev => ({ ...prev, [cell]: check.error })); return; }
+          setLimitErrors(prev => { if (!prev[cell]) return prev; const n = { ...prev }; delete n[cell]; return n; });
+          setChanges(prev => ({ ...prev, [id]: { ...score, [field]: check.value } }));
+        }} onBlur={scheduleAutoSave} />)}<span className="flex w-20 items-center justify-center font-semibold">{changes[id] || existing ? score.ca1 + (config.ca2Max > 0 ? score.ca2 : 0) + score.exam : '—'}</span></div>{fields.map(field => limitErrors[`${id}:${field}`] && <p key={field} role="alert" className="mt-1 text-xs font-semibold text-destructive">{limitErrors[`${id}:${field}`]}</p>)}{existing && <p className="mt-1 text-xs text-muted-foreground">{existing.status === 'approved' ? 'Approved' : existing.status === 'submitted' ? 'Saved' : 'Saved (returned)'}</p>}</TableCell>;
       })}</TableRow>)}</TableBody>
     </Table>
   </section>;

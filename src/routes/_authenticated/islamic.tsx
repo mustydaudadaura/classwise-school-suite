@@ -1,3 +1,4 @@
+import { checkScoreLimit } from '@/lib/score-limits';
 import { createFileRoute } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -188,6 +189,8 @@ function TahfizForm({ schoolId, school, students, onSaved }: { schoolId: string;
   const [busy, setBusy] = useState(false);
   async function submit(form: FormData) {
     const scoreRaw = String(form.get('score') || '').trim();
+    const scoreCheck = checkScoreLimit(scoreRaw, 100, 'Score');
+    if (!scoreCheck.ok) { toast.error(scoreCheck.error); return; }
     setBusy(true);
     const { error } = await supabase.from('tahfiz_records').insert({
       school_id: schoolId,

@@ -1,3 +1,4 @@
+import { checkScoreLimit } from "@/lib/score-limits";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -417,10 +418,12 @@ function AdmissionsPage() {
                           max={100}
                           placeholder="Score"
                           defaultValue={a.entrance_score ?? ""}
-                          onBlur={(e) =>
-                            e.target.value !== String(a.entrance_score ?? "") &&
-                            setStage(a.id, a.stage, e.target.value)
-                          }
+                          onBlur={(e) => {
+                            if (e.target.value === String(a.entrance_score ?? "")) return;
+                            const check = checkScoreLimit(e.target.value, 100, "Entrance score");
+                            if (!check.ok) { toast.error(check.error); e.target.value = String(a.entrance_score ?? ""); return; }
+                            setStage(a.id, a.stage, e.target.value);
+                          }}
                         />
                         <Select value={a.stage} onValueChange={(v) => setStage(a.id, v)}>
                           <SelectTrigger className="w-28 h-8 text-xs">

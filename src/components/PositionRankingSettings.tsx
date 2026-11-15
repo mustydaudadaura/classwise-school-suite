@@ -149,7 +149,6 @@ export function PositionRankingSettings({ school }: { school: School }) {
           {previewQuery.error && <p className="text-sm text-destructive">{(previewQuery.error as Error).message}</p>}
           {previewQuery.data && (
             <>
-              {previewQuery.data.pending > 0 && <p className="text-xs text-amber-700 dark:text-amber-400">{previewQuery.data.pending} score(s) are not approved yet; publishing will be blocked until they are.</p>}
               {method === "ranges" && errors.length > 0 ? (
                 <p className="text-sm text-destructive">Fix the ranges above to see the preview.</p>
               ) : previewRows.length === 0 ? (

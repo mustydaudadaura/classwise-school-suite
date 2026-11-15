@@ -371,7 +371,7 @@ function ResultsPage() {
   const publish = useServerFn(publishReportCards);
   const publishMutation = useMutation({
     mutationFn: async () => {
-      if (generalSave.current && !(await generalSave.current())) throw new Error('Save the broadsheet changes before publishing.');
+      if (generalSave.current && !(await generalSave.current())) throw new Error('Save the broadsheet changes before generating report cards.');
       if (unsavedRows || Object.keys(withoutSavedCells(loadClassScoreDraft(draftParts, (subjects ?? []).map(s => s.id)), classAssessments ?? [])).length) throw new Error('There are unsaved scores on this device. Save them before generating report cards.');
       return publish({
         data: {
@@ -458,7 +458,7 @@ function ResultsPage() {
             disabled={!access.can("results.publish") || !filters.class_id || publishMutation.isPending}
             onClick={() => publishMutation.mutate()}
           >
-            <Send className="mr-2 h-4 w-4" /> {publishMutation.isPending ? "Publishing…" : "Publish class report cards"}
+            <Send className="mr-2 h-4 w-4" /> {publishMutation.isPending ? "Generating…" : "Generate & post class report cards"}
           </Button>
         </div>
       </div>
@@ -732,7 +732,7 @@ function ResultsPage() {
                       <TableCell className="min-w-[140px]">
                         {!ex ? <span className="text-xs text-muted-foreground">Not entered</span>
                           : ex.status === "approved" ? <Badge>Approved</Badge>
-                          : ex.status === "submitted" ? <Badge variant="secondary">Awaiting approval</Badge>
+                          : ex.status === "submitted" ? <Badge variant="secondary">Saved</Badge>
                           : <Badge variant="destructive">Returned</Badge>}
                         {ex?.review_remark && <p className="mt-1 text-xs text-muted-foreground">Remark: {ex.review_remark}</p>}
                       </TableCell>

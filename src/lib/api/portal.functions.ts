@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { invoiceOutstanding } from "@/lib/finance-math";
 
 const TokenOnly = z.object({ token: z.string().min(10) });
 const WithChild = z.object({ token: z.string().min(10), student_id: z.string().uuid().optional() });
@@ -63,7 +64,7 @@ export const getPortalSummary = createServerFn({ method: "POST" })
     if (att.error || invs.error || notifs.error || rc.error) throw new Error("Family summary could not be loaded. Please try again.");
     const present = (att.data ?? []).filter((a: any) => a.status === "present" || a.status === "late").length;
     const total = (att.data ?? []).length;
-    const balance = (invs.data ?? []).reduce((s: number, i: any) => s + Math.max(0, invoiceBalance(i)), 0);
+    const balance = (invs.data ?? []).reduce((s: number, i: any) => s + invoiceOutstanding(i), 0);
     return {
       attendance: { present, total },
       balance,

@@ -260,7 +260,7 @@ function UsersPage() {
           role: newUserForm.role,
           schoolId: targetSchoolId,
           schoolName: newUserForm.role === "super_admin" ? "All Schools (Platform Owner)" : (schoolObj?.name ?? "Assigned School Workspace"),
-          password: newUserForm.password || "StaffPass#2026",
+          password: newUserForm.password || makeInitialPassword(),
         },
       });
     },
@@ -1321,7 +1321,7 @@ function UsersPage() {
               <Input
                 id="usr_pass"
                 type="password"
-                placeholder="StaffPass#2026"
+                placeholder="At least 8 characters"
                 value={newUserForm.password}
                 onChange={(e) => setNewUserForm((p) => ({ ...p, password: e.target.value }))}
               />

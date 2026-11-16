@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { FileCheck2, Loader2, MessageCircle, Mail, Globe, Trophy, SlidersHorizontal, AlertTriangle } from "lucide-react";
+import { FileCheck2, Loader2, MessageCircle, Mail, Globe, Trophy, SlidersHorizontal, AlertTriangle, Palette } from "lucide-react";
 import { classAssessmentOptions, refreshScoreViews } from "@/lib/assessment-query";
 import { findMissingScores } from "@/lib/score-limits";
 import { calculateGrade, getScaleForSection, resolveSchoolAcademicConfig } from "@/lib/grading";
@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ReportTemplateSettings } from "@/components/ReportTemplateSettings";
 import { PositionRankingSettings } from "@/components/PositionRankingSettings";
 import { RANKING_METHODS, ordinal, resolveRanking } from "@/lib/position-ranking";
 
@@ -32,6 +33,16 @@ export function ReportGeneratePanel({ schoolId }: { schoolId: string }) {
   const [post, setPost] = useState(true);
   const [done, setDone] = useState<{ count: number; posted: boolean } | null>(null);
   const [rankingOpen, setRankingOpen] = useState(false);
+  const [designOpen, setDesignOpen] = useState(false);
+  const { data: fullSchool } = useQuery({
+    queryKey: ["generate-design-school", schoolId],
+    enabled: designOpen,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("schools").select("*").eq("id", schoolId).single();
+      if (error) throw new Error(error.message);
+      return data;
+    },
+  });
 
   // The saved position method is what the server applies when generating.
   const { data: school } = useQuery({
@@ -219,6 +230,11 @@ export function ReportGeneratePanel({ schoolId }: { schoolId: string }) {
           <Button size="sm" variant="outline" onClick={() => setRankingOpen(true)} disabled={!school}><SlidersHorizontal className="mr-1 h-3.5 w-3.5" />Customise positions</Button>
         </div>
 
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-muted/30 p-3 text-sm">
+          <div className="font-medium">Report card design: language, template, text and border colours</div>
+          <Button size="sm" variant="outline" onClick={() => setDesignOpen(true)}><Palette className="mr-1 h-3.5 w-3.5" />Report card settings</Button>
+        </div>
+
         <label className="flex items-center gap-2 text-sm">
           <Checkbox checked={post} onCheckedChange={(v) => setPost(v === true)} />
           Post to the parent portal now
@@ -242,6 +258,12 @@ export function ReportGeneratePanel({ schoolId }: { schoolId: string }) {
         <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
           <DialogHeader><DialogTitle>Customise how positions are given</DialogTitle></DialogHeader>
           {school && <PositionRankingSettings key={JSON.stringify(school.report_template ?? null)} school={school} />}
+        </DialogContent>
+      </Dialog>
+      <Dialog open={designOpen} onOpenChange={(open) => { setDesignOpen(open); if (!open) { void qc.invalidateQueries({ queryKey: ["generate-ranking", schoolId] }); void qc.invalidateQueries({ queryKey: ["generate-design-school", schoolId] }); } }}>
+        <DialogContent className="max-h-[90vh] max-w-5xl overflow-y-auto">
+          <DialogHeader><DialogTitle>Report card settings for this class</DialogTitle></DialogHeader>
+          {fullSchool ? <ReportTemplateSettings key={JSON.stringify(fullSchool.report_template ?? null)} school={fullSchool as never} /> : <Loader2 className="mx-auto h-5 w-5 animate-spin" />}
         </DialogContent>
       </Dialog>
     </Card>

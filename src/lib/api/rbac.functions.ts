@@ -106,14 +106,49 @@ export const listPlatformUsers = createServerFn({ method: "POST" })
   });
 
 export const assignUserRole = createServerFn({ method:"POST" }).middleware([requireSupabaseAuth])
-  .inputValidator(z.object({userId:z.string().uuid(),role:z.enum(["super_admin","school_admin","teacher","form_master","accountant","student","parent"]),schoolId:z.string().uuid().nullable().optional(),schoolName:z.string().optional()}))
+  .inputValidator(z.object({userId:z.string().uuid(),role:z.enum(["super_admin","school_admin","teacher","form_master","accountant","student","parent"]),schoolId:z.string().uuid().nullable().optional(),schoolName:z.string().optional(),classId:z.string().uuid().nullable().optional()}))
   .handler(async ({data,context})=>{
-    const {data:allowed,error}=await context.supabase.rpc("is_super_admin",{_user_id:context.userId});
-    if(error || !allowed) throw new Error("Super Admin access required");
-    if(data.role==='form_master') throw new Error("Assign Teacher access, then assign the class in Teaching & Timetable.");
+    const sb=context.supabase;
+    const {data:isSuper}=await sb.rpc("is_super_admin",{_user_id:context.userId});
+    if(data.role==='super_admin' && !isSuper) throw new Error("Only the Super Admin can grant Super Admin access");
     if(data.role!=='super_admin' && !data.schoolId) throw new Error("Select a school");
-    const {error:failure}=await context.supabase.from("user_roles").insert({user_id:data.userId,role:data.role,school_id:data.schoolId ?? null});
-    if(failure) throw failure;
+    if(data.schoolId){
+      const {data:ok,error}=await sb.rpc("can_manage_school",{_user_id:context.userId,_school_id:data.schoolId});
+      if(error||!ok) throw new Error("School administrator access required");
+    }
+    if(!isSuper && data.userId===context.userId) throw new Error("You cannot change your own role");
+    if(data.role==='form_master' && !data.classId) throw new Error("Choose the class this form master will manage");
+    const dbRole=(data.role==='form_master'?'teacher':data.role) as "super_admin"|"school_admin"|"teacher"|"accountant"|"student"|"parent";
+    const {data:existing,error:readErr}=await sb.from("user_roles").select("id,role,school_id").eq("user_id",data.userId);
+    if(readErr) throw readErr;
+    const rows=existing??[];
+    if(!isSuper && rows.some(r=>r.role==='super_admin')) throw new Error("Super Admin access can only be changed by the Super Admin");
+    // Add the new role first so the user never loses access mid-change.
+    if(!rows.some(r=>r.role===dbRole && (r.school_id??null)===(data.role==='super_admin'?null:data.schoolId??null))){
+      const {error:insErr}=await sb.from("user_roles").insert({user_id:data.userId,role:dbRole,school_id:data.role==='super_admin'?null:data.schoolId ?? null});
+      if(insErr) throw insErr;
+    }
+    // Remove the previous staff roles (upgrade/downgrade = replace).
+    for(const r of rows){
+      if(r.role===dbRole) continue;
+      if(r.role==='student'||r.role==='parent') continue;
+      if(r.role==='super_admin' && data.userId===context.userId) continue;
+      const {error:delErr}=await sb.rpc('manage_registry_item',{_table:'user_roles',_id:r.id,_action:'delete'});
+      if(delErr) throw delErr;
+    }
+    // Form master class assignment
+    if(data.schoolId){
+      const {data:owned}=await sb.from("classes").select("id").eq("school_id",data.schoolId).eq("teacher_id",data.userId);
+      for(const c of owned??[]){
+        if(data.role==='form_master' && c.id===data.classId) continue;
+        const {error:uErr}=await sb.from("classes").update({teacher_id:null}).eq("id",c.id);
+        if(uErr) throw uErr;
+      }
+      if(data.role==='form_master' && data.classId){
+        const {error:fmErr}=await sb.rpc("assign_form_master",{_school_id:data.schoolId,_class_id:data.classId,_teacher_id:data.userId});
+        if(fmErr) throw fmErr;
+      }
+    }
     return {ok:true};
   });
 

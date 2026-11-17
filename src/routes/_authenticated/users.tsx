@@ -148,6 +148,7 @@ function UsersPage() {
 
   const [roleModalUser, setRoleModalUser] = useState<PlatformUserRecord | null>(null);
   const [selectedRole, setSelectedRole] = useState<AppRole>("teacher");
+  const [selectedClassId, setSelectedClassId] = useState<string>("");
   const [selectedSchoolId, setSelectedSchoolId] = useState<string>("");
 
   const [deleteModalUser, setDeleteModalUser] = useState<PlatformUserRecord | null>(null);
@@ -164,6 +165,16 @@ function UsersPage() {
   });
 
   // Queries
+  const { data: roleClasses } = useQuery({
+    queryKey: ["role-modal-classes", selectedSchoolId],
+    enabled: Boolean(roleModalUser && selectedSchoolId),
+    queryFn: async () => {
+      const { data, error } = await supabase.from("classes").select("id, name, arm, teacher_id").eq("school_id", selectedSchoolId).order("name");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   const { data: schools } = useQuery({
     queryKey: ["schools-list-rbac"],
     queryFn: async () => (await supabase.from("schools").select("id, name, code").order("name")).data ?? [],
@@ -191,6 +202,7 @@ function UsersPage() {
           role: selectedRole,
           schoolId: selectedRole === "super_admin" ? null : selectedSchoolId || null,
           schoolName: selectedRole === "super_admin" ? "All Schools (Platform Owner)" : schoolObj?.name ?? "Assigned School",
+          classId: selectedRole === "form_master" ? selectedClassId || null : null,
         },
       });
     },
@@ -646,7 +658,7 @@ function UsersPage() {
                                   )}
 
                                   {/* Change Role Button (Super Admin only) */}
-                                  {isSuper && (
+                                  {(isSuper || (isSchoolAdmin && u.schoolId === mySchoolId && u.role !== "super_admin" && u.userId !== user?.id)) && (
                                     <Button
                                       variant="outline"
                                       size="sm"
@@ -654,6 +666,7 @@ function UsersPage() {
                                       onClick={() => {
                                         setRoleModalUser(u);
                                         setSelectedRole(u.role);
+                                        setSelectedClassId("");
                                         setSelectedSchoolId(u.schoolId ?? "");
                                       }}
                                     >
@@ -981,7 +994,7 @@ function UsersPage() {
                   <SelectValue placeholder="Choose role" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="super_admin">Super Admin (Platform Owner)</SelectItem>
+                  {isSuper && <SelectItem value="super_admin">Super Admin (Platform Owner)</SelectItem>}
                   <SelectItem value="school_admin">School Administrator</SelectItem>
                   <SelectItem value="form_master">Form Master (Class Teacher)</SelectItem>
                   <SelectItem value="teacher">Teacher</SelectItem>
@@ -995,7 +1008,26 @@ function UsersPage() {
               </p>
             </div>
 
-            {selectedRole !== "super_admin" && (
+            {selectedRole === "form_master" && (
+              <div className="space-y-2">
+                <Label htmlFor="class_select">Class to manage</Label>
+                <Select value={selectedClassId} onValueChange={setSelectedClassId}>
+                  <SelectTrigger id="class_select">
+                    <SelectValue placeholder={selectedSchoolId ? "Choose class" : "Select school first"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(roleClasses ?? []).map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}{c.arm ? ` ${c.arm}` : ""}{c.teacher_id && c.teacher_id !== roleModalUser?.userId ? " (has form master)" : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">Changing the role replaces the old one. Moving away from Form Master removes their class assignment.</p>
+              </div>
+            )}
+
+            {selectedRole !== "super_admin" && isSuper && (
               <div className="space-y-2">
                 <Label htmlFor="school_select">Assigned School Workspace</Label>
                 <Select value={selectedSchoolId} onValueChange={setSelectedSchoolId}>
@@ -1022,7 +1054,7 @@ function UsersPage() {
               Cancel
             </Button>
             <Button
-              disabled={assignRoleMut.isPending || (selectedRole !== "super_admin" && !selectedSchoolId)}
+              disabled={assignRoleMut.isPending || (selectedRole !== "super_admin" && !selectedSchoolId) || (selectedRole === "form_master" && !selectedClassId)}
               onClick={() => assignRoleMut.mutate()}
             >
               {assignRoleMut.isPending ? "Updating Role…" : "Save Role Assignment"}

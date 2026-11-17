@@ -400,7 +400,7 @@ function StudentProfile() {
       <Tabs defaultValue="bio">
         <TabsList className="flex w-full flex-wrap h-auto">
           <TabsTrigger value="bio">Biodata & Profile</TabsTrigger>
-          <TabsTrigger value="family">Guardians</TabsTrigger>
+          <TabsTrigger value="family">Parents & Contacts</TabsTrigger>
           <TabsTrigger value="academic">Academic</TabsTrigger>
           <TabsTrigger value="fees">Fees</TabsTrigger>
         </TabsList>
@@ -565,7 +565,7 @@ function StudentProfile() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Parents & Guardians</CardTitle>
-              {can("students.edit") && !addingGuardian && !editingGuardianId && (
+              {canEditProfile && !addingGuardian && !editingGuardianId && (
                 <Button
                   size="sm"
                   variant="outline"
@@ -600,7 +600,7 @@ function StudentProfile() {
                       />
                     </div>
                     <div>
-                      <Label>Phone</Label>
+                      <Label>Phone / WhatsApp (parent portal login)</Label>
                       <Input
                         type="tel"
                         value={guardianForm.phone}
@@ -659,7 +659,7 @@ function StudentProfile() {
                                 />
                               </div>
                               <div>
-                                <Label className="text-xs">Phone</Label>
+                                <Label className="text-xs">Phone / WhatsApp (parent portal login)</Label>
                                 <Input
                                   value={guardianForm.phone}
                                   onChange={(e) => setGuardianForm((g) => ({ ...g, phone: e.target.value }))}
@@ -718,7 +718,7 @@ function StudentProfile() {
                               <p className="text-sm">{p?.phone ?? "—"}</p>
                               <p className="text-sm text-muted-foreground">{p?.email}</p>
                             </div>
-                            {can("students.edit") && p?.id && (
+                            {canEditProfile && p?.id && (
                               <Button
                                 size="icon"
                                 variant="ghost"

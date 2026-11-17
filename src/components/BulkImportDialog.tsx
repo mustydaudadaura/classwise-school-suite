@@ -58,7 +58,8 @@ export function BulkImportDialog({ schoolId, classes, onDone }: { schoolId: stri
         class_id: classId,
       }).select("id").single();
       if (error || !st) { errs.push(`Row ${i + 2}: ${error?.message}`); setProgress(i + 1); continue; }
-      const phone = String(r.parent_phone || "").replace(/\s+/g, "");
+      let phone = String(r.parent_phone || "").replace(/\D/g, "");
+      if (phone.length === 10) phone = "0" + phone; // Excel drops the leading 0
       if (r.parent_name || phone) {
         let pid = phone ? parentCache.get(phone) : undefined;
         if (!pid && phone) {

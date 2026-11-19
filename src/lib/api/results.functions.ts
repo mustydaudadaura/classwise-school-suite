@@ -330,6 +330,15 @@ export const publishReportCards = createServerFn({ method: "POST" })
     const positions = computePositions(ranked, rankingConfig.method, rankingConfig.ranges);
     let written = 0;
 
+    // Form-master term entries (days present, psychomotor/affective ticks) and school-wide term settings.
+    const { data: termRows } = await db.from("student_term_records")
+      .select("student_id, days_present, psychomotor, affective")
+      .eq("school_id", cls.school_id).eq("session", data.session).eq("term", data.term);
+    const termMap = new Map((termRows ?? []).map((t) => [t.student_id, t]));
+    const tpl = (school?.report_template ?? {}) as Record<string, unknown>;
+    const daysOpened = Number.isFinite(Number(tpl.days_opened)) && Number(tpl.days_opened) > 0 ? Math.round(Number(tpl.days_opened)) : null;
+    const tplResumption = typeof tpl.next_resumption_date === "string" && tpl.next_resumption_date ? tpl.next_resumption_date : null;
+
     for (let i = 0; i < ranked.length; i++) {
       const r = ranked[i];
       if (wanted && !wanted.has(r.student_id)) continue;
@@ -361,12 +370,21 @@ export const publishReportCards = createServerFn({ method: "POST" })
         .eq("term", data.term)
         .maybeSingle();
 
+      if (!data.next_resumption_date && tplResumption) (payload as any).next_resumption_date = tplResumption;
+      const tr = termMap.get(r.student_id);
+      if (daysOpened != null) (payload as any).days_total = daysOpened;
+      if (tr?.days_present != null) {
+        (payload as any).days_present = tr.days_present;
+        if (daysOpened != null) (payload as any).days_absent = Math.max(0, daysOpened - tr.days_present);
+      }
+      if (tr && tr.psychomotor && Object.keys(tr.psychomotor as object).length) (payload as any).psychomotor = tr.psychomotor;
+      if (tr && tr.affective && Object.keys(tr.affective as object).length) (payload as any).affective = tr.affective;
       if (!data.post_to_portal) payload.published = Boolean((existing as any)?.published);
       // Keep remarks already typed on the card unless new defaults were given.
       if (existing) {
         if (!data.teacher_remark_default) payload.teacher_remark = (existing as any).teacher_remark ?? null;
         if (!data.principal_remark_default) payload.principal_remark = (existing as any).principal_remark ?? null;
-        if (!data.next_resumption_date) payload.next_resumption_date = (existing as any).next_resumption_date ?? null;
+        if (!data.next_resumption_date) payload.next_resumption_date = tplResumption ?? (existing as any).next_resumption_date ?? null;
         const { error } = await db.from("report_cards").update(payload).eq("id", existing.id);
         if (error) throw new Error(error.message);
       } else {

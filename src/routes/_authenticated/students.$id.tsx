@@ -191,6 +191,9 @@ function StudentProfile() {
     BIO.forEach(([k]) => {
       initial[k] = s[k] ?? "";
     });
+    const primary = (data.links as any[]).find((l) => l.is_primary) ?? (data.links as any[])[0];
+    initial.__parent_name = primary?.parents?.full_name ?? "";
+    initial.__parent_phone = primary?.parents?.phone ?? "";
     setForm(initial);
     setEditing(true);
   };
@@ -232,6 +235,25 @@ function StudentProfile() {
         .single();
       if (saveErr) throw saveErr;
       requireSavedRecord(savedRow, s.school_id);
+      // Parent phone / WhatsApp doubles as the parent portal login.
+      const pPhone = form.__parent_phone?.trim() ?? "";
+      const pName = form.__parent_name?.trim() ?? "";
+      const primary = (data.links as any[]).find((l) => l.is_primary) ?? (data.links as any[])[0];
+      if (primary?.parents?.id) {
+        if (pPhone !== (primary.parents.phone ?? "") || (pName && pName !== primary.parents.full_name)) {
+          const { data: up, error: upErr } = await supabase.from("parents")
+            .update({ phone: pPhone || null, ...(pName ? { full_name: pName } : {}) })
+            .eq("id", primary.parents.id).select("id").single();
+          if (upErr || !up) throw new Error(upErr?.message || "Parent phone could not be saved");
+        }
+      } else if (pPhone) {
+        const { data: np, error: npErr } = await supabase.from("parents")
+          .insert({ school_id: s.school_id, full_name: pName || `Parent of ${form.first_name.trim()}`, phone: pPhone })
+          .select("id").single();
+        if (npErr || !np) throw new Error(npErr?.message || "Parent could not be added");
+        const { error: lkErr } = await supabase.from("student_parents").insert({ student_id: id, parent_id: np.id, relationship: "guardian", is_primary: true });
+        if (lkErr) throw lkErr;
+      }
       toast.success("Student profile updated");
       setEditing(false);
       setForm({});
@@ -543,6 +565,19 @@ function StudentProfile() {
                   <Field label="Gender" value={s.gender} />
                   <Field label="Date of birth" value={s.dob} />
                   <Field label="Admitted" value={s.admission_date} />
+                </>
+              )}
+              {editing && (
+                <>
+                  <div>
+                    <Label>Parent / guardian name</Label>
+                    <Input value={form.__parent_name ?? ""} onChange={(e) => setForm((f) => ({ ...f, __parent_name: e.target.value }))} />
+                  </div>
+                  <div>
+                    <Label>Parent phone / WhatsApp (portal login)</Label>
+                    <Input inputMode="tel" placeholder="08012345678" value={form.__parent_phone ?? ""} onChange={(e) => setForm((f) => ({ ...f, __parent_phone: e.target.value }))} />
+                    <p className="mt-1 text-xs text-muted-foreground">The parent signs in to the portal with this number to see this child.</p>
+                  </div>
                 </>
               )}
               {BIO.map(([k, l]) =>

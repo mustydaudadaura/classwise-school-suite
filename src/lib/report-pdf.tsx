@@ -12,9 +12,10 @@ export type ReportDetail = { rc: SchoolReport & { verification_code?: string | n
 
 const A4_W = 210;
 const A4_H = 297;
-/** Capture at 4× the 96-dpi screen size (≈ 390 dpi on A4) so text, lines and logos print sharp. */
-const HD_SCALE = 4;
-const imgData = (c: HTMLCanvasElement) => c.toDataURL("image/jpeg", 0.97);
+/** Capture at 3× the 96-dpi screen size (≈ 290 dpi on A4), saved losslessly so text, lines and logos print sharp. */
+const HD_SCALE = 3;
+// Lossless PNG keeps letters crisp when printed (JPEG blurs text edges).
+const imgData = (c: HTMLCanvasElement) => c.toDataURL("image/png");
 
 async function waitForImages(root: HTMLElement) {
   const imgs = Array.from(root.querySelectorAll("img"));
@@ -73,7 +74,7 @@ async function addCanvas(pdf: import("jspdf").jsPDF, canvas: HTMLCanvasElement, 
     const h = Math.min(fullH, pageH);
     const drawW = (canvas.width * h) / canvas.height;
     if (!first) pdf.addPage();
-    pdf.addImage(imgData(canvas), "JPEG", margin + (w - drawW) / 2, margin, drawW, h, undefined, "FAST");
+    pdf.addImage(imgData(canvas), "PNG", margin + (w - drawW) / 2, margin, drawW, h, undefined, "FAST");
     return;
   }
   const slicePx = Math.floor((pageH * canvas.width) / w);
@@ -83,7 +84,7 @@ async function addCanvas(pdf: import("jspdf").jsPDF, canvas: HTMLCanvasElement, 
     part.height = Math.min(slicePx, canvas.height - y);
     part.getContext("2d")!.drawImage(canvas, 0, y, canvas.width, part.height, 0, 0, canvas.width, part.height);
     if (!first || i > 0) pdf.addPage();
-    pdf.addImage(imgData(part), "JPEG", margin, margin, w, (part.height * w) / canvas.width, undefined, "FAST");
+    pdf.addImage(imgData(part), "PNG", margin, margin, w, (part.height * w) / canvas.width, undefined, "FAST");
   }
 }
 
@@ -140,7 +141,7 @@ export async function pagesToPdf(pages: import("react").ReactNode[], onProgress?
       await waitForImages(host);
       const canvas = await html2canvas(host, { scale: HD_SCALE, useCORS: true, backgroundColor: "#ffffff", logging: false, width: 794, height: 1123 });
       if (i > 0) pdf.addPage();
-      pdf.addImage(imgData(canvas), "JPEG", 0, 0, A4_W, A4_H, undefined, "FAST");
+      pdf.addImage(imgData(canvas), "PNG", 0, 0, A4_W, A4_H, undefined, "FAST");
       onProgress?.(i + 1, pages.length);
     } finally {
       root.unmount();

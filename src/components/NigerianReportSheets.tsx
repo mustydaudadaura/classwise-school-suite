@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { classDisplayName } from "@/lib/class-label";
-import { resolveReportTemplate, positionVisibility, type ReportLanguage, type ReportSheetId } from '@/lib/report-template';
+import { resolveReportTemplate, positionVisibility, nextTermFee, type ReportLanguage, type ReportSheetId } from '@/lib/report-template';
 import { islamiyyaTotals, arabicReportText, hausaReportText, type IslamiyyaAssessment } from '@/lib/islamiyya-report';
 import type { SchoolReport } from '@/components/SchoolReportLayouts';
 
@@ -8,7 +8,7 @@ const L = {
   en: {
     report: 'PUPIL\'S PERFORMANCE REPORT', resultSheet: 'TERMLY PERFORMANCE RESULT SHEET', reportSheet: 'REPORT SHEET', caReport: 'CONTINUOUS ASSESSMENT REPORT',
     personal: 'PERSONAL DATA', name: 'Name', admission: 'Admission No', gender: 'Gender', klass: 'Class', dob: 'Date of Birth', session: 'Session', term: 'Term',
-    attendance: 'ATTENDANCE', opened: 'No. of Times School Opened', present: 'No. of Times Present', absent: 'No. of Times Absent',
+    attendance: 'ATTENDANCE', resumes: 'Next Term Begins', fees: 'Next Term School Fees', opened: 'No. of Times School Opened', present: 'No. of Times Present', absent: 'No. of Times Absent',
     summary: 'PERFORMANCE SUMMARY', obtainable: 'Total Score Obtainable', obtained: 'Total Score Obtained', average: 'Average (%)', position: 'Position', classSize: 'No. in Class',
     cognitive: 'COGNITIVE DOMAIN', subjects: 'SUBJECTS', ca1: 'C.A 1', ca2: 'C.A 2', ca: 'C.A', exam: 'EXAM', total: 'TOTAL', grade: 'GRADE', subjPos: 'POSITION', remark: 'REMARKS', rank: 'RANK',
     affective: 'AFFECTIVE DOMAIN', psychomotor: 'PSYCHOMOTOR SKILLS', gradeScale: 'GRADE SCALE', ratingKey: 'RATING KEY',
@@ -20,7 +20,7 @@ const L = {
   ar: {
     report: 'تقرير أداء التلميذ', resultSheet: 'كشف نتائج الفصل الدراسي', reportSheet: 'كشف التقرير', caReport: 'تقرير التقييم المستمر',
     personal: 'البيانات الشخصية', name: 'الاسم', admission: 'رقم القيد', gender: 'الجنس', klass: 'الصف', dob: 'تاريخ الميلاد', session: 'العام الدراسي', term: 'الفصل',
-    attendance: 'الحضور', opened: 'عدد أيام الدراسة', present: 'عدد أيام الحضور', absent: 'عدد أيام الغياب',
+    attendance: 'الحضور', resumes: 'بداية الفصل القادم', fees: 'رسوم الفصل القادم', opened: 'عدد أيام الدراسة', present: 'عدد أيام الحضور', absent: 'عدد أيام الغياب',
     summary: 'ملخص الأداء', obtainable: 'الدرجة الكلية الممكنة', obtained: 'الدرجة المحصلة', average: 'المعدل (٪)', position: 'الترتيب', classSize: 'عدد طلاب الصف',
     cognitive: 'المجال المعرفي', subjects: 'المواد', ca1: 'تقييم ١', ca2: 'تقييم ٢', ca: 'التقييم', exam: 'الامتحان', total: 'المجموع', grade: 'التقدير', subjPos: 'الترتيب', remark: 'الملاحظات', rank: 'الترتيب',
     affective: 'المجال الوجداني', psychomotor: 'المهارات الحركية', gradeScale: 'سلم التقديرات', ratingKey: 'مفتاح التقييم',
@@ -32,7 +32,7 @@ const L = {
   ha: {
     report: 'RAHOTON CI GABAN ƊALIBI', resultSheet: 'TAKARDAR SAKAMAKON ZANGO', reportSheet: 'TAKARDAR RAHOTO', caReport: 'RAHOTON GWAJIN CI GABA',
     personal: 'BAYANAN ƊALIBI', name: 'Suna', admission: 'Lambar rijista', gender: 'Jinsi', klass: 'Aji', dob: 'Ranar haihuwa', session: 'Shekarar karatu', term: 'Zango',
-    attendance: 'HALARTA', opened: 'Kwanakin buɗe makaranta', present: 'Kwanakin halarta', absent: 'Kwanakin rashin zuwa',
+    attendance: 'HALARTA', resumes: 'Ranar komawa makaranta', fees: 'Kuɗin makaranta na zango mai zuwa', opened: 'Kwanakin buɗe makaranta', present: 'Kwanakin halarta', absent: 'Kwanakin rashin zuwa',
     summary: 'TAƘAITACCEN SAKAMAKO', obtainable: 'Jimillar maki mai yiwuwa', obtained: 'Jimillar maki da aka samu', average: 'Matsakaici (%)', position: 'Matsayi', classSize: 'Yawan ɗalibai a aji',
     cognitive: 'SASHEN ILIMI', subjects: 'DARUSSA', ca1: 'Gwaji 1', ca2: 'Gwaji 2', ca: 'Gwaji', exam: 'JARRABAWA', total: 'JIMILLA', grade: 'DARAJA', subjPos: 'MATSAYI', remark: 'BAYANI', rank: 'MATSAYI',
     affective: 'HALAYYA', psychomotor: 'ƘWARAREN HANNU', gradeScale: 'MA\'AUNIN DARAJA', ratingKey: 'MABUƊIN KIMANTAWA',
@@ -84,14 +84,14 @@ export function NigerianReportSheet({ rc, assessments, qrDataUrl, design: design
   // Colours are the school's chosen report palette tokens so screen, print and PDF match.
   const c = (part: keyof typeof template) => `var(--report-colour-${template[part]})`;
   const primary = c('heading'), line = c('border'), head = c('table');
-  const cell: CSSProperties = { border: `1px solid ${line}`, padding: '2px 4px', fontSize: 10.5, lineHeight: 1.25, textAlign: rtl ? 'right' : 'left', verticalAlign: 'middle' };
+  const cell: CSSProperties = { border: `1px solid ${line}`, padding: '2px 4px', fontSize: '12pt', lineHeight: 1.25, textAlign: rtl ? 'right' : 'left', verticalAlign: 'middle' };
   const th: CSSProperties = { ...cell, fontWeight: 700, background: `color-mix(in oklab, ${head} 18%, white)`, textAlign: 'center' };
   const tc: CSSProperties = { ...cell, textAlign: 'center' };
-  const boxTitle = (text: string, filled = false): CSSProperties => ({ ...th, background: filled ? head : th.background, color: filled ? 'white' : undefined, fontSize: 11 });
-  const sheet: CSSProperties = { width: 794, minHeight: 1123, display: 'flex', flexDirection: 'column', margin: '0 auto', background: 'white', color: '#111', padding: 22, position: 'relative', fontFamily: rtl ? "'Amiri', 'Noto Naskh Arabic', serif" : 'inherit', direction: rtl ? 'rtl' : 'ltr', border: design === 'sheet_hisgrace' ? `3px solid ${line}` : `1px solid ${line}`, boxSizing: 'border-box' };
+  const boxTitle = (text: string, filled = false): CSSProperties => ({ ...th, background: filled ? head : th.background, color: filled ? 'white' : undefined, fontSize: '12pt' });
+  const sheet: CSSProperties = { width: 794, minHeight: 1123, display: 'flex', flexDirection: 'column', margin: '0 auto', background: 'white', color: '#111', padding: 22, position: 'relative', fontFamily: rtl ? "'Amiri', 'Noto Naskh Arabic', serif" : "'Times New Roman', Times, serif", fontSize: '12pt', direction: rtl ? 'rtl' : 'ltr', border: design === 'sheet_hisgrace' ? `3px solid ${line}` : `1px solid ${line}`, boxSizing: 'border-box' };
 
   const Logo = ({ size = 82 }: { size?: number }) => school.logo_url ? <img src={school.logo_url} alt="School logo" crossOrigin="anonymous" style={{ width: size, height: size, objectFit: 'contain', imageRendering: 'auto' }} /> : <div style={{ width: size, height: size }} />;
-  const Photo = ({ w = 82, h = 96 }: { w?: number; h?: number }) => <div style={{ width: w, height: h, border: `1px solid ${line}`, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', fontSize: 9, color: '#777' }}>{student.photo_url ? <img src={student.photo_url} alt="Student passport" crossOrigin="anonymous" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : 'Passport'}</div>;
+  const Photo = ({ w = 82, h = 96 }: { w?: number; h?: number }) => <div style={{ width: w, height: h, border: `1px solid ${line}`, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', fontSize: '12pt', color: '#777' }}>{student.photo_url ? <img src={student.photo_url} alt="Student passport" crossOrigin="anonymous" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : 'Passport'}</div>;
   const Watermark = () => school.logo_url ? <img src={school.logo_url} alt="" aria-hidden="true" crossOrigin="anonymous" style={{ position: 'absolute', inset: 0, margin: 'auto', width: 420, opacity: 0.06, pointerEvents: 'none' }} /> : null;
   const Table = ({ children, style }: { children: ReactNode; style?: CSSProperties }) => <table style={{ width: '100%', borderCollapse: 'collapse', ...style }}><tbody>{children}</tbody></table>;
   const KV = ({ rows }: { rows: [string, ReactNode][] }) => <>{rows.map(([k, v]) => <tr key={k}><td style={{ ...cell, fontWeight: 700, width: '45%' }}>{k}</td><td style={cell}>{v}</td></tr>)}</>;
@@ -106,16 +106,16 @@ export function NigerianReportSheet({ rc, assessments, qrDataUrl, design: design
       {TRAITS[lang][group].map(([key, label]) => <tr key={key}><td style={cell}>{label}</td><td style={tc}>{num(traitValue(group, key))}</td></tr>)}
     </Table>);
   const GradeScale = () => <Table><tr><td colSpan={3} style={boxTitle(t.gradeScale, true)}>{t.gradeScale}</td></tr>{GRADE_SCALE.map(([g, r, word]) => <tr key={g}><td style={tc}>{g}</td><td style={tc}>{r}</td><td style={cell}>{tr(word)}</td></tr>)}</Table>;
-  const RatingKey = () => <div style={{ fontSize: 9.5, marginTop: 4 }}><strong>{t.ratingKey}:</strong> {t.ratings.map((r, i) => `${num(5 - i)} = ${r}`).join(' · ')}</div>;
+  const RatingKey = () => <div style={{ fontSize: '12pt', marginTop: 4 }}><strong>{t.ratingKey}:</strong> {t.ratings.map((r, i) => `${num(5 - i)} = ${r}`).join(' · ')}</div>;
   const Sig = ({ url }: { url?: string | null }) => url ? <img src={url} alt="" crossOrigin="anonymous" style={{ height: 26, maxWidth: 110, objectFit: 'contain', verticalAlign: 'middle' }} /> : <span style={{ display: 'inline-block', width: 110, borderBottom: '1px solid #555' }} />;
-  const Verify = () => <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 9 }}>{qrDataUrl && rc.verification_code && <img src={qrDataUrl} alt="Verify report" style={{ width: 62, height: 62 }} />}{rc.verification_code && <span>{t.verify}: <bdi>{rc.verification_code}</bdi></span>}</div>;
+  const Verify = () => <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '12pt' }}>{qrDataUrl && rc.verification_code && <img src={qrDataUrl} alt="Verify report" style={{ width: 62, height: 62 }} />}{rc.verification_code && <span>{t.verify}: <bdi>{rc.verification_code}</bdi></span>}</div>;
   // 3D school name: stacked shadows in a darker shade of the school's heading colour (logo palette).
   const SchoolTitle = ({ size = 26, onDark = false }: { size?: number; onDark?: boolean }) => {
     const base = onDark ? 'white' : primary;
     const deep = `color-mix(in oklab, ${onDark ? head : primary} 55%, black)`;
-    return <div style={{ fontSize: size, fontWeight: 900, letterSpacing: 1.2, lineHeight: 1.1, color: base, fontFamily: rtl ? undefined : "Georgia, 'Times New Roman', serif", textShadow: `1px 1px 0 ${deep}, 2px 2px 0 ${deep}, 3px 3px 0 ${deep}, 4px 4px 5px rgba(0,0,0,0.35)` }}>{schoolName.toUpperCase()}</div>;
+    return <div style={{ fontSize: size, fontWeight: 900, letterSpacing: 1.2, lineHeight: 1.1, color: base, fontFamily: rtl ? undefined : "'Times New Roman', Times, serif", textShadow: `1px 1px 0 ${deep}, 2px 2px 0 ${deep}, 3px 3px 0 ${deep}, 4px 4px 5px rgba(0,0,0,0.35)` }}>{schoolName.toUpperCase()}</div>;
   };
-  const SectionHead = ({ children }: { children: ReactNode }) => <div style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '6px 0 4px', color: primary, fontWeight: 800, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase' }}><span style={{ flex: 1, height: 2, background: `linear-gradient(90deg, transparent, ${line})` }} />{children}<span style={{ flex: 1, height: 2, background: `linear-gradient(90deg, ${line}, transparent)` }} /></div>;
+  const SectionHead = ({ children }: { children: ReactNode }) => <div style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '6px 0 4px', color: primary, fontWeight: 800, fontSize: '12pt', letterSpacing: 1.5, textTransform: 'uppercase' }}><span style={{ flex: 1, height: 2, background: `linear-gradient(90deg, transparent, ${line})` }} />{children}<span style={{ flex: 1, height: 2, background: `linear-gradient(90deg, ${line}, transparent)` }} /></div>;
   // Analytics drawn as SVG so screen, print and PDF all match; only real saved totals are plotted.
   const Charts = () => {
     const rows = assessments.filter(a => a.total != null);
@@ -139,7 +139,7 @@ export function NigerianReportSheet({ rc, assessments, qrDataUrl, design: design
             <circle cx={50} cy={50} r={R} fill="none" stroke={primary} strokeWidth={11} strokeLinecap="round" strokeDasharray={`${(Math.min(avg, 100) / 100) * C} ${C}`} transform="rotate(-90 50 50)" />
             <text x={50} y={54} textAnchor="middle" fontSize={16} fontWeight={900} fill={primary}>{num(Math.round(avg))}%</text>
           </svg>
-          <div style={{ fontSize: 9.5, fontWeight: 700, color: primary }}>{t.average}</div>
+          <div style={{ fontSize: '12pt', fontWeight: 700, color: primary }}>{t.average}</div>
         </div>
       </div>
     </div>;
@@ -180,9 +180,16 @@ export function NigerianReportSheet({ rc, assessments, qrDataUrl, design: design
     </table>
     </div>);
 
+  const resumption = rc.next_resumption_date || template.next_resumption_date || null;
+  const fee = nextTermFee(rc.schools?.report_template, rc.classes?.section);
+  const nextTerm = <Table><tr>
+    <td style={{ ...cell, fontWeight: 700 }}>{t.resumes}</td><td style={cell}>{resumption ? new Date(resumption + 'T00:00:00').toLocaleDateString(rtl ? 'ar-EG' : 'en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '—'}</td>
+    <td style={{ ...cell, fontWeight: 700 }}>{t.fees}</td><td style={cell}>{fee != null ? `₦${new Intl.NumberFormat('en-NG').format(fee)}` : '—'}</td>
+  </tr></Table>;
+
   const remarks = <Table>
     <tr><td style={{ ...cell, fontWeight: 700, width: '28%' }}>{t.teacher}</td><td style={cell}>{rc.teacher_remark || '—'}</td><td style={{ ...cell, width: 130 }}>{t.sign}: <Sig /></td></tr>
-    <tr><td style={{ ...cell, fontWeight: 700 }}>{t.principal}</td><td style={cell}>{rc.principal_remark || '—'}{school.principal_name ? <div style={{ fontSize: 9, marginTop: 2 }}>{school.principal_name}</div> : null}</td><td style={cell}>{t.sign}: <Sig url={school.principal_signature_url} /></td></tr>
+    <tr><td style={{ ...cell, fontWeight: 700 }}>{t.principal}</td><td style={cell}>{rc.principal_remark || '—'}{school.principal_name ? <div style={{ fontSize: '12pt', marginTop: 2 }}>{school.principal_name}</div> : null}</td><td style={cell}>{t.sign}: <Sig url={school.principal_signature_url} /></td></tr>
   </Table>;
 
   const attendanceRows: [string, ReactNode][] = [[t.opened, num(rc.days_total)], [t.present, num(rc.days_present)], [t.absent, num(rc.days_absent)]];
@@ -195,8 +202,8 @@ export function NigerianReportSheet({ rc, assessments, qrDataUrl, design: design
         <div style={{ background: 'white', borderRadius: 6, padding: 2 }}><Logo size={72} /></div>
         <div style={{ flex: 1, textAlign: 'center' }}>
           <SchoolTitle size={24} onDark />
-          {school.motto && <div style={{ fontStyle: 'italic', fontSize: 11 }}>...{school.motto}</div>}
-          <div style={{ fontSize: 10 }}>{address}</div>
+          {school.motto && <div style={{ fontStyle: 'italic', fontSize: '12pt' }}>...{school.motto}</div>}
+          <div style={{ fontSize: '12pt' }}>{address}</div>
         </div>
         <div style={{ background: 'white' }}><Photo w={70} h={82} /></div>
       </div>
@@ -226,28 +233,28 @@ export function NigerianReportSheet({ rc, assessments, qrDataUrl, design: design
         <Logo size={96} />
         <div style={{ flex: 1, textAlign: 'center' }}>
           <SchoolTitle />
-          {rc.classes?.section && <div style={{ fontSize: 11 }}>({rc.classes.section.toUpperCase()})</div>}
-          <div style={{ fontSize: 11 }}>{address}</div>
-          {school.motto && <div style={{ fontSize: 11 }}>{school.motto}</div>}
+          {rc.classes?.section && <div style={{ fontSize: '12pt' }}>({rc.classes.section.toUpperCase()})</div>}
+          <div style={{ fontSize: '12pt' }}>{address}</div>
+          {school.motto && <div style={{ fontSize: '12pt' }}>{school.motto}</div>}
         </div>
         <Photo w={88} h={100} />
       </div>
       <h2 style={{ textAlign: 'center', fontSize: 17, fontWeight: 900, margin: '8px 0' }}>{rc.session ?? ''} {termName} {t.reportSheet}</h2>
       <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr 0.8fr', gap: 8 }}>
         <Table><tr><td colSpan={2} style={boxTitle(t.personal)}>{t.personal}</td></tr><KV rows={[[t.name, fullName || '—'], [t.dob, student.dob ?? '—'], [t.gender, gender], [t.klass, className || '—'], [t.admission, student.admission_no ?? '—']]} /></Table>
-        <Table><tr><td colSpan={3} style={boxTitle(t.attendance)}>{t.attendance}</td></tr><tr>{attendanceRows.map(([k]) => <td key={k} style={{ ...tc, fontSize: 9.5 }}>{k}</td>)}</tr><tr>{attendanceRows.map(([k, v]) => <td key={k} style={{ ...tc, fontWeight: 700 }}>{v}</td>)}</tr></Table>
+        <Table><tr><td colSpan={3} style={boxTitle(t.attendance)}>{t.attendance}</td></tr><tr>{attendanceRows.map(([k]) => <td key={k} style={{ ...tc, fontSize: '12pt' }}>{k}</td>)}</tr><tr>{attendanceRows.map(([k, v]) => <td key={k} style={{ ...tc, fontWeight: 700 }}>{v}</td>)}</tr></Table>
         <Table><KV rows={summaryRows} /></Table>
       </div>
       <div style={{ ...boxTitle(t.cognitive), border: `1px solid ${line}`, marginTop: 8 }}>{t.cognitive}</div>
       {results('hisgrace')}<Charts />
       <div style={{ ...boxTitle(t.gradeScale), border: `1px solid ${line}`, marginTop: 8 }}>{t.gradeScale}</div>
-      <Table><tr>{GRADE_SCALE.map(([g, r, w]) => <td key={g} style={{ ...tc, fontSize: 9.5 }}>{r} ({g} – {tr(w)})</td>)}</tr></Table>
+      <Table><tr>{GRADE_SCALE.map(([g, r, w]) => <td key={g} style={{ ...tc, fontSize: '12pt' }}>{r} ({g} – {tr(w)})</td>)}</tr></Table>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
         <TickGrid group="affective" title={t.affective} />
         <div><TickGrid group="psychomotor" title={t.psychomotor} /><RatingKey /></div>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px', gap: 8, marginTop: 8, border: `2px solid ${line}`, padding: 6, alignItems: 'center' }}>
-        <div style={{ fontSize: 11, lineHeight: 1.9 }}>
+        <div style={{ fontSize: '12pt', lineHeight: 1.9 }}>
           <div><strong>{t.teacher}:</strong> {rc.teacher_remark || '—'} &nbsp; {t.sign}: <Sig /></div>
           <div><strong>{t.principal}:</strong> {rc.principal_remark || '—'} &nbsp; {t.sign}: <Sig url={school.principal_signature_url} /></div>
           <Verify />
@@ -263,8 +270,8 @@ export function NigerianReportSheet({ rc, assessments, qrDataUrl, design: design
         <Photo w={80} h={80} />
         <div style={{ flex: 1, textAlign: 'center' }}>
           <SchoolTitle size={24} />
-          <div style={{ fontSize: 12, marginTop: 4 }}>{address}</div>
-          <div style={{ fontSize: 15, fontWeight: 800, marginTop: 8 }}>{t.caReport} — {termName} {rc.session ?? ''}</div>
+          <div style={{ fontSize: '12pt', marginTop: 4 }}>{address}</div>
+          <div style={{ fontSize: '12pt', fontWeight: 800, marginTop: 8 }}>{t.caReport} — {termName} {rc.session ?? ''}</div>
         </div>
         <Logo size={80} />
       </div>
@@ -295,15 +302,15 @@ export function NigerianReportSheet({ rc, assessments, qrDataUrl, design: design
         <Logo size={92} />
         <div style={{ flex: 1, textAlign: 'center' }}>
           <SchoolTitle />
-          {school.motto && <div style={{ fontSize: 11, fontWeight: 700 }}>{school.motto}</div>}
-          <div style={{ fontSize: 11 }}>{address}</div>
-          <div style={{ fontSize: 14, fontWeight: 900, marginTop: 6, textDecoration: 'underline' }}>{rc.session ?? ''} – {termName} {t.report}</div>
+          {school.motto && <div style={{ fontSize: '12pt', fontWeight: 700 }}>{school.motto}</div>}
+          <div style={{ fontSize: '12pt' }}>{address}</div>
+          <div style={{ fontSize: '12pt', fontWeight: 900, marginTop: 6, textDecoration: 'underline' }}>{rc.session ?? ''} – {termName} {t.report}</div>
         </div>
         <Photo />
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1.15fr 1fr 1fr', gap: 8, marginTop: 8 }}>
         <Table><tr><td colSpan={2} style={boxTitle(t.personal)}>{t.personal}</td></tr><KV rows={[[t.name, fullName || '—'], [t.admission, student.admission_no ?? '—'], [t.gender, gender], [t.klass, className || '—'], [t.dob, student.dob ?? '—']]} /></Table>
-        <Table><tr><td colSpan={3} style={boxTitle(t.attendance)}>{t.attendance}</td></tr><tr>{attendanceRows.map(([k]) => <td key={k} style={{ ...tc, fontSize: 9.5 }}>{k}</td>)}</tr><tr>{attendanceRows.map(([k, v]) => <td key={k} style={{ ...tc, fontWeight: 700 }}>{v}</td>)}</tr></Table>
+        <Table><tr><td colSpan={3} style={boxTitle(t.attendance)}>{t.attendance}</td></tr><tr>{attendanceRows.map(([k]) => <td key={k} style={{ ...tc, fontSize: '12pt' }}>{k}</td>)}</tr><tr>{attendanceRows.map(([k, v]) => <td key={k} style={{ ...tc, fontWeight: 700 }}>{v}</td>)}</tr></Table>
         <Table><tr><td colSpan={2} style={boxTitle(t.summary)}>{t.summary}</td></tr><KV rows={summaryRows} /></Table>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 230px', gap: 8, marginTop: 8, alignItems: 'stretch', flex: 1 }}>
@@ -323,6 +330,6 @@ export function NigerianReportSheet({ rc, assessments, qrDataUrl, design: design
   return <article className="print-doc report-sheet" style={sheet} dir={rtl ? 'rtl' : 'ltr'} lang={lang} data-report-layout={design} aria-label={`${schoolName} ${t.report}`}>
     <Watermark />
     <div aria-hidden="true" style={{ position: 'absolute', inset: 8, border: `3px double ${line}`, borderRadius: 4, pointerEvents: 'none', boxShadow: `inset 0 0 0 4px white, inset 0 0 0 5px color-mix(in oklab, ${primary} 45%, white)` }} />
-    <div style={{ position: 'relative', zIndex: 1, flex: 1, display: 'flex', flexDirection: 'column' }}>{body}</div>
+    <div style={{ position: 'relative', zIndex: 1, flex: 1, display: 'flex', flexDirection: 'column' }}>{body}<div style={{ marginTop: 6 }}>{nextTerm}</div></div>
   </article>;
 }

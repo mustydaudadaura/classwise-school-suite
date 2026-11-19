@@ -225,6 +225,13 @@
       "when": 1794940412922,
       "tag": "0031_form_master_manage_class_guardians",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1795073038164,
+      "tag": "0032_student_term_records",
+      "breakpoints": true
     }
   ]
 }

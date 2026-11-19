@@ -51,7 +51,20 @@ export type ReportTemplate = Partial<Record<ReportPart, ReportColour>> & {
   positions?: 'none' | 'class' | 'subject' | 'both';
   arabic_school_name?: string;
   arabic_address?: string;
+  /** School-wide term details set by administrators. */
+  days_opened?: number | null;
+  next_resumption_date?: string | null;
+  next_term_fees?: Partial<Record<'nursery' | 'primary' | 'secondary', number | null>>;
 };
+
+/** Next-term fee for a class section from the saved template, or null when not set. */
+export function nextTermFee(value: unknown, section?: string | null): number | null {
+  const src = value && typeof value === 'object' ? (value as Record<string, any>) : {};
+  const fees = src.next_term_fees && typeof src.next_term_fees === 'object' ? src.next_term_fees : {};
+  const key = section === 'nursery' || section === 'primary' ? section : 'secondary';
+  const n = Number(fees[key]);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
 
 export function resolveReportTemplate(value: unknown, section?: string | null): Required<Omit<ReportTemplate, 'layout_id'>> & { layout_id: ReportSheetId } {
   const fallback = section === 'nursery' ? 'forest' : section === 'primary' ? 'blue' : 'purple';
@@ -68,6 +81,9 @@ export function resolveReportTemplate(value: unknown, section?: string | null): 
     : legacyLanguage ?? 'en';
 
   return {
+    days_opened: Number.isFinite(Number(source.days_opened)) && Number(source.days_opened) > 0 ? Number(source.days_opened) : null,
+    next_resumption_date: typeof source.next_resumption_date === 'string' && source.next_resumption_date ? source.next_resumption_date : null,
+    next_term_fees: source.next_term_fees && typeof source.next_term_fees === 'object' ? (source.next_term_fees as ReportTemplate['next_term_fees']) ?? {} : {},
     arabic_school_name: typeof source.arabic_school_name === 'string' ? source.arabic_school_name : '',
     arabic_address: typeof source.arabic_address === 'string' ? source.arabic_address : '',
     layout_id,

@@ -3149,6 +3149,73 @@ export type Database = {
           },
         ]
       }
+      student_term_records: {
+        Row: {
+          affective: Json
+          class_id: string | null
+          created_at: string
+          days_present: number | null
+          id: string
+          psychomotor: Json
+          school_id: string
+          session: string
+          student_id: string
+          term: Database["public"]["Enums"]["term_name"]
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          affective?: Json
+          class_id?: string | null
+          created_at?: string
+          days_present?: number | null
+          id?: string
+          psychomotor?: Json
+          school_id: string
+          session: string
+          student_id: string
+          term: Database["public"]["Enums"]["term_name"]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          affective?: Json
+          class_id?: string | null
+          created_at?: string
+          days_present?: number | null
+          id?: string
+          psychomotor?: Json
+          school_id?: string
+          session?: string
+          student_id?: string
+          term?: Database["public"]["Enums"]["term_name"]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_term_records_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_term_records_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_term_records_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       students: {
         Row: {
           active: boolean

@@ -34,6 +34,7 @@ const NAV = [
   { to: "/islamic", label: "Islamic Programmes", icon: MoonStar, roles: ["super_admin", "school_admin", "teacher", "form_master"] },
   { to: "/promotion", label: "Promotion", icon: GraduationCap, roles: ["super_admin", "school_admin"] },
   { to: "/results", label: "Results Entry", icon: FileText, roles: ["super_admin", "school_admin", "teacher", "form_master"] },
+  { to: "/term-records", label: "Term Records", icon: CalendarCheck, roles: ["super_admin", "school_admin", "teacher", "form_master"] },
   { to: "/attendance", label: "Attendance", icon: CalendarCheck, roles: ["super_admin", "school_admin", "teacher", "form_master"] },
   { to: "/staff-attendance", label: "Staff Attendance Portal", icon: UserCheck, roles: ["super_admin", "school_admin", "teacher", "form_master", "accountant"] },
   { to: "/kiosk", label: "Attendance Kiosk", icon: Tablet, roles: ["super_admin", "school_admin"] },

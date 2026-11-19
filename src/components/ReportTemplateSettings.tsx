@@ -341,6 +341,18 @@ export function ReportTemplateSettings({ school }: { school: { id: string; name:
         <p className="text-xs text-muted-foreground">Every heading and label prints in this language. Names, scores and remarks typed by staff stay as written.</p>
       </div>
 
+      <div className="rounded-xl border border-border bg-card p-4 space-y-4">
+        <h3 className="text-sm font-semibold text-foreground">Term details (printed on every report card)</h3>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2"><Label htmlFor="days-opened">Number of times school opened</Label><Input id="days-opened" type="number" min={0} value={draft.days_opened ?? ''} onChange={e => setDraft({ ...draft, days_opened: e.target.value === '' ? null : Math.max(0, Math.round(Number(e.target.value))) })} /></div>
+          <div className="space-y-2"><Label htmlFor="next-resumption">Next term resumption date</Label><Input id="next-resumption" type="date" value={draft.next_resumption_date ?? ''} onChange={e => setDraft({ ...draft, next_resumption_date: e.target.value || null })} /></div>
+          {(['nursery', 'primary', 'secondary'] as const).map(sec => (
+            <div key={sec} className="space-y-2"><Label htmlFor={`fee-${sec}`}>Next term school fees — {sec[0].toUpperCase() + sec.slice(1)} (₦)</Label><Input id={`fee-${sec}`} type="number" min={0} value={draft.next_term_fees?.[sec] ?? ''} onChange={e => setDraft({ ...draft, next_term_fees: { ...(draft.next_term_fees ?? {}), [sec]: e.target.value === '' ? null : Math.max(0, Number(e.target.value)) } })} /></div>
+          ))}
+        </div>
+        <p className="text-xs text-muted-foreground">Form masters enter each pupil's days present and skill ticks under Term Records. These apply when report cards are generated.</p>
+      </div>
+
       {/* SECTION 4: Template Colours & Position Options */}
       {resolved.report_language === 'ar' && <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2"><Label htmlFor="arabic-school-name">School name in Arabic / اسم المدرسة</Label><Input id="arabic-school-name" dir="rtl" lang="ar" value={draft.arabic_school_name ?? ''} onChange={e => setDraft({ ...draft, arabic_school_name: e.target.value })} /></div>

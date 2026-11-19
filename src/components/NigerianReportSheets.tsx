@@ -109,11 +109,10 @@ export function NigerianReportSheet({ rc, assessments, qrDataUrl, design: design
   const RatingKey = () => <div style={{ fontSize: '12pt', marginTop: 4 }}><strong>{t.ratingKey}:</strong> {t.ratings.map((r, i) => `${num(5 - i)} = ${r}`).join(' · ')}</div>;
   const Sig = ({ url }: { url?: string | null }) => url ? <img src={url} alt="" crossOrigin="anonymous" style={{ height: 26, maxWidth: 110, objectFit: 'contain', verticalAlign: 'middle' }} /> : <span style={{ display: 'inline-block', width: 110, borderBottom: '1px solid #555' }} />;
   const Verify = () => <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '12pt' }}>{qrDataUrl && rc.verification_code && <img src={qrDataUrl} alt="Verify report" style={{ width: 62, height: 62 }} />}{rc.verification_code && <span>{t.verify}: <bdi>{rc.verification_code}</bdi></span>}</div>;
-  // 3D school name: stacked shadows in a darker shade of the school's heading colour (logo palette).
-  const SchoolTitle = ({ size = 26, onDark = false }: { size?: number; onDark?: boolean }) => {
+  // School name: plain bold heading, larger (17pt) than the 12pt body text.
+  const SchoolTitle = ({ onDark = false }: { size?: number; onDark?: boolean }) => {
     const base = onDark ? 'white' : primary;
-    const deep = `color-mix(in oklab, ${onDark ? head : primary} 55%, black)`;
-    return <div style={{ fontSize: size, fontWeight: 900, letterSpacing: 1.2, lineHeight: 1.1, color: base, fontFamily: rtl ? undefined : "'Times New Roman', Times, serif", textShadow: `1px 1px 0 ${deep}, 2px 2px 0 ${deep}, 3px 3px 0 ${deep}, 4px 4px 5px rgba(0,0,0,0.35)` }}>{schoolName.toUpperCase()}</div>;
+    return <div style={{ fontSize: '17pt', fontWeight: 900, letterSpacing: 1, lineHeight: 1.15, color: base, fontFamily: rtl ? undefined : "'Times New Roman', Times, serif" }}>{schoolName.toUpperCase()}</div>;
   };
   const SectionHead = ({ children }: { children: ReactNode }) => <div style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '6px 0 4px', color: primary, fontWeight: 800, fontSize: '12pt', letterSpacing: 1.5, textTransform: 'uppercase' }}><span style={{ flex: 1, height: 2, background: `linear-gradient(90deg, transparent, ${line})` }} />{children}<span style={{ flex: 1, height: 2, background: `linear-gradient(90deg, ${line}, transparent)` }} /></div>;
   // Analytics drawn as SVG so screen, print and PDF all match; only real saved totals are plotted.

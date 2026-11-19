@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import { REPORT_COLOURS, REPORT_PARTS, resolveReportTemplate, REPORT_LAYOUTS, REPORT_LANGUAGES, type ReportTemplate, type ReportPart, type ReportLayoutId } from '@/lib/report-template';
 import { ReportCardView } from '@/components/ReportCardView';
 
-export function ReportTemplateSettings({ school }: { school: { id: string; name: string; report_template: unknown; logo_url?: string | null; stamp_url?: string | null; principal_signature_url?: string | null; motto?: string | null; address?: string | null; phone?: string | null; email?: string | null; principal_name?: string | null; [key: string]: unknown } }) {
+export function ReportTemplateSettings({ school, previewOnly = false }: { previewOnly?: boolean; school: { id: string; name: string; report_template: unknown; logo_url?: string | null; stamp_url?: string | null; principal_signature_url?: string | null; motto?: string | null; address?: string | null; phone?: string | null; email?: string | null; principal_name?: string | null; [key: string]: unknown } }) {
   const qc = useQueryClient();
   const [draft, setDraft] = useState<ReportTemplate>((school.report_template || {}) as ReportTemplate);
 
@@ -81,6 +81,82 @@ export function ReportTemplateSettings({ school }: { school: { id: string; name:
       setBusy(false);
     }
   }
+
+  const previewEl = (
+    <>
+      {/* SECTION 4: Live Single-Page A4 Preview */}
+      <div className="border-t border-border pt-5">
+        <div className="flex items-center justify-between mb-2">
+          <div>
+            <h3 className="font-semibold text-foreground">Report Card Preview</h3>
+            <p className="text-xs text-muted-foreground">
+              Report preview
+            </p>
+          </div>
+          <Badge variant="outline" className="text-emerald-700 border-emerald-300 bg-emerald-50 text-xs font-mono">
+            A4 Portrait
+          </Badge>
+        </div>
+
+        <ReportCardView
+          rc={{
+            schools: {
+              ...school,
+              name: schoolName || "Official School Report",
+              motto: motto || null,
+              principal_name: principalName || "Principal / Head of School",
+              address: address || null,
+              logo_url: logoUrl,
+              stamp_url: stampUrl,
+              principal_signature_url: sigUrl,
+              report_template: draft,
+            },
+            students: {
+              first_name: resolved.report_language === 'ar' ? 'زينب' : 'Zainab',
+              last_name: resolved.report_language === 'ar' ? 'بلو' : 'Bello',
+              middle_name: resolved.report_language === 'ar' ? 'موسى' : 'Musa',
+              admission_no: 'ADM/2026/014',
+              gender: 'female',
+              dob: '2014-06-18',
+            },
+            classes: {
+              name: resolved.report_language === 'ar' ? 'المستوى الثاني' : section === 'secondary' ? 'JSS 2' : section === 'primary' ? 'Primary 5' : 'Nursery 2',
+              arm: resolved.report_language === 'ar' ? 'أ' : 'Gold',
+              section,
+            },
+            session: typeof school.current_session === 'string' ? school.current_session : '2025/2026',
+            term: typeof school.current_term === 'string' ? school.current_term : 'first',
+            position: 2,
+            class_size: 32,
+            days_total: 65,
+            days_present: 63,
+            days_absent: 2,
+            teacher_remark: resolved.report_language === 'ar' ? 'طالب مجتهد، مواظب على الحفظ والمراجعة، وحسن الخلق.' : 'An exceptional student with strong analytical skills and consistent dedication.',
+            principal_remark: resolved.report_language === 'ar' ? 'بارك الله فيك، واصل الاجتهاد والتميز.' : 'Commended for academic excellence and outstanding character.',
+            verification_code: 'VERIFY-2026-SAMPLE',
+            psychomotor: { handwriting: 4, drawing: 3, tools: 4, speech: 5, sports: 4, music: 3 },
+            affective: { attentiveness: 5, honesty: 5, neatness: 4, politeness: 5, punctuality: 4, self_control: 4, obedience: 5, reliability: 4, relationship: 5 },
+          }}
+          assessments={resolved.report_language === 'ar' ? [
+            { id: 'ar-1', ca1: 18, ca2: 19, exam: 54, total: 91, grade: 'A', remark: 'ممتاز', subjects: { name: 'القرآن الكريم', code: 'QUR' } },
+            { id: 'ar-2', ca1: 17, ca2: 18, exam: 50, total: 85, grade: 'A', remark: 'ممتاز', subjects: { name: 'التجويد', code: 'TAJ' } },
+            { id: 'ar-3', ca1: 16, ca2: 17, exam: 49, total: 82, grade: 'A', remark: 'جيد جداً', subjects: { name: 'اللغة العربية', code: 'ARA' } },
+            { id: 'ar-4', ca1: 15, ca2: 16, exam: 48, total: 79, grade: 'B', remark: 'جيد', subjects: { name: 'الفقه', code: 'FIQ' } },
+            { id: 'ar-5', ca1: 18, ca2: 18, exam: 52, total: 88, grade: 'A', remark: 'ممتاز', subjects: { name: 'العقيدة', code: 'AQD' } },
+            { id: 'ar-6', ca1: 17, ca2: 17, exam: 53, total: 87, grade: 'A', remark: 'ممتاز', subjects: { name: 'الحديث', code: 'HAD' } },
+          ] : [
+            { id: 'sub-1', ca1: 18, ca2: 19, exam: 54, total: 91, grade: 'A', remark: 'Distinction', subject_position: 1, subjects: { name: 'Mathematics', code: 'MTH' } },
+            { id: 'sub-2', ca1: 17, ca2: 18, exam: 50, total: 85, grade: 'A', remark: 'Excellent', subject_position: 2, subjects: { name: 'English Language', code: 'ENG' } },
+            { id: 'sub-3', ca1: 16, ca2: 17, exam: 49, total: 82, grade: 'A', remark: 'Very Good', subject_position: 3, subjects: { name: 'Basic Science', code: 'BSC' } },
+            { id: 'sub-4', ca1: 15, ca2: 16, exam: 48, total: 79, grade: 'B', remark: 'Good', subject_position: 4, subjects: { name: 'Social Studies', code: 'SOS' } },
+            { id: 'sub-5', ca1: 18, ca2: 18, exam: 52, total: 88, grade: 'A', remark: 'Distinction', subject_position: 2, subjects: { name: 'ICT & Computing', code: 'ICT' } },
+            { id: 'sub-6', ca1: 17, ca2: 17, exam: 53, total: 87, grade: 'A', remark: 'Distinction', subject_position: 1, subjects: { name: 'Civic Education', code: 'CVE' } },
+          ]}
+        />
+      </div>
+    </>
+  );
+  if (previewOnly) return previewEl;
 
   return (
     <div className="space-y-6">
@@ -296,7 +372,7 @@ export function ReportTemplateSettings({ school }: { school: { id: string; name:
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
           {REPORT_LAYOUTS.map((layout) => {
             const isSelected = (draft.layout_id || resolved.layout_id) === layout.id;
-            return (
+  return (
               <Button
                 type="button"
                 variant="outline"
@@ -428,74 +504,7 @@ export function ReportTemplateSettings({ school }: { school: { id: string; name:
         </div>
       </div>
 
-      {/* SECTION 4: Live Single-Page A4 Preview */}
-      <div className="border-t border-border pt-5">
-        <div className="flex items-center justify-between mb-2">
-          <div>
-            <h3 className="font-semibold text-foreground">Report Card Preview</h3>
-            <p className="text-xs text-muted-foreground">
-              Report preview
-            </p>
-          </div>
-          <Badge variant="outline" className="text-emerald-700 border-emerald-300 bg-emerald-50 text-xs font-mono">
-            A4 Portrait
-          </Badge>
-        </div>
-
-        <ReportCardView
-          rc={{
-            schools: {
-              ...school,
-              name: schoolName || "Official School Report",
-              motto: motto || null,
-              principal_name: principalName || "Principal / Head of School",
-              address: address || null,
-              logo_url: logoUrl,
-              stamp_url: stampUrl,
-              principal_signature_url: sigUrl,
-              report_template: draft,
-            },
-            students: {
-              first_name: resolved.report_language === 'ar' ? 'زينب' : 'Zainab',
-              last_name: resolved.report_language === 'ar' ? 'بلو' : 'Bello',
-              middle_name: resolved.report_language === 'ar' ? 'موسى' : 'Musa',
-              admission_no: 'ADM/2026/014',
-              gender: 'female',
-              dob: '2014-06-18',
-            },
-            classes: {
-              name: resolved.report_language === 'ar' ? 'المستوى الثاني' : section === 'secondary' ? 'JSS 2' : section === 'primary' ? 'Primary 5' : 'Nursery 2',
-              arm: resolved.report_language === 'ar' ? 'أ' : 'Gold',
-              section,
-            },
-            session: typeof school.current_session === 'string' ? school.current_session : '2025/2026',
-            term: typeof school.current_term === 'string' ? school.current_term : 'first',
-            position: 2,
-            class_size: 32,
-            days_total: 65,
-            days_present: 63,
-            days_absent: 2,
-            teacher_remark: resolved.report_language === 'ar' ? 'طالب مجتهد، مواظب على الحفظ والمراجعة، وحسن الخلق.' : 'An exceptional student with strong analytical skills and consistent dedication.',
-            principal_remark: resolved.report_language === 'ar' ? 'بارك الله فيك، واصل الاجتهاد والتميز.' : 'Commended for academic excellence and outstanding character.',
-            verification_code: 'VERIFY-2026-SAMPLE',
-          }}
-          assessments={resolved.report_language === 'ar' ? [
-            { id: 'ar-1', ca1: 18, ca2: 19, exam: 54, total: 91, grade: 'A', remark: 'ممتاز', subjects: { name: 'القرآن الكريم', code: 'QUR' } },
-            { id: 'ar-2', ca1: 17, ca2: 18, exam: 50, total: 85, grade: 'A', remark: 'ممتاز', subjects: { name: 'التجويد', code: 'TAJ' } },
-            { id: 'ar-3', ca1: 16, ca2: 17, exam: 49, total: 82, grade: 'A', remark: 'جيد جداً', subjects: { name: 'اللغة العربية', code: 'ARA' } },
-            { id: 'ar-4', ca1: 15, ca2: 16, exam: 48, total: 79, grade: 'B', remark: 'جيد', subjects: { name: 'الفقه', code: 'FIQ' } },
-            { id: 'ar-5', ca1: 18, ca2: 18, exam: 52, total: 88, grade: 'A', remark: 'ممتاز', subjects: { name: 'العقيدة', code: 'AQD' } },
-            { id: 'ar-6', ca1: 17, ca2: 17, exam: 53, total: 87, grade: 'A', remark: 'ممتاز', subjects: { name: 'الحديث', code: 'HAD' } },
-          ] : [
-            { id: 'sub-1', ca1: 18, ca2: 19, exam: 54, total: 91, grade: 'A', remark: 'Distinction', subject_position: 1, subjects: { name: 'Mathematics', code: 'MTH' } },
-            { id: 'sub-2', ca1: 17, ca2: 18, exam: 50, total: 85, grade: 'A', remark: 'Excellent', subject_position: 2, subjects: { name: 'English Language', code: 'ENG' } },
-            { id: 'sub-3', ca1: 16, ca2: 17, exam: 49, total: 82, grade: 'A', remark: 'Very Good', subject_position: 3, subjects: { name: 'Basic Science', code: 'BSC' } },
-            { id: 'sub-4', ca1: 15, ca2: 16, exam: 48, total: 79, grade: 'B', remark: 'Good', subject_position: 4, subjects: { name: 'Social Studies', code: 'SOS' } },
-            { id: 'sub-5', ca1: 18, ca2: 18, exam: 52, total: 88, grade: 'A', remark: 'Distinction', subject_position: 2, subjects: { name: 'ICT & Computing', code: 'ICT' } },
-            { id: 'sub-6', ca1: 17, ca2: 17, exam: 53, total: 87, grade: 'A', remark: 'Distinction', subject_position: 1, subjects: { name: 'Civic Education', code: 'CVE' } },
-          ]}
-        />
-      </div>
+      {previewEl}
     </div>
   );
 }

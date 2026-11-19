@@ -34,9 +34,10 @@ export function ReportGeneratePanel({ schoolId }: { schoolId: string }) {
   const [done, setDone] = useState<{ count: number; posted: boolean } | null>(null);
   const [rankingOpen, setRankingOpen] = useState(false);
   const [designOpen, setDesignOpen] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
   const { data: fullSchool } = useQuery({
     queryKey: ["generate-design-school", schoolId],
-    enabled: designOpen,
+    enabled: Boolean(schoolId),
     queryFn: async () => {
       const { data, error } = await supabase.from("schools").select("*").eq("id", schoolId).single();
       if (error) throw new Error(error.message);
@@ -232,7 +233,7 @@ export function ReportGeneratePanel({ schoolId }: { schoolId: string }) {
 
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-muted/30 p-3 text-sm">
           <div className="font-medium">Report card design: language, template, text and border colours</div>
-          <Button size="sm" variant="outline" onClick={() => setDesignOpen(true)}><Palette className="mr-1 h-3.5 w-3.5" />Report card settings</Button>
+          <div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={() => setReviewOpen(true)} disabled={!fullSchool}>Review template</Button><Button size="sm" variant="outline" onClick={() => setDesignOpen(true)}><Palette className="mr-1 h-3.5 w-3.5" />Report card settings</Button></div>
         </div>
 
         <label className="flex items-center gap-2 text-sm">
@@ -264,6 +265,14 @@ export function ReportGeneratePanel({ schoolId }: { schoolId: string }) {
         <DialogContent className="max-h-[90vh] max-w-5xl overflow-y-auto">
           <DialogHeader><DialogTitle>Report card settings for this class</DialogTitle></DialogHeader>
           {fullSchool ? <ReportTemplateSettings key={JSON.stringify(fullSchool.report_template ?? null)} school={fullSchool as never} /> : <Loader2 className="mx-auto h-5 w-5 animate-spin" />}
+        </DialogContent>
+      </Dialog>
+      <Dialog open={reviewOpen} onOpenChange={setReviewOpen}>
+        <DialogContent className="max-h-[90vh] max-w-5xl overflow-y-auto">
+          <DialogHeader><DialogTitle>Review report card template (sample pupil)</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">This shows your saved template with sample data. Real report cards use each pupil's saved scores.</p>
+          {fullSchool ? <ReportTemplateSettings previewOnly key={`review-${JSON.stringify(fullSchool.report_template ?? null)}`} school={fullSchool as never} /> : <Loader2 className="mx-auto h-5 w-5 animate-spin" />}
+          <div className="flex justify-end gap-2"><Button variant="outline" onClick={() => { setReviewOpen(false); setDesignOpen(true); }}>Change settings</Button><Button onClick={() => setReviewOpen(false)}>Looks good</Button></div>
         </DialogContent>
       </Dialog>
     </Card>

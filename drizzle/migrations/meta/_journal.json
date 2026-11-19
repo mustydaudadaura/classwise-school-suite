@@ -232,6 +232,13 @@
       "when": 1795073038164,
       "tag": "0032_student_term_records",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1795074721627,
+      "tag": "0033_report_template_term_settings",
+      "breakpoints": true
     }
   ]
 }

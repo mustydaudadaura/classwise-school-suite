@@ -372,7 +372,7 @@ export function ReportTemplateSettings({ school, previewOnly = false }: { previe
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
           {REPORT_LAYOUTS.map((layout) => {
             const isSelected = (draft.layout_id || resolved.layout_id) === layout.id;
-  return (
+            return (
               <Button
                 type="button"
                 variant="outline"

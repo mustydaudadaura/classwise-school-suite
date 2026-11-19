@@ -3,6 +3,7 @@ import { classDisplayName } from "@/lib/class-label";
 import { resolveReportTemplate, positionVisibility, nextTermFee, type ReportLanguage, type ReportSheetId } from '@/lib/report-template';
 import { islamiyyaTotals, arabicReportText, hausaReportText, type IslamiyyaAssessment } from '@/lib/islamiyya-report';
 import type { SchoolReport } from '@/components/SchoolReportLayouts';
+import { resolveTypography, fontCss, textColourCss, REPORT_FONTS_HREF, type TextPart } from '@/lib/report-typography';
 
 const L = {
   en: {
@@ -64,6 +65,7 @@ export function NigerianReportSheet({ rc, assessments, qrDataUrl, design: design
   const template = resolveReportTemplate(rc.schools?.report_template, rc.classes?.section);
   const design = designOverride ?? template.layout_id;
   const lang = languageOverride ?? template.report_language;
+  const typo = resolveTypography((rc.schools?.report_template as Record<string, unknown> | null | undefined)?.typography);
   const t = L[lang];
   const rtl = lang === 'ar';
   const tr = (v: string | null | undefined) => lang === 'ar' ? arabicReportText(v) : lang === 'ha' ? hausaReportText(v) : (v?.trim() || '—');
@@ -84,14 +86,23 @@ export function NigerianReportSheet({ rc, assessments, qrDataUrl, design: design
   // Colours are the school's chosen report palette tokens so screen, print and PDF match.
   const c = (part: keyof typeof template) => `var(--report-colour-${template[part]})`;
   const primary = c('heading'), line = c('border'), head = c('table');
-  const cell: CSSProperties = { border: `1px solid ${line}`, padding: '2px 4px', fontSize: '11pt', lineHeight: 1.25, textAlign: rtl ? 'right' : 'left', verticalAlign: 'middle' };
-  const th: CSSProperties = { ...cell, fontWeight: 700, background: `color-mix(in oklab, ${head} 18%, white)`, textAlign: 'center' };
+  // Admin-chosen font, size, colour and weight per report part; Arabic glyphs fall back to Amiri.
+  const ts = (part: TextPart, autoColour = 'var(--report-ink)'): CSSProperties => {
+    const st = typo[part];
+    return { fontFamily: rtl ? `${fontCss(st.font)}, 'Amiri', 'Noto Naskh Arabic', serif` : fontCss(st.font), fontSize: `${st.size}pt`, color: textColourCss(st.colour, autoColour), fontWeight: st.bold ? 700 : 400, fontStyle: st.italic ? 'italic' : 'normal' };
+  };
+  const bodySize = `${typo.body.size}pt`;
+  const details = ts('school_details');
+  const titleStyle = ts('report_title', primary);
+  const headStyle = ts('headings');
+  const cell: CSSProperties = { border: `1px solid ${line}`, padding: '2px 4px', ...ts('body'), lineHeight: 1.25, textAlign: rtl ? 'right' : 'left', verticalAlign: 'middle' };
+  const th: CSSProperties = { ...cell, ...headStyle, background: `color-mix(in oklab, ${head} 18%, white)`, textAlign: 'center' };
   const tc: CSSProperties = { ...cell, textAlign: 'center' };
-  const boxTitle = (text: string, filled = false): CSSProperties => ({ ...th, background: filled ? head : th.background, color: filled ? 'white' : undefined, fontSize: '11pt' });
-  const sheet: CSSProperties = { width: 794, minHeight: 1123, display: 'flex', flexDirection: 'column', margin: '0 auto', background: 'white', color: '#111', padding: 22, position: 'relative', fontFamily: rtl ? "'Amiri', 'Noto Naskh Arabic', serif" : "Candara, 'Optima', 'Segoe UI', Calibri, sans-serif", fontSize: '11pt', direction: rtl ? 'rtl' : 'ltr', border: design === 'sheet_hisgrace' ? `3px solid ${line}` : `1px solid ${line}`, boxSizing: 'border-box' };
+  const boxTitle = (text: string, filled = false): CSSProperties => ({ ...th, background: filled ? head : th.background, color: filled ? 'var(--report-paper)' : headStyle.color, fontSize: headStyle.fontSize });
+  const sheet: CSSProperties = { width: 794, minHeight: 1123, display: 'flex', flexDirection: 'column', margin: '0 auto', background: 'white', color: '#111', padding: 22, position: 'relative', fontFamily: ts('body').fontFamily, fontSize: bodySize, direction: rtl ? 'rtl' : 'ltr', border: design === 'sheet_hisgrace' ? `3px solid ${line}` : `1px solid ${line}`, boxSizing: 'border-box' };
 
   const Logo = ({ size = 82 }: { size?: number }) => school.logo_url ? <img src={school.logo_url} alt="School logo" crossOrigin="anonymous" style={{ width: size, height: size, objectFit: 'contain', imageRendering: 'auto' }} /> : <div style={{ width: size, height: size }} />;
-  const Photo = ({ w = 82, h = 96 }: { w?: number; h?: number }) => <div style={{ width: w, height: h, border: `1px solid ${line}`, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', fontSize: '11pt', color: '#777' }}>{student.photo_url ? <img src={student.photo_url} alt="Student passport" crossOrigin="anonymous" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : 'Passport'}</div>;
+  const Photo = ({ w = 82, h = 96 }: { w?: number; h?: number }) => <div style={{ width: w, height: h, border: `1px solid ${line}`, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', fontSize: bodySize, color: '#777' }}>{student.photo_url ? <img src={student.photo_url} alt="Student passport" crossOrigin="anonymous" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : 'Passport'}</div>;
   const Watermark = () => school.logo_url ? <img src={school.logo_url} alt="" aria-hidden="true" crossOrigin="anonymous" style={{ position: 'absolute', inset: 0, margin: 'auto', width: 420, opacity: 0.06, pointerEvents: 'none' }} /> : null;
   const Table = ({ children, style }: { children: ReactNode; style?: CSSProperties }) => <table style={{ width: '100%', borderCollapse: 'collapse', ...style }}><tbody>{children}</tbody></table>;
   const KV = ({ rows }: { rows: [string, ReactNode][] }) => <>{rows.map(([k, v]) => <tr key={k}><td style={{ ...cell, fontWeight: 700, width: '45%' }}>{k}</td><td style={cell}>{v}</td></tr>)}</>;
@@ -106,15 +117,15 @@ export function NigerianReportSheet({ rc, assessments, qrDataUrl, design: design
       {TRAITS[lang][group].map(([key, label]) => <tr key={key}><td style={cell}>{label}</td><td style={tc}>{num(traitValue(group, key))}</td></tr>)}
     </Table>);
   const GradeScale = () => <Table><tr><td colSpan={3} style={boxTitle(t.gradeScale, true)}>{t.gradeScale}</td></tr>{GRADE_SCALE.map(([g, r, word]) => <tr key={g}><td style={tc}>{g}</td><td style={tc}>{r}</td><td style={cell}>{tr(word)}</td></tr>)}</Table>;
-  const RatingKey = () => <div style={{ fontSize: '11pt', marginTop: 4 }}><strong>{t.ratingKey}:</strong> {t.ratings.map((r, i) => `${num(5 - i)} = ${r}`).join(' · ')}</div>;
+  const RatingKey = () => <div style={{ fontSize: bodySize, marginTop: 4 }}><strong>{t.ratingKey}:</strong> {t.ratings.map((r, i) => `${num(5 - i)} = ${r}`).join(' · ')}</div>;
   const Sig = ({ url }: { url?: string | null }) => url ? <img src={url} alt="" crossOrigin="anonymous" style={{ height: 26, maxWidth: 110, objectFit: 'contain', verticalAlign: 'middle' }} /> : <span style={{ display: 'inline-block', width: 110, borderBottom: '1px solid #555' }} />;
-  const Verify = () => <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '11pt' }}>{qrDataUrl && rc.verification_code && <img src={qrDataUrl} alt="Verify report" style={{ width: 62, height: 62 }} />}{rc.verification_code && <span>{t.verify}: <bdi>{rc.verification_code}</bdi></span>}</div>;
+  const Verify = () => <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: bodySize }}>{qrDataUrl && rc.verification_code && <img src={qrDataUrl} alt="Verify report" style={{ width: 62, height: 62 }} />}{rc.verification_code && <span>{t.verify}: <bdi>{rc.verification_code}</bdi></span>}</div>;
   // School name: plain bold heading, larger (17pt) than the 11pt body text.
   const SchoolTitle = ({ onDark = false }: { size?: number; onDark?: boolean }) => {
-    const base = onDark ? 'white' : primary;
-    return <div style={{ fontSize: '17pt', fontWeight: 900, letterSpacing: 1, lineHeight: 1.15, color: base, fontFamily: rtl ? undefined : "Candara, 'Optima', 'Segoe UI', Calibri, sans-serif" }}>{schoolName.toUpperCase()}</div>;
+    const st = ts('school_name', onDark ? 'var(--report-paper)' : primary);
+    return <div style={{ ...st, fontWeight: typo.school_name.bold ? 900 : 400, letterSpacing: 1, lineHeight: 1.15 }}>{schoolName.toUpperCase()}</div>;
   };
-  const SectionHead = ({ children }: { children: ReactNode }) => <div style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '6px 0 4px', color: primary, fontWeight: 800, fontSize: '11pt', letterSpacing: 1.5, textTransform: 'uppercase' }}><span style={{ flex: 1, height: 2, background: `linear-gradient(90deg, transparent, ${line})` }} />{children}<span style={{ flex: 1, height: 2, background: `linear-gradient(90deg, ${line}, transparent)` }} /></div>;
+  const SectionHead = ({ children }: { children: ReactNode }) => <div style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '6px 0 4px', ...ts('headings', primary), fontWeight: typo.headings.bold ? 800 : 400, letterSpacing: 1.5, textTransform: 'uppercase' }}><span style={{ flex: 1, height: 2, background: `linear-gradient(90deg, transparent, ${line})` }} />{children}<span style={{ flex: 1, height: 2, background: `linear-gradient(90deg, ${line}, transparent)` }} /></div>;
   // Analytics drawn as SVG so screen, print and PDF all match; only real saved totals are plotted.
   const Charts = () => {
     const rows = assessments.filter(a => a.total != null);
@@ -138,7 +149,7 @@ export function NigerianReportSheet({ rc, assessments, qrDataUrl, design: design
             <circle cx={50} cy={50} r={R} fill="none" stroke={primary} strokeWidth={11} strokeLinecap="round" strokeDasharray={`${(Math.min(avg, 100) / 100) * C} ${C}`} transform="rotate(-90 50 50)" />
             <text x={50} y={54} textAnchor="middle" fontSize={16} fontWeight={900} fill={primary}>{num(Math.round(avg))}%</text>
           </svg>
-          <div style={{ fontSize: '11pt', fontWeight: 700, color: primary }}>{t.average}</div>
+          <div style={{ fontSize: bodySize, fontWeight: 700, color: primary }}>{t.average}</div>
         </div>
       </div>
     </div>;
@@ -154,7 +165,7 @@ export function NigerianReportSheet({ rc, assessments, qrDataUrl, design: design
       <thead>
         <tr>
           <th style={{ ...th, width: 26 }}>{lang === 'ar' ? 'رقم' : 'S/N'}</th>
-          <th style={{ ...th, textAlign: rtl ? 'right' : 'left', fontSize: cols === 'hisgrace' ? 15 : 11 }}>{t.subjects}</th>
+          <th style={{ ...th, textAlign: rtl ? 'right' : 'left', }}>{t.subjects}</th>
           {cols === 'fmp' ? <><th style={th}>{t.ca} (20)</th><th style={th}>{t.ca} (20)</th></> : <><th style={th}>{t.ca1}<br />20</th><th style={th}>{t.ca2}<br />20</th></>}
           <th style={th}>{t.exam}<br />60</th><th style={th}>{t.total}<br />100</th>
           {cols === 'emerald' && positions.subject && <th style={th}>{t.rank}</th>}
@@ -188,7 +199,7 @@ export function NigerianReportSheet({ rc, assessments, qrDataUrl, design: design
 
   const remarks = <Table>
     <tr><td style={{ ...cell, fontWeight: 700, width: '28%' }}>{t.teacher}</td><td style={cell}>{rc.teacher_remark || '—'}</td><td style={{ ...cell, width: 130 }}>{t.sign}: <Sig /></td></tr>
-    <tr><td style={{ ...cell, fontWeight: 700 }}>{t.principal}</td><td style={cell}>{rc.principal_remark || '—'}{school.principal_name ? <div style={{ fontSize: '11pt', marginTop: 2 }}>{school.principal_name}</div> : null}</td><td style={cell}>{t.sign}: <Sig url={school.principal_signature_url} /></td></tr>
+    <tr><td style={{ ...cell, fontWeight: 700 }}>{t.principal}</td><td style={cell}>{rc.principal_remark || '—'}{school.principal_name ? <div style={{ fontSize: bodySize, marginTop: 2 }}>{school.principal_name}</div> : null}</td><td style={cell}>{t.sign}: <Sig url={school.principal_signature_url} /></td></tr>
   </Table>;
 
   const attendanceRows: [string, ReactNode][] = [[t.opened, num(rc.days_total)], [t.present, num(rc.days_present)], [t.absent, num(rc.days_absent)]];
@@ -201,12 +212,12 @@ export function NigerianReportSheet({ rc, assessments, qrDataUrl, design: design
         <div style={{ background: 'white', borderRadius: 6, padding: 2 }}><Logo size={72} /></div>
         <div style={{ flex: 1, textAlign: 'center' }}>
           <SchoolTitle size={24} onDark />
-          {school.motto && <div style={{ fontStyle: 'italic', fontSize: '11pt' }}>...{school.motto}</div>}
-          <div style={{ fontSize: '11pt' }}>{address}</div>
+          {school.motto && <div style={{ ...details, color: 'inherit', fontStyle: 'italic' }}>...{school.motto}</div>}
+          <div style={{ ...details, color: 'inherit' }}>{address}</div>
         </div>
         <div style={{ background: 'white' }}><Photo w={70} h={82} /></div>
       </div>
-      <h2 style={{ textAlign: 'center', fontSize: 16, fontWeight: 900, margin: '10px 0 6px', color: primary }}>{t.resultSheet}</h2>
+      <h2 style={{ ...titleStyle, textAlign: 'center', margin: '10px 0 6px' }}>{t.resultSheet}</h2>
       <Table style={{ marginBottom: 6 }}>
         <tr><td style={{ ...cell, fontWeight: 700 }}>{t.name}</td><td style={cell}>{fullName || '—'}</td><td style={{ ...cell, fontWeight: 700 }}>{t.classSize}</td><td style={cell}>{num(rc.class_size)}</td><td style={{ ...cell, fontWeight: 700 }}>{t.term}</td><td style={cell}>{termName}</td></tr>
         <tr><td style={{ ...cell, fontWeight: 700 }}>{t.admission}</td><td style={cell}>{student.admission_no ?? '—'}</td><td style={{ ...cell, fontWeight: 700 }}>{t.dob}</td><td style={cell}>{student.dob ?? '—'}</td><td style={{ ...cell, fontWeight: 700 }}>{t.session}</td><td style={cell}>{rc.session ?? '—'}</td></tr>
@@ -232,28 +243,28 @@ export function NigerianReportSheet({ rc, assessments, qrDataUrl, design: design
         <Logo size={96} />
         <div style={{ flex: 1, textAlign: 'center' }}>
           <SchoolTitle />
-          {rc.classes?.section && <div style={{ fontSize: '11pt' }}>({rc.classes.section.toUpperCase()})</div>}
-          <div style={{ fontSize: '11pt' }}>{address}</div>
-          {school.motto && <div style={{ fontSize: '11pt' }}>{school.motto}</div>}
+          {rc.classes?.section && <div style={details}>({rc.classes.section.toUpperCase()})</div>}
+          <div style={details}>{address}</div>
+          {school.motto && <div style={details}>{school.motto}</div>}
         </div>
         <Photo w={88} h={100} />
       </div>
-      <h2 style={{ textAlign: 'center', fontSize: 17, fontWeight: 900, margin: '8px 0' }}>{rc.session ?? ''} {termName} {t.reportSheet}</h2>
+      <h2 style={{ ...titleStyle, textAlign: 'center', margin: '8px 0' }}>{rc.session ?? ''} {termName} {t.reportSheet}</h2>
       <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr 0.8fr', gap: 8 }}>
         <Table><tr><td colSpan={2} style={boxTitle(t.personal)}>{t.personal}</td></tr><KV rows={[[t.name, fullName || '—'], [t.dob, student.dob ?? '—'], [t.gender, gender], [t.klass, className || '—'], [t.admission, student.admission_no ?? '—']]} /></Table>
-        <Table><tr><td colSpan={3} style={boxTitle(t.attendance)}>{t.attendance}</td></tr><tr>{attendanceRows.map(([k]) => <td key={k} style={{ ...tc, fontSize: '11pt' }}>{k}</td>)}</tr><tr>{attendanceRows.map(([k, v]) => <td key={k} style={{ ...tc, fontWeight: 700 }}>{v}</td>)}</tr></Table>
+        <Table><tr><td colSpan={3} style={boxTitle(t.attendance)}>{t.attendance}</td></tr><tr>{attendanceRows.map(([k]) => <td key={k} style={{ ...tc, fontSize: bodySize }}>{k}</td>)}</tr><tr>{attendanceRows.map(([k, v]) => <td key={k} style={{ ...tc, fontWeight: 700 }}>{v}</td>)}</tr></Table>
         <Table><KV rows={summaryRows} /></Table>
       </div>
       <div style={{ ...boxTitle(t.cognitive), border: `1px solid ${line}`, marginTop: 8 }}>{t.cognitive}</div>
       {results('hisgrace')}<Charts />
       <div style={{ ...boxTitle(t.gradeScale), border: `1px solid ${line}`, marginTop: 8 }}>{t.gradeScale}</div>
-      <Table><tr>{GRADE_SCALE.map(([g, r, w]) => <td key={g} style={{ ...tc, fontSize: '11pt' }}>{r} ({g} – {tr(w)})</td>)}</tr></Table>
+      <Table><tr>{GRADE_SCALE.map(([g, r, w]) => <td key={g} style={{ ...tc, fontSize: bodySize }}>{r} ({g} – {tr(w)})</td>)}</tr></Table>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
         <TickGrid group="affective" title={t.affective} />
         <div><TickGrid group="psychomotor" title={t.psychomotor} /><RatingKey /></div>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px', gap: 8, marginTop: 8, border: `2px solid ${line}`, padding: 6, alignItems: 'center' }}>
-        <div style={{ fontSize: '11pt', lineHeight: 1.9 }}>
+        <div style={{ fontSize: bodySize, lineHeight: 1.9 }}>
           <div><strong>{t.teacher}:</strong> {rc.teacher_remark || '—'} &nbsp; {t.sign}: <Sig /></div>
           <div><strong>{t.principal}:</strong> {rc.principal_remark || '—'} &nbsp; {t.sign}: <Sig url={school.principal_signature_url} /></div>
           <Verify />
@@ -269,8 +280,8 @@ export function NigerianReportSheet({ rc, assessments, qrDataUrl, design: design
         <Photo w={80} h={80} />
         <div style={{ flex: 1, textAlign: 'center' }}>
           <SchoolTitle size={24} />
-          <div style={{ fontSize: '11pt', marginTop: 4 }}>{address}</div>
-          <div style={{ fontSize: '11pt', fontWeight: 800, marginTop: 8 }}>{t.caReport} — {termName} {rc.session ?? ''}</div>
+          <div style={{ ...details, marginTop: 4 }}>{address}</div>
+          <div style={{ ...titleStyle, marginTop: 8 }}>{t.caReport} — {termName} {rc.session ?? ''}</div>
         </div>
         <Logo size={80} />
       </div>
@@ -301,15 +312,15 @@ export function NigerianReportSheet({ rc, assessments, qrDataUrl, design: design
         <Logo size={92} />
         <div style={{ flex: 1, textAlign: 'center' }}>
           <SchoolTitle />
-          {school.motto && <div style={{ fontSize: '11pt', fontWeight: 700 }}>{school.motto}</div>}
-          <div style={{ fontSize: '11pt' }}>{address}</div>
-          <div style={{ fontSize: '11pt', fontWeight: 900, marginTop: 6, textDecoration: 'underline' }}>{rc.session ?? ''} – {termName} {t.report}</div>
+          {school.motto && <div style={details}>{school.motto}</div>}
+          <div style={details}>{address}</div>
+          <div style={{ ...titleStyle, marginTop: 6, textDecoration: 'underline' }}>{rc.session ?? ''} – {termName} {t.report}</div>
         </div>
         <Photo />
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1.15fr 1fr 1fr', gap: 8, marginTop: 8 }}>
         <Table><tr><td colSpan={2} style={boxTitle(t.personal)}>{t.personal}</td></tr><KV rows={[[t.name, fullName || '—'], [t.admission, student.admission_no ?? '—'], [t.gender, gender], [t.klass, className || '—'], [t.dob, student.dob ?? '—']]} /></Table>
-        <Table><tr><td colSpan={3} style={boxTitle(t.attendance)}>{t.attendance}</td></tr><tr>{attendanceRows.map(([k]) => <td key={k} style={{ ...tc, fontSize: '11pt' }}>{k}</td>)}</tr><tr>{attendanceRows.map(([k, v]) => <td key={k} style={{ ...tc, fontWeight: 700 }}>{v}</td>)}</tr></Table>
+        <Table><tr><td colSpan={3} style={boxTitle(t.attendance)}>{t.attendance}</td></tr><tr>{attendanceRows.map(([k]) => <td key={k} style={{ ...tc, fontSize: bodySize }}>{k}</td>)}</tr><tr>{attendanceRows.map(([k, v]) => <td key={k} style={{ ...tc, fontWeight: 700 }}>{v}</td>)}</tr></Table>
         <Table><tr><td colSpan={2} style={boxTitle(t.summary)}>{t.summary}</td></tr><KV rows={summaryRows} /></Table>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 230px', gap: 8, marginTop: 8, alignItems: 'stretch', flex: 1 }}>
@@ -327,6 +338,7 @@ export function NigerianReportSheet({ rc, assessments, qrDataUrl, design: design
   }
 
   return <article className="print-doc report-sheet" style={sheet} dir={rtl ? 'rtl' : 'ltr'} lang={lang} data-report-layout={design} aria-label={`${schoolName} ${t.report}`}>
+    <link rel="stylesheet" href={REPORT_FONTS_HREF} precedence="default" />
     <Watermark />
     <div aria-hidden="true" style={{ position: 'absolute', inset: 8, border: `3px double ${line}`, borderRadius: 4, pointerEvents: 'none', boxShadow: `inset 0 0 0 4px white, inset 0 0 0 5px color-mix(in oklab, ${primary} 45%, white)` }} />
     <div style={{ position: 'relative', zIndex: 1, flex: 1, display: 'flex', flexDirection: 'column' }}>{body}<div style={{ marginTop: 6 }}>{nextTerm}</div></div>

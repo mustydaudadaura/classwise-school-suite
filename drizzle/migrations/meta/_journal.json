@@ -239,6 +239,13 @@
       "when": 1795074721627,
       "tag": "0033_report_template_term_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1795075054978,
+      "tag": "0034_report_template_typography",
+      "breakpoints": true
     }
   ]
 }

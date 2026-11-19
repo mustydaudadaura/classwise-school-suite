@@ -10,6 +10,7 @@ import { Save, RotateCcw, Check, Upload, Trash2, ShieldCheck, Building2, Sparkle
 import { toast } from 'sonner';
 import { REPORT_COLOURS, REPORT_PARTS, resolveReportTemplate, REPORT_LAYOUTS, REPORT_LANGUAGES, type ReportTemplate, type ReportPart, type ReportLayoutId } from '@/lib/report-template';
 import { ReportCardView } from '@/components/ReportCardView';
+import { REPORT_FONTS, REPORT_FONTS_HREF, TEXT_PARTS, SIZE_LIMITS, resolveTypography, fontCss, type TextPart, type TextStyle, type ReportTypography } from '@/lib/report-typography';
 
 export function ReportTemplateSettings({ school, previewOnly = false }: { previewOnly?: boolean; school: { id: string; name: string; report_template: unknown; logo_url?: string | null; stamp_url?: string | null; principal_signature_url?: string | null; motto?: string | null; address?: string | null; phone?: string | null; email?: string | null; principal_name?: string | null; [key: string]: unknown } }) {
   const qc = useQueryClient();
@@ -31,7 +32,14 @@ export function ReportTemplateSettings({ school, previewOnly = false }: { previe
   const [section, setSection] = useState('secondary');
   const [part, setPart] = useState<ReportPart>('border');
   const [busy, setBusy] = useState(false);
+  const [textPart, setTextPart] = useState<TextPart>('school_name');
   const resolved = resolveReportTemplate(draft, section);
+  const typoDraft = ((draft as Record<string, unknown>).typography ?? {}) as ReportTypography;
+  const typo = resolveTypography(typoDraft);
+  const setTextStyle = (part: TextPart, patch: Partial<TextStyle>) =>
+    setDraft({ ...draft, typography: { ...typoDraft, [part]: { ...typo[part], ...patch } } } as ReportTemplate);
+  const applyFontToAll = () =>
+    setDraft({ ...draft, typography: Object.fromEntries((Object.keys(TEXT_PARTS) as TextPart[]).map(p => [p, { ...typo[p], font: typo[textPart].font }])) } as ReportTemplate);
 
   // Helper to read file as data url for instant reliable upload
   const handleFileUpload = (type: "logo" | "stamp" | "signature", file: File) => {
@@ -171,7 +179,7 @@ export function ReportTemplateSettings({ school, previewOnly = false }: { previe
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" disabled={busy} onClick={() => setDraft({})}>
+          <Button variant="outline" disabled={busy} onClick={() => setDraft({ typography: typoDraft } as ReportTemplate)}>
             <RotateCcw className="mr-2 h-4 w-4" /> Reset Colours
           </Button>
           <Button disabled={busy} onClick={save}>
@@ -427,6 +435,64 @@ export function ReportTemplateSettings({ school, previewOnly = false }: { previe
           ))}
         </div>
         <p className="text-xs text-muted-foreground">Form masters enter each pupil's days present and skill ticks under Term Records. These apply when report cards are generated.</p>
+      </div>
+
+      {/* Fonts & text style per report part */}
+      <div className="rounded-xl border border-border bg-card p-4 space-y-4">
+        <link rel="stylesheet" href={REPORT_FONTS_HREF} precedence="default" />
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">Fonts & text style</h3>
+            <p className="text-xs text-muted-foreground">Pick a part of the report card, then choose its font, size, colour, bold and italic. The preview below updates as you change.</p>
+          </div>
+          <Button type="button" variant="outline" size="sm" onClick={() => setDraft({ ...draft, typography: {} } as ReportTemplate)}>
+            <RotateCcw className="mr-1 h-3.5 w-3.5" /> Reset fonts
+          </Button>
+        </div>
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Text part">
+          {(Object.keys(TEXT_PARTS) as TextPart[]).map(p => (
+            <Button key={p} type="button" size="sm" variant={textPart === p ? 'default' : 'outline'} aria-pressed={textPart === p} onClick={() => setTextPart(p)}>{TEXT_PARTS[p]}</Button>
+          ))}
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="space-y-2">
+            <Label>Font style</Label>
+            <Select value={typo[textPart].font} onValueChange={(v) => setTextStyle(textPart, { font: v as TextStyle['font'] })}>
+              <SelectTrigger aria-label="Font style"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {REPORT_FONTS.map(f => <SelectItem key={f.id} value={f.id}><span style={{ fontFamily: f.css }}>{f.name}</span></SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Button type="button" variant="link" size="sm" className="h-auto p-0 text-xs" onClick={applyFontToAll}>Use this font for every part</Button>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="text-size">Size (pt)</Label>
+            <Input id="text-size" type="number" min={SIZE_LIMITS.min} max={SIZE_LIMITS.max} step={0.5} value={typo[textPart].size}
+              onChange={e => { const n = Number(e.target.value); if (Number.isFinite(n) && n >= SIZE_LIMITS.min && n <= SIZE_LIMITS.max) setTextStyle(textPart, { size: n }); }} />
+            <p className="text-[11px] text-muted-foreground">Between {SIZE_LIMITS.min} and {SIZE_LIMITS.max}.</p>
+          </div>
+          <div className="space-y-2">
+            <Label>Text colour</Label>
+            <Select value={typo[textPart].colour} onValueChange={(v) => setTextStyle(textPart, { colour: v as TextStyle['colour'] })}>
+              <SelectTrigger aria-label="Text colour"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="auto">Match report colours</SelectItem>
+                <SelectItem value="black">Black</SelectItem>
+                {REPORT_COLOURS.map(c => <SelectItem key={c} value={c}><span className="inline-flex items-center gap-2"><span className="report-swatch inline-block h-3 w-3 rounded-sm" style={{ '--swatch': `var(--report-colour-${c})` } as CSSProperties} /><span className="capitalize">{c}</span></span></SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Style</Label>
+            <div className="flex gap-2">
+              <Button type="button" variant={typo[textPart].bold ? 'default' : 'outline'} aria-pressed={typo[textPart].bold} onClick={() => setTextStyle(textPart, { bold: !typo[textPart].bold })} className="font-bold">B</Button>
+              <Button type="button" variant={typo[textPart].italic ? 'default' : 'outline'} aria-pressed={typo[textPart].italic} onClick={() => setTextStyle(textPart, { italic: !typo[textPart].italic })} className="italic">I</Button>
+            </div>
+          </div>
+        </div>
+        <div className="rounded-md border border-dashed border-border bg-muted/20 p-3" style={{ fontFamily: fontCss(typo[textPart].font), fontSize: `${typo[textPart].size}pt`, fontWeight: typo[textPart].bold ? 700 : 400, fontStyle: typo[textPart].italic ? 'italic' : 'normal', color: typo[textPart].colour === 'auto' ? `var(--report-colour-${resolved.heading})` : typo[textPart].colour === 'black' ? 'var(--report-ink)' : `var(--report-colour-${typo[textPart].colour})` }}>
+          {textPart === 'school_name' ? (schoolName || 'School Name').toUpperCase() : textPart === 'report_title' ? 'FIRST TERM REPORT SHEET' : textPart === 'school_details' ? (motto || 'Knowledge, Faith & Excellence') : textPart === 'headings' ? 'SUBJECTS · C.A · EXAM · TOTAL' : 'Mathematics 18 19 54 91 A Distinction'}
+        </div>
       </div>
 
       {/* SECTION 4: Template Colours & Position Options */}

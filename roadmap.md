@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Add confirmed bulk report-card deletion, preserve saved term scores, and verify using Demo School only.
+
 - [x] Super Admin review of Result Entry + Report Cards: read-only check of real school, fix issues, test saving/publishing in Demo School only
 - [x] Sweep score consistency through review, publishing, reports, printing, family access, analytics and weekly summaries; preserve settled records and permissions. See score-consistency-audit.md for code findings and verification limits.
 

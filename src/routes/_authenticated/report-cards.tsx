@@ -1,16 +1,20 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useAuth, hasRole } from "@/hooks/useAuth";
-import { getReportCardsList } from "@/lib/api/results.functions";
+import { getReportCardsList, deleteReportCards } from "@/lib/api/results.functions";
+import { selectedReportCardIds } from "@/lib/report-card-deletion";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Eye, Search, Filter, Calendar, Award, Download } from "lucide-react";
+import { Eye, Search, Filter, Calendar, Award, Download, Trash2, Loader2 } from "lucide-react";
 import { classDisplayName } from "@/lib/class-label";
 import { ReportGeneratePanel } from "@/components/ReportGeneratePanel";
 
@@ -33,6 +37,12 @@ function ReportCardsListPage() {
   const isStaff = hasRole(roles, "super_admin", "school_admin", "teacher");
   const isAdmin = hasRole(roles, "super_admin", "school_admin");
   const loadCards = useServerFn(getReportCardsList);
+  const removeCards = useServerFn(deleteReportCards);
+  const queryClient = useQueryClient();
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [deleteIds, setDeleteIds] = useState<string[]>([]);
+  const [confirmation, setConfirmation] = useState("");
+  const [deleting, setDeleting] = useState(false);
 
   const [sessionFilter, setSessionFilter] = useState<string>("all");
   const [termFilter, setTermFilter] = useState<string>("all");
@@ -40,7 +50,7 @@ function ReportCardsListPage() {
   const [classFilter, setClassFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
-  const { data: cards, isLoading } = useQuery({
+  const { data: cards, isLoading, error: loadError } = useQuery({
     queryKey: ["report-cards-list", schoolId],
     queryFn: async () => {
       const data = await loadCards({ data: { schoolId } });
@@ -71,6 +81,29 @@ function ReportCardsListPage() {
     (cards ?? []).forEach((c: any) => c.class_id && m.set(c.class_id, classDisplayName(c.classes) || "Unnamed class"));
     return Array.from(m.entries()).sort((a, b) => a[1].localeCompare(b[1], undefined, { numeric: true }));
   }, [cards]);
+
+  // Scope the selection to the displayed rows, including every fetched page.
+  const selectedIds = selectedReportCardIds(filteredCards, selected);
+  const allSelected = filteredCards.length > 0 && selectedIds.length === filteredCards.length;
+  async function confirmDeletion() {
+    if (!schoolId || confirmation !== "DELETE" || deleting) return;
+    setDeleting(true);
+    try {
+      const result = await removeCards({ data: { school_id: schoolId, report_card_ids: deleteIds, confirmation: "DELETE" } });
+      setSelected(new Set());
+      setDeleteIds([]);
+      setConfirmation("");
+      toast.success(`${result.deleted} report cards deleted. Saved term scores kept.`);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["report-cards-list"] }),
+        queryClient.invalidateQueries({ queryKey: ["report-distribution"] }),
+      ]);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Report cards could not be deleted.");
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -219,6 +252,17 @@ function ReportCardsListPage() {
       </Card>
 
       {/* Report Cards Table */}
+      {isAdmin && filteredCards.length > 0 && !loadError && (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <label className="flex items-center gap-2 text-sm">
+            <Checkbox aria-label="Select all report cards" checked={allSelected ? true : selectedIds.length ? "indeterminate" : false} disabled={deleting} onCheckedChange={checked => setSelected(checked === true ? new Set(filteredCards.map(c => c.id)) : new Set())} />
+            Select all ({filteredCards.length})
+          </label>
+          <Button variant="destructive" size="sm" disabled={!selectedIds.length || deleting} onClick={() => { setDeleteIds(selectedIds); setConfirmation(""); }}>
+            <Trash2 className="mr-2 h-4 w-4" /> Delete selected ({selectedIds.length})
+          </Button>
+        </div>
+      )}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle className="text-base font-semibold">
@@ -229,7 +273,9 @@ function ReportCardsListPage() {
           </div>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
+          {loadError ? (
+            <p role="alert" className="text-destructive text-sm py-8 text-center">Report cards could not be loaded. Please refresh and try again.</p>
+          ) : isLoading ? (
             <p className="text-muted-foreground text-sm py-8 text-center">Loading report cards…</p>
           ) : !filteredCards?.length ? (
             <div className="text-center py-10 space-y-2">
@@ -255,6 +301,7 @@ function ReportCardsListPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    {isAdmin && <TableHead className="w-10">Select</TableHead>}
                     <TableHead>Student</TableHead>
                     <TableHead>Class</TableHead>
                     <TableHead>Session</TableHead>
@@ -269,6 +316,7 @@ function ReportCardsListPage() {
                 <TableBody>
                   {filteredCards.map((c: any) => (
                     <TableRow key={c.id} className="hover:bg-muted/40">
+                      {isAdmin && <TableCell><Checkbox aria-label={`Select report for ${c.students?.first_name ?? ""} ${c.students?.last_name ?? ""}`} checked={selected.has(c.id)} disabled={deleting} onCheckedChange={checked => setSelected(previous => { const next = new Set(previous); if (checked === true) next.add(c.id); else next.delete(c.id); return next; })} /></TableCell>}
                       <TableCell>
                         <div className="font-semibold text-foreground">
                           {c.students?.first_name} {c.students?.last_name}
@@ -319,6 +367,21 @@ function ReportCardsListPage() {
           )}
         </CardContent>
       </Card>
+      <Dialog open={deleteIds.length > 0} onOpenChange={open => { if (!open && !deleting) { setDeleteIds([]); setConfirmation(""); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete {deleteIds.length} report cards?</DialogTitle>
+            <DialogDescription>Published cards will disappear from the parent portal and their verification links will stop working. Delivery statuses will also be removed. Saved subject scores and term records will remain, so you can generate these reports again.</DialogDescription>
+          </DialogHeader>
+          <label className="space-y-2 text-sm">Type DELETE to confirm<Input aria-label="Deletion confirmation" value={confirmation} onChange={event => setConfirmation(event.target.value)} disabled={deleting} autoComplete="off" /></label>
+          <DialogFooter>
+            <Button variant="outline" disabled={deleting} onClick={() => setDeleteIds([])}>Cancel</Button>
+            <Button variant="destructive" disabled={confirmation !== "DELETE" || deleting} onClick={confirmDeletion}>
+              {deleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />} {deleting ? "Deleting…" : "Delete report cards"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

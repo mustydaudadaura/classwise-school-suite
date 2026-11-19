@@ -3663,6 +3663,14 @@ export type Database = {
         Args: { _school_id: string; _user_id: string }
         Returns: boolean
       }
+      delete_generated_report_cards: {
+        Args: {
+          _confirmation: string
+          _report_ids: string[]
+          _school_id: string
+        }
+        Returns: number
+      }
       find_parent_by_phone: {
         Args: { _phone: string }
         Returns: {

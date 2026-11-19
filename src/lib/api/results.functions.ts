@@ -2,6 +2,7 @@ import { computePositions, resolveRanking } from "@/lib/position-ranking";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { aggregateEnteredScores } from "@/lib/report-scores";
+import { DeleteReportCardsInput } from "@/lib/report-card-deletion";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   calculateGrade,
@@ -32,6 +33,20 @@ const PublishInput = z.object({
 });
 
 const ReportCardDetailInput = z.object({ id: z.string().min(1) });
+
+export const deleteReportCards = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(d => DeleteReportCardsInput.parse(d))
+  .handler(async ({ data, context }) => {
+    const { data: deleted, error } = await context.supabase.rpc("delete_generated_report_cards", {
+      _school_id: data.school_id,
+      _report_ids: data.report_card_ids,
+      _confirmation: data.confirmation,
+    });
+    if (error) throw new Error(error.message);
+    if (deleted !== data.report_card_ids.length) throw new Error("Deletion could not be verified. Refresh the report list.");
+    return { deleted };
+  });
 
 async function resolveCallerHierarchyContext(context: {
   userId: string;

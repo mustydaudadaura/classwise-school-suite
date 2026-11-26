@@ -46,3 +46,4 @@
 
 - Score limits/missing-score checks use the shared score-limits helper; zero-fill never overwrites saved scores.
 - Department tiles/pages read one shared departments config so every tile opens a real page.
+- Standard school roles (Principal, HOD, HR Officer) are presets in one shared module created as ordinary custom roles; menus and department tiles also open pages covered by a user's custom-role grants, but only when the database permission check agrees.

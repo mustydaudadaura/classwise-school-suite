@@ -54,7 +54,7 @@ function DepartmentPage() {
   const dept = findDepartment(slug)!;
   const { roles, schoolId } = useAuth();
   const access = useSchoolAccess();
-  const acc = { roles, can: access.can };
+  const acc = { roles, can: access.can, granted: access.granted };
   const canSeeStaff = roles.includes("super_admin") || access.can("users.edit");
   const { data } = useDepartmentHub(dept.stats.length ? schoolId : null, canSeeStaff);
 

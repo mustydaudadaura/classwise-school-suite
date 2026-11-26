@@ -106,9 +106,12 @@ function AuthedLayout() {
     if (n.to === "/schools") return isSuper;
     if (n.to === "/report-cards" && hasRole(roles, "parent", "student")) return true;
     if (isSuper) return true;
+    const permission = PAGE_ACCESS[n.to];
+    // Custom school roles (Principal, HOD, HR Officer…) open the pages their permissions cover.
+    if (permission && access.granted.includes(permission) && access.can(permission)) return true;
+    if (n.to === "/departments" && access.granted.length > 0) return true;
     const roleAllowed = (n.roles as readonly string[]).some((r) => roles.includes(r as any));
     if (!roleAllowed) return false;
-    const permission = PAGE_ACCESS[n.to];
     return permission ? access.can(permission) : true;
   });
   const matchedPageAccessKey = Object.keys(PAGE_ACCESS).find(

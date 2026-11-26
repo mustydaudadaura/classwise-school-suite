@@ -22,7 +22,7 @@ export const Route = createFileRoute("/_authenticated/departments/")({
 function DepartmentsPage() {
   const { roles } = useAuth();
   const access = useSchoolAccess();
-  const depts = visibleDepartments({ roles, can: access.can });
+  const depts = visibleDepartments({ roles, can: access.can, granted: access.granted });
   return (
     <div className="space-y-4">
       <div>

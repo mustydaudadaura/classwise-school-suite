@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth, hasRole } from '@/hooks/useAuth';
 import { useSchoolAccess } from '@/hooks/useSchoolAccess';
 import { SCHOOL_MODULES, SCHOOL_PERMISSIONS, selectSchool } from '@/lib/school-access';
+import { STANDARD_SCHOOL_ROLES, missingStandardRoles } from '@/lib/standard-roles';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -184,6 +185,7 @@ function SchoolSettings({ schoolId }: { schoolId: string }) {
       }} /></div>)}
     </TabsContent>
     <TabsContent value="permissions" className="space-y-8">
+      <StandardRolesCard schoolId={schoolId} existing={customRoles.map(r => r.name)} busy={busy} run={run} />
       <form className="space-y-4" onSubmit={e => { e.preventDefault(); void run(() => supabase.from('school_custom_roles').insert({ school_id: schoolId, name: roleName.trim(), permissions }), 'Custom role created'); }}>
         <h2 className="text-lg font-semibold">Custom staff role</h2>
         <div className="max-w-md"><Label htmlFor="role-name">Role name</Label><Input id="role-name" value={roleName} onChange={e => setRoleName(e.target.value)} required minLength={2} maxLength={80} /></div>
@@ -211,4 +213,21 @@ function SchoolSettings({ schoolId }: { schoolId: string }) {
       <div className="flex items-center justify-end gap-3"><Button variant="outline" disabled={page === 0} onClick={() => setPage(page - 1)}>Previous</Button><span className="text-sm">Page {page + 1}</span><Button variant="outline" disabled={audit.length < 25} onClick={() => setPage(page + 1)}>Next</Button></div>
     </TabsContent>
   </Tabs>;
+}
+
+function StandardRolesCard({ schoolId, existing, busy, run }: { schoolId: string; existing: string[]; busy: boolean; run: (task: () => PromiseLike<{ error: { message: string } | null }>, message: string) => Promise<void> }) {
+  const missing = missingStandardRoles(existing);
+  const add = () => run(async () => {
+    const { data, error } = await supabase.from('school_custom_roles').insert(missing.map(r => ({ school_id: schoolId, name: r.name, permissions: [...r.permissions] }))).select('id');
+    if (error) return { error };
+    if ((data ?? []).length !== missing.length) return { error: { message: 'Some roles were not saved. Please try again.' } };
+    return { error: null };
+  }, `${missing.length} standard role${missing.length === 1 ? '' : 's'} added`);
+  return <section className="space-y-3 rounded-lg border border-border bg-muted/30 p-4">
+    <div className="flex flex-wrap items-start justify-between gap-3">
+      <div><h2 className="text-lg font-semibold">Standard school roles</h2><p className="text-sm text-muted-foreground">Ready-made roles you can assign to staff below. They never include school settings, user accounts, fees or payroll approval.</p></div>
+      <Button type="button" disabled={busy || !missing.length} onClick={() => void add()}>{missing.length ? `Add ${missing.length} missing role${missing.length === 1 ? '' : 's'}` : 'All added'}</Button>
+    </div>
+    <ul className="grid gap-2 sm:grid-cols-3">{STANDARD_SCHOOL_ROLES.map(r => <li key={r.name} className="rounded-md border border-border bg-card p-3 text-sm"><p className="font-medium">{r.name}{!missing.includes(r) && <span className="ml-2 text-xs text-primary">✓ added</span>}</p><p className="mt-1 text-xs text-muted-foreground">{r.summary}</p></li>)}</ul>
+  </section>;
 }

@@ -184,15 +184,26 @@ export function findDepartment(slug: string): Department | undefined {
   return DEPARTMENTS.find((d) => d.slug === slug);
 }
 
-type Access = { roles: readonly string[]; can: (p: SchoolPermission) => boolean };
+type Access = {
+  roles: readonly string[];
+  can: (p: SchoolPermission) => boolean;
+  /** Permissions handed out by the school's custom roles (Principal, HOD, HR Officer…). */
+  granted?: readonly SchoolPermission[];
+};
 
 function staffRoles(roles: readonly string[]): StaffRole[] {
   return roles.filter((r): r is StaffRole => ["super_admin", "school_admin", "teacher", "accountant"].includes(r));
 }
 
-/** Super Admin sees everything; others need the role and, when set, the school permission. */
+/** A custom-role grant opens a link only when the database also confirms the permission. */
+function grantedLink(link: DepartmentLink, access: Access): boolean {
+  return Boolean(link.permission && access.granted?.includes(link.permission) && access.can(link.permission));
+}
+
+/** Super Admin sees everything; others need the role (or a custom-role grant) and, when set, the school permission. */
 export function canOpenLink(link: DepartmentLink, access: Access): boolean {
   if (access.roles.includes("super_admin")) return true;
+  if (grantedLink(link, access)) return true;
   const mine = staffRoles(access.roles);
   if (!link.roles.some((r) => mine.includes(r))) return false;
   return link.permission ? access.can(link.permission) : true;
@@ -201,7 +212,8 @@ export function canOpenLink(link: DepartmentLink, access: Access): boolean {
 export function canOpenDepartment(dept: Department, access: Access): boolean {
   if (access.roles.includes("super_admin")) return true;
   const mine = staffRoles(access.roles);
-  return dept.roles.some((r) => mine.includes(r));
+  if (dept.roles.some((r) => mine.includes(r))) return true;
+  return dept.links.some((l) => grantedLink(l, access));
 }
 
 export function visibleDepartments(access: Access): Department[] {

@@ -61,7 +61,7 @@ export function DepartmentHub() {
   const isSuper = roles.includes("super_admin");
   const canSeeStaff = isSuper || access.can("users.edit");
   const { data, isLoading, error } = useDepartmentHub(schoolId, canSeeStaff);
-  const depts = visibleDepartments({ roles, can: access.can });
+  const depts = visibleDepartments({ roles, can: access.can, granted: access.granted });
   const a = data?.attendance;
   const n = (v: number | null | undefined) => (v == null ? "—" : v.toLocaleString("en-NG"));
   const pct = (v: number | null | undefined) => (v == null ? "—" : `${v}%`);

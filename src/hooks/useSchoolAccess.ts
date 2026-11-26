@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { SCHOOL_PERMISSIONS, type SchoolPermission } from '@/lib/school-access';
+import { customRoleGrants } from '@/lib/standard-roles';
 
 export function useSchoolAccess() {
   const { user, schoolId, roles } = useAuth();
@@ -33,6 +34,20 @@ export function useSchoolAccess() {
     },
   });
 
+  const grants = useQuery({
+    queryKey: ['school-access-grants', user?.id, schoolId],
+    enabled: Boolean(user && schoolId),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('school_role_assignments')
+        .select('active, school_custom_roles(active, permissions)')
+        .eq('user_id', user!.id)
+        .eq('school_id', schoolId!);
+      if (error) return [] as SchoolPermission[];
+      return customRoleGrants((data ?? []) as never);
+    },
+  });
+
   const canCheck = (permission: SchoolPermission) => {
     return query.data?.includes(permission) ?? false;
   };
@@ -42,5 +57,6 @@ export function useSchoolAccess() {
     loading: query.isPending && Boolean(schoolId),
     error: query.error,
     can: canCheck,
+    granted: grants.data ?? [],
   };
 }

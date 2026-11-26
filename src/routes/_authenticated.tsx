@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import {
   LayoutDashboard, Users, BookOpen, FileText, Building2, LogOut,
   GraduationCap, UserCog, Menu, X, Award, CalendarCheck, Wallet, Megaphone, ScrollText, MoonStar,
-  UserCheck, Tablet, Activity,
+  UserCheck, Tablet, Activity, LayoutGrid,
 } from "lucide-react";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -25,31 +25,32 @@ export const Route = createFileRoute("/_authenticated")({
 const PAGE_ACCESS: Record<string, SchoolPermission> = { "/staff-attendance": "staffatt.view", "/kiosk": "staffatt.kiosk", "/students": "students.view", "/admissions": "students.view", "/classes": "academics.view", "/academics": "academics.view", "/islamic": "academics.view", "/promotion": "promotion.edit", "/results": "results.edit", "/attendance": "attendance.view", "/fees": "fees.view", "/announcements": "communication.view", "/report-cards": "results.view", "/report-distribution": "results.view", "/scratch-cards": "settings.edit", "/id-cards": "students.view", "/documents": "students.view", "/users": "users.edit", "/staff": "users.edit", "/settings": "settings.edit" };
 
 const NAV = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["super_admin", "school_admin", "teacher", "form_master", "accountant", "student", "parent"] },
-  { to: "/schools", label: "Schools Directory", icon: Building2, roles: ["super_admin"] },
-  { to: "/admissions", label: "Admissions", icon: UserCog, roles: ["super_admin", "school_admin"] },
-  { to: "/students", label: "Students", icon: Users, roles: ["super_admin", "school_admin", "teacher", "form_master"] },
-  { to: "/classes", label: "Classes & Subjects", icon: BookOpen, roles: ["super_admin", "school_admin", "teacher", "form_master"] },
-  { to: "/academics", label: "Teaching & Timetable", icon: CalendarCheck, roles: ["super_admin", "school_admin", "teacher", "form_master"] },
-  { to: "/islamic", label: "Islamic Programmes", icon: MoonStar, roles: ["super_admin", "school_admin", "teacher", "form_master"] },
-  { to: "/promotion", label: "Promotion", icon: GraduationCap, roles: ["super_admin", "school_admin"] },
-  { to: "/results", label: "Results Entry", icon: FileText, roles: ["super_admin", "school_admin", "teacher", "form_master"] },
-  { to: "/term-records", label: "Term Records", icon: CalendarCheck, roles: ["super_admin", "school_admin", "teacher", "form_master"] },
-  { to: "/attendance", label: "Attendance", icon: CalendarCheck, roles: ["super_admin", "school_admin", "teacher", "form_master"] },
-  { to: "/staff-attendance", label: "Staff Attendance Portal", icon: UserCheck, roles: ["super_admin", "school_admin", "teacher", "form_master", "accountant"] },
-  { to: "/kiosk", label: "Attendance Kiosk", icon: Tablet, roles: ["super_admin", "school_admin"] },
-  { to: "/fees", label: "Fees & Finances", icon: Wallet, roles: ["super_admin", "school_admin", "accountant"] },
-  { to: "/announcements", label: "Announcements", icon: Megaphone, roles: ["super_admin", "school_admin"] },
-  { to: "/report-cards", label: "Report Cards", icon: Award, roles: ["super_admin", "school_admin", "teacher", "form_master", "student", "parent"] },
-  { to: "/report-distribution", label: "Report PDFs & WhatsApp", icon: Award, roles: ["super_admin", "school_admin", "teacher", "form_master"] },
-  { to: "/scratch-cards", label: "Result Scratch Cards", icon: Award, roles: ["super_admin", "school_admin"] },
-  { to: "/id-cards", label: "ID Cards", icon: Award, roles: ["super_admin", "school_admin"] },
-  { to: "/documents", label: "Certificates & Reports", icon: ScrollText, roles: ["super_admin", "school_admin"] },
-  { to: "/staff", label: "Staff Register", icon: Users, roles: ["super_admin", "school_admin"] },
-  { to: "/users", label: "Staff & User Credentials", icon: UserCog, roles: ["super_admin", "school_admin"] },
-  { to: "/settings", search: { tab: "reports" }, label: "Report Card Design", icon: Award, roles: ["super_admin", "school_admin"] },
-  { to: "/settings", label: "School Settings", icon: Settings2, roles: ["super_admin", "school_admin"] },
-  { to: "/diagnostics", label: "System Diagnostics", icon: Activity, roles: ["super_admin"] },
+  { group: "Overview", to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["super_admin", "school_admin", "teacher", "form_master", "accountant", "student", "parent"] },
+  { group: "Overview", to: "/departments", label: "All Departments", icon: LayoutGrid, roles: ["super_admin", "school_admin", "teacher", "form_master", "accountant"] },
+  { group: "Overview", to: "/schools", label: "Schools Directory", icon: Building2, roles: ["super_admin"] },
+  { group: "Student Affairs", to: "/admissions", label: "Admissions", icon: UserCog, roles: ["super_admin", "school_admin"] },
+  { group: "Student Affairs", to: "/students", label: "Students", icon: Users, roles: ["super_admin", "school_admin", "teacher", "form_master"] },
+  { group: "Student Affairs", to: "/promotion", label: "Promotion", icon: GraduationCap, roles: ["super_admin", "school_admin"] },
+  { group: "Student Affairs", to: "/id-cards", label: "ID Cards", icon: Award, roles: ["super_admin", "school_admin"] },
+  { group: "Student Affairs", to: "/documents", label: "Certificates & Reports", icon: ScrollText, roles: ["super_admin", "school_admin"] },
+  { group: "Academic Affairs", to: "/classes", label: "Classes & Subjects", icon: BookOpen, roles: ["super_admin", "school_admin", "teacher", "form_master"] },
+  { group: "Academic Affairs", to: "/academics", label: "Teaching & Timetable", icon: CalendarCheck, roles: ["super_admin", "school_admin", "teacher", "form_master"] },
+  { group: "Academic Affairs", to: "/islamic", label: "Islamic Programmes", icon: MoonStar, roles: ["super_admin", "school_admin", "teacher", "form_master"] },
+  { group: "Academic Affairs", to: "/results", label: "Results Entry", icon: FileText, roles: ["super_admin", "school_admin", "teacher", "form_master"] },
+  { group: "Academic Affairs", to: "/term-records", label: "Term Records", icon: CalendarCheck, roles: ["super_admin", "school_admin", "teacher", "form_master"] },
+  { group: "Academic Affairs", to: "/report-cards", label: "Report Cards", icon: Award, roles: ["super_admin", "school_admin", "teacher", "form_master", "student", "parent"] },
+  { group: "Academic Affairs", to: "/report-distribution", label: "Report PDFs & WhatsApp", icon: Award, roles: ["super_admin", "school_admin", "teacher", "form_master"] },
+  { group: "Academic Affairs", to: "/scratch-cards", label: "Result Scratch Cards", icon: Award, roles: ["super_admin", "school_admin"] },
+  { group: "Attendance", to: "/attendance", label: "Attendance", icon: CalendarCheck, roles: ["super_admin", "school_admin", "teacher", "form_master"] },
+  { group: "Attendance", to: "/staff-attendance", label: "Staff Attendance Portal", icon: UserCheck, roles: ["super_admin", "school_admin", "teacher", "form_master", "accountant"] },
+  { group: "Attendance", to: "/kiosk", label: "Attendance Kiosk", icon: Tablet, roles: ["super_admin", "school_admin"] },
+  { group: "Finance & Accounts", to: "/fees", label: "Fees & Finances", icon: Wallet, roles: ["super_admin", "school_admin", "accountant"] },
+  { group: "Human Resources", to: "/staff", label: "Staff Register", icon: Users, roles: ["super_admin", "school_admin"] },
+  { group: "Human Resources", to: "/users", label: "Staff & User Credentials", icon: UserCog, roles: ["super_admin", "school_admin"] },
+  { group: "Parents & PTA", to: "/announcements", label: "Announcements", icon: Megaphone, roles: ["super_admin", "school_admin"] },
+  { group: "School Setup", to: "/settings", search: { tab: "reports" }, label: "Report Card Design", icon: Award, roles: ["super_admin", "school_admin"] },
+  { group: "School Setup", to: "/settings", label: "School Settings", icon: Settings2, roles: ["super_admin", "school_admin"] },
+  { group: "School Setup", to: "/diagnostics", label: "System Diagnostics", icon: Activity, roles: ["super_admin"] },
 ] as const;
 
 function AuthedLayout() {
@@ -151,12 +152,14 @@ function AuthedLayout() {
           <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Close menu" onClick={() => setOpen(false)}><X className="h-5 w-5" /></Button>
         </div>
         <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-          {visibleNav.map((n) => {
+          {visibleNav.map((n, i) => {
+            const heading = i === 0 || visibleNav[i - 1]!.group !== n.group ? n.group : null;
             const active = location.pathname.startsWith(n.to) && ("search" in n ? (location.search as { tab?: string }).tab === "reports" : (location.search as { tab?: string }).tab !== "reports");
             const Icon = n.icon;
             return (
+              <div key={n.label}>
+              {heading && heading !== "Overview" && <p className="px-3 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/50">{heading}</p>}
               <Link
-                key={n.label}
                 to={n.to}
                 search={"search" in n ? n.search : undefined}
                 onClick={() => setOpen(false)}
@@ -170,6 +173,7 @@ function AuthedLayout() {
                 <Icon className="h-4 w-4" />
                 {n.label}
               </Link>
+              </div>
             );
           })}
         </nav>

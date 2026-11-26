@@ -1,5 +1,14 @@
 # Roadmap
 
+## Integrated platform (approved plan)
+- [x] Phase 2: departmental dashboard, 15 department pages, grouped side menu (desktop + phone verified)
+- [ ] Phase 3: school calendar, attendance register reports (boys/girls), student QR cards and scanning — waits on owner confirming Phase 2
+- [ ] Phase 4: Weekly Record of Work, lesson delivery, curriculum coverage
+- [ ] Phase 5: Submissions & School Records
+- [ ] Phase 6: Supervision & Inspection Centre
+- [ ] Phase 7: remaining department registers (one at a time, agreed first)
+- [ ] Phase 8: full role/mobile/security testing
+
 - [x] Add confirmed bulk report-card deletion; Demo School UI deletion verified with unchanged saved scores, original reports restored, and phone confirmation checked.
 - [x] Check repeated root-page and mobile-hook diagnostics: current build passes, React is imported, and the quoted instruction is absent from source.
 

@@ -51,6 +51,8 @@ import { Route as PortalReportCardsRouteImport } from './routes/portal/report-ca
 import { Route as SSlugRouteImport } from './routes/s.$slug'
 import { Route as VerifyIdCodeRouteImport } from './routes/verify-id.$code'
 import { Route as VerifyCodeRouteImport } from './routes/verify.$code'
+import { Route as AuthenticatedDepartmentsIndexRouteImport } from './routes/_authenticated/departments.index'
+import { Route as AuthenticatedDepartmentsDeptRouteImport } from './routes/_authenticated/departments.$dept'
 import { Route as AuthenticatedReportCardIdRouteImport } from './routes/_authenticated/report-card.$id'
 import { Route as AuthenticatedStudentsIndexRouteImport } from './routes/_authenticated/students.index'
 import { Route as AuthenticatedStudentsIdRouteImport } from './routes/_authenticated/students.$id'
@@ -278,6 +280,18 @@ const VerifyCodeRoute = VerifyCodeRouteImport.update({
   path: '/verify/$code',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedDepartmentsIndexRoute =
+  AuthenticatedDepartmentsIndexRouteImport.update({
+    id: '/departments/',
+    path: '/departments/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedDepartmentsDeptRoute =
+  AuthenticatedDepartmentsDeptRouteImport.update({
+    id: '/departments/$dept',
+    path: '/departments/$dept',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedReportCardIdRoute =
   AuthenticatedReportCardIdRouteImport.update({
     id: '/report-card/$id',
@@ -370,6 +384,7 @@ export interface FileRoutesByFullPath {
   '/verify-id/$code': typeof VerifyIdCodeRoute
   '/verify/$code': typeof VerifyCodeRoute
   '/portal/': typeof PortalIndexRoute
+  '/departments/$dept': typeof AuthenticatedDepartmentsDeptRoute
   '/report-card/$id': typeof AuthenticatedReportCardIdRoute
   '/students/$id': typeof AuthenticatedStudentsIdRoute
   '/api/public/parent-login': typeof ApiPublicParentLoginRoute
@@ -377,6 +392,7 @@ export interface FileRoutesByFullPath {
   '/api/webhooks/payments': typeof ApiWebhooksPaymentsRoute
   '/portal/receipt/$id': typeof PortalReceiptIdRoute
   '/portal/report-card/$id': typeof PortalReportCardIdRoute
+  '/departments/': typeof AuthenticatedDepartmentsIndexRoute
   '/students/': typeof AuthenticatedStudentsIndexRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
 }
@@ -421,6 +437,7 @@ export interface FileRoutesByTo {
   '/verify-id/$code': typeof VerifyIdCodeRoute
   '/verify/$code': typeof VerifyCodeRoute
   '/portal': typeof PortalIndexRoute
+  '/departments/$dept': typeof AuthenticatedDepartmentsDeptRoute
   '/report-card/$id': typeof AuthenticatedReportCardIdRoute
   '/students/$id': typeof AuthenticatedStudentsIdRoute
   '/api/public/parent-login': typeof ApiPublicParentLoginRoute
@@ -428,6 +445,7 @@ export interface FileRoutesByTo {
   '/api/webhooks/payments': typeof ApiWebhooksPaymentsRoute
   '/portal/receipt/$id': typeof PortalReceiptIdRoute
   '/portal/report-card/$id': typeof PortalReportCardIdRoute
+  '/departments': typeof AuthenticatedDepartmentsIndexRoute
   '/students': typeof AuthenticatedStudentsIndexRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
 }
@@ -475,6 +493,7 @@ export interface FileRoutesById {
   '/verify-id/$code': typeof VerifyIdCodeRoute
   '/verify/$code': typeof VerifyCodeRoute
   '/portal/': typeof PortalIndexRoute
+  '/_authenticated/departments/$dept': typeof AuthenticatedDepartmentsDeptRoute
   '/_authenticated/report-card/$id': typeof AuthenticatedReportCardIdRoute
   '/_authenticated/students/$id': typeof AuthenticatedStudentsIdRoute
   '/api/public/parent-login': typeof ApiPublicParentLoginRoute
@@ -482,6 +501,7 @@ export interface FileRoutesById {
   '/api/webhooks/payments': typeof ApiWebhooksPaymentsRoute
   '/portal/receipt/$id': typeof PortalReceiptIdRoute
   '/portal/report-card/$id': typeof PortalReportCardIdRoute
+  '/_authenticated/departments/': typeof AuthenticatedDepartmentsIndexRoute
   '/_authenticated/students/': typeof AuthenticatedStudentsIndexRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
 }
@@ -529,6 +549,7 @@ export interface FileRouteTypes {
     | '/verify-id/$code'
     | '/verify/$code'
     | '/portal/'
+    | '/departments/$dept'
     | '/report-card/$id'
     | '/students/$id'
     | '/api/public/parent-login'
@@ -536,6 +557,7 @@ export interface FileRouteTypes {
     | '/api/webhooks/payments'
     | '/portal/receipt/$id'
     | '/portal/report-card/$id'
+    | '/departments/'
     | '/students/'
     | '/lovable/email/transactional/preview'
   fileRoutesByTo: FileRoutesByTo
@@ -580,6 +602,7 @@ export interface FileRouteTypes {
     | '/verify-id/$code'
     | '/verify/$code'
     | '/portal'
+    | '/departments/$dept'
     | '/report-card/$id'
     | '/students/$id'
     | '/api/public/parent-login'
@@ -587,6 +610,7 @@ export interface FileRouteTypes {
     | '/api/webhooks/payments'
     | '/portal/receipt/$id'
     | '/portal/report-card/$id'
+    | '/departments'
     | '/students'
     | '/lovable/email/transactional/preview'
   id:
@@ -633,6 +657,7 @@ export interface FileRouteTypes {
     | '/verify-id/$code'
     | '/verify/$code'
     | '/portal/'
+    | '/_authenticated/departments/$dept'
     | '/_authenticated/report-card/$id'
     | '/_authenticated/students/$id'
     | '/api/public/parent-login'
@@ -640,6 +665,7 @@ export interface FileRouteTypes {
     | '/api/webhooks/payments'
     | '/portal/receipt/$id'
     | '/portal/report-card/$id'
+    | '/_authenticated/departments/'
     | '/_authenticated/students/'
     | '/lovable/email/transactional/preview'
   fileRoutesById: FileRoutesById
@@ -959,6 +985,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VerifyCodeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/departments/': {
+      id: '/_authenticated/departments/'
+      path: '/departments'
+      fullPath: '/departments/'
+      preLoaderRoute: typeof AuthenticatedDepartmentsIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/departments/$dept': {
+      id: '/_authenticated/departments/$dept'
+      path: '/departments/$dept'
+      fullPath: '/departments/$dept'
+      preLoaderRoute: typeof AuthenticatedDepartmentsDeptRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/report-card/$id': {
       id: '/_authenticated/report-card/$id'
       path: '/report-card/$id'
@@ -1050,8 +1090,10 @@ interface AuthenticatedRouteChildren {
   AuthenticatedStaffAttendanceRoute: typeof AuthenticatedStaffAttendanceRoute
   AuthenticatedTermRecordsRoute: typeof AuthenticatedTermRecordsRoute
   AuthenticatedUsersRoute: typeof AuthenticatedUsersRoute
+  AuthenticatedDepartmentsDeptRoute: typeof AuthenticatedDepartmentsDeptRoute
   AuthenticatedReportCardIdRoute: typeof AuthenticatedReportCardIdRoute
   AuthenticatedStudentsIdRoute: typeof AuthenticatedStudentsIdRoute
+  AuthenticatedDepartmentsIndexRoute: typeof AuthenticatedDepartmentsIndexRoute
   AuthenticatedStudentsIndexRoute: typeof AuthenticatedStudentsIndexRoute
 }
 
@@ -1080,8 +1122,10 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedStaffAttendanceRoute: AuthenticatedStaffAttendanceRoute,
   AuthenticatedTermRecordsRoute: AuthenticatedTermRecordsRoute,
   AuthenticatedUsersRoute: AuthenticatedUsersRoute,
+  AuthenticatedDepartmentsDeptRoute: AuthenticatedDepartmentsDeptRoute,
   AuthenticatedReportCardIdRoute: AuthenticatedReportCardIdRoute,
   AuthenticatedStudentsIdRoute: AuthenticatedStudentsIdRoute,
+  AuthenticatedDepartmentsIndexRoute: AuthenticatedDepartmentsIndexRoute,
   AuthenticatedStudentsIndexRoute: AuthenticatedStudentsIndexRoute,
 }
 

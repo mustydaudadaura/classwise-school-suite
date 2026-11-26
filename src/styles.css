@@ -111,6 +111,16 @@
   --sidebar-ring: oklch(0.6 0.18 250);
   --gradient-hero: linear-gradient(135deg, oklch(0.24 0.09 263) 0%, oklch(0.45 0.18 258) 55%, oklch(0.66 0.16 238) 100%);
   --shadow-elegant: 0 12px 40px -12px oklch(0.45 0.18 258 / 0.35);
+  /* Department tile colours (shared across themes) */
+  --dept-blue: oklch(0.55 0.19 258);
+  --dept-indigo: oklch(0.5 0.2 275);
+  --dept-emerald: oklch(0.55 0.15 155);
+  --dept-amber: oklch(0.68 0.17 60);
+  --dept-teal: oklch(0.58 0.12 200);
+  --dept-violet: oklch(0.52 0.2 295);
+  --dept-pink: oklch(0.6 0.22 355);
+  --dept-green: oklch(0.55 0.16 145);
+  --dept-rose: oklch(0.58 0.22 20);
   /* Analytical dashboard palette (pink → purple → emerald → blue) */
   --analytic-pink: oklch(0.62 0.24 355);
   --analytic-rose: oklch(0.68 0.22 15);

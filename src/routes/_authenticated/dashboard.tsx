@@ -30,6 +30,7 @@ import type { DashboardMetrics } from "@/lib/dashboard-metrics";
 import { MissingPassportAlert } from "@/components/MissingPassportAlert";
 import { MissingTermRecordsAlert } from "@/components/MissingTermRecordsAlert";
 import { VisionDashboard, CorelyticsDashboard } from "@/components/StyledDashboards";
+import { DepartmentHub } from "@/components/DepartmentHub";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard — Alegacy" }, { name: "description", content: "Dashboard for authorized school accounts and families in Alegacy." }, { property: "og:title", content: "Dashboard — Alegacy" }, { property: "og:description", content: "Dashboard for authorized school accounts and families in Alegacy." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
@@ -40,6 +41,7 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 
 const DASH_STYLE_KEY = "alegacy-dashboard-style";
 const DASH_STYLES = [
+  { id: "departments", label: "Departments (new)" },
   { id: "classic", label: "Classic (bright)" },
   { id: "vision", label: "Vision (deep blue)" },
   { id: "corelytics", label: "Corelytics (dark)" },
@@ -158,11 +160,12 @@ function Dashboard() {
     : role === "parent" ? "Parent Portal"
     : "My Learning";
 
-  const [dashStyle, setDashStyle] = useState<DashStyle>("classic");
+  const [dashStyle, setDashStyle] = useState<DashStyle>("departments");
   useEffect(() => {
     const saved = window.localStorage.getItem(DASH_STYLE_KEY) as DashStyle | null;
     if (saved && DASH_STYLES.some((d) => d.id === saved)) setDashStyle(saved);
   }, []);
+  const isStaff = role !== "parent" && role !== "student" && roles.length > 0;
   const changeStyle = (v: string) => {
     setDashStyle(v as DashStyle);
     window.localStorage.setItem(DASH_STYLE_KEY, v);
@@ -170,7 +173,7 @@ function Dashboard() {
 
   return (
     <div data-dash-style={dashStyle} className="dash-surface space-y-4 sm:space-y-6">
-      <div className="flex items-center justify-end gap-2">
+      {isStaff && <div className="flex items-center justify-end gap-2">
         <span className="text-xs text-muted-foreground">Dashboard style</span>
         <Select value={dashStyle} onValueChange={changeStyle}>
           <SelectTrigger className="h-8 w-40 text-xs" aria-label="Dashboard style"><SelectValue /></SelectTrigger>
@@ -178,10 +181,12 @@ function Dashboard() {
             {DASH_STYLES.map((d) => <SelectItem key={d.id} value={d.id}>{d.label}</SelectItem>)}
           </SelectContent>
         </Select>
-      </div>
+      </div>}
       {roles.includes("teacher") && <MissingPassportAlert />}
       {roles.includes("teacher") && <MissingTermRecordsAlert />}
-      {dashStyle !== "classic" && role !== "parent" && role !== "student" && roles.length > 0 ? (
+      {dashStyle === "departments" && isStaff ? (
+        <DepartmentHub />
+      ) : dashStyle !== "classic" && dashStyle !== "departments" && isStaff ? (
         <StyledView style={dashStyle} role={role} schoolId={schoolId} name={fullName || "there"} title={title} />
       ) : (<>
       {/* Header */}

@@ -42,7 +42,7 @@
 - The Staff Register keeps every staff member (with or without a login) in its own school-admin-only table; optional logins reuse the checked staff-account server function and sync ID-card details, so login, role and salary data stay separately protected.
 
 - List pages with detail routes use `name.index.tsx`.
-- Report lists, parent portal and public verification show only real school-scoped rows, never samples.
+- Report lists, parent portal and verification show only real school rows, never samples.
 
 - Score limits/missing-score checks use the shared score-limits helper; zero-fill never overwrites saved scores.
 - Department tiles/pages read one shared departments config so every tile opens a real page.

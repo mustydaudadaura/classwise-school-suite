@@ -41,8 +41,8 @@
 
 - The Staff Register keeps every staff member (with or without a login) in its own school-admin-only table; optional logins reuse the checked staff-account server function and sync ID-card details, so login, role and salary data stay separately protected.
 
-- List pages with detail routes live in `name.index.tsx` so details replace the list.
+- List pages with detail routes use `name.index.tsx`.
 - Report lists, parent portal and public verification show only real school-scoped rows, never samples.
 
 - Score limits/missing-score checks use the shared score-limits helper; zero-fill never overwrites saved scores.
-- Departments are defined once in the shared departments config (pages, links, role/permission rules); the dashboard tiles, department pages and tests all read it so every tile opens a real page and visibility matches access.
+- Department tiles/pages read one shared departments config so every tile opens a real page.

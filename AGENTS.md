@@ -46,4 +46,4 @@
 
 - Score limits/missing-score checks use the shared score-limits helper; zero-fill never overwrites saved scores.
 - Department tiles/pages read one shared departments config so every tile opens a real page.
-- Standard roles are custom-role presets in one module; menus honour custom-role grants only when the DB check agrees.
+- Standard roles are custom-role presets in one module; menus honour grants only when the DB agrees.

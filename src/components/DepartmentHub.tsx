@@ -10,6 +10,7 @@ import { useDepartmentHub } from "@/hooks/useDepartmentHub";
 import { visibleDepartments } from "@/lib/departments";
 import { SCHOOL_TZ } from "@/lib/staff-attendance";
 import { DepartmentIcon } from "@/components/DepartmentIcon";
+import schoolBuilding from "@/assets/school-building.jpg";
 
 const STATUS: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   submitted: { label: "Under review", variant: "secondary" },
@@ -75,7 +76,9 @@ export function DepartmentHub() {
     <div className="space-y-4 sm:space-y-5">
       {/* Welcome banner */}
       <div className="relative overflow-hidden rounded-2xl p-4 text-primary-foreground shadow-md sm:p-6" style={{ background: "var(--gradient-hero)" }}>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <img src={schoolBuilding} alt="" aria-hidden width={1920} height={640} className="absolute inset-0 h-full w-full object-cover object-center" />
+        <div className="absolute inset-0" style={{ background: "linear-gradient(90deg, color-mix(in oklab, var(--sidebar) 92%, transparent) 0%, color-mix(in oklab, var(--sidebar) 70%, transparent) 50%, color-mix(in oklab, var(--sidebar) 20%, transparent) 100%)" }} aria-hidden />
+        <div className="relative flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex min-w-0 items-center gap-3">
             {data?.school?.logo_url && <img src={data.school.logo_url} alt={`${data.school.name} logo`} className="h-12 w-12 shrink-0 rounded-lg bg-card object-contain p-1 sm:h-16 sm:w-16" />}
             <div className="min-w-0">
@@ -90,7 +93,7 @@ export function DepartmentHub() {
           </div>
           <div className="flex flex-col items-start gap-2 sm:items-end">
             <Clock />
-            <span className="inline-flex items-center gap-1 rounded-full bg-card/20 px-2.5 py-1 text-[11px] font-medium"><CheckCircle2 className="h-3.5 w-3.5" /> {roles.length ? roles.map((r) => r.replace("_", " ")).join(" • ") : "Awaiting role"}</span>
+            <span className="inline-flex items-center gap-1 rounded-full bg-sidebar/85 px-2.5 py-1 text-[11px] font-medium text-sidebar-foreground"><CheckCircle2 className="h-3.5 w-3.5" /> {roles.length ? roles.map((r) => r.replace("_", " ")).join(" • ") : "Awaiting role"}</span>
           </div>
         </div>
       </div>

@@ -1,6 +1,6 @@
 # Architecture rules
 
-- Individual/general entry and review share paginated class assessments and per-cell device drafts (migrating legacy keys); score mutations refresh related reports/rankings/analytics but never PIN-protected details that consume paid views. Report generation reads every page and ranks/shows every saved score regardless of approval (shared report-scores helper); it targets one pupil or a class, posted or draft. Results refuses local unsaved marks that differ from saved ones (stale device drafts matching saved marks are discarded); changed cells use grading validation and saved-row checks.
+- Individual/general entry and review share paginated class assessments and per-cell device drafts (migrating legacy keys); score mutations refresh related reports/rankings/analytics but never PIN-protected details that consume paid views. Report generation reads all pages and shows every saved score regardless of approval (shared report-scores helper). Results refuses local unsaved marks that differ from saved ones (stale device drafts matching saved marks are discarded); changed cells use grading validation and saved-row checks.
 
 - Assign form masters through the school-admin-checked class-assignment RPC; classes.teacher_id is the primary assignment and old class-teacher allocations are reconciled. Score entry defaults to assigned classes, with matching restrictive write policies; subject-teacher allocations remain valid.
 
@@ -46,4 +46,4 @@
 
 - Score limits/missing-score checks use the shared score-limits helper; zero-fill never overwrites saved scores.
 - Department tiles/pages read one shared departments config so every tile opens a real page.
-- Standard school roles (Principal, HOD, HR Officer) are presets in one shared module created as ordinary custom roles; menus and department tiles also open pages covered by a user's custom-role grants, but only when the database permission check agrees.
+- Standard roles are custom-role presets in one module; menus honour custom-role grants only when the DB check agrees.
